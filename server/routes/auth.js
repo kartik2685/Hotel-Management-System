@@ -10,6 +10,10 @@ const settingsService = require('../services/settings');
 const stats = require('../services/stats');
 const shellService = require('../services/shell');
 const { requireUser, can } = require('../lib/security');
+const crypto = require('node:crypto');
+const mail = require('../lib/mail');
+const emails = require('../services/emails');
+const limits = require('../lib/limits');
 
 const router = express.Router();
 const SHIFTS = [
@@ -20,7 +24,9 @@ const homeFor = (user) => (can(user, 'frontOffice') ? '/dashboard' : '/housekeep
 /* Only same-site paths are allowed as a redirect target after signing in. */
 const safeNext = (value) => (typeof value === 'string' && /^\/(?![/\\])[\w\-./?=&%#]*$/.test(value) && !value.startsWith('/login') ? value : '');
 
-function renderLogin(req, res, { status = 200, email = '', errors = {}, shift = 'morning', remember = false } = {}) {
+const NOTICES = { done: { title: 'Password changed', text: 'Sign in with your new password.' } };
+
+function renderLogin(req, res, { status = 200, email = '', errors = {}, shift = 'morning', remember = false, resetSent = false } = {}) {
   const db = req.db;
   const settings = req.settings;
   const bd = settingsService.businessDate(db);
@@ -44,8 +50,72 @@ function renderLogin(req, res, { status = 200, email = '', errors = {}, shift = 
     shift,
     shifts: SHIFTS.map((s) => ({ ...s, label: `${s.label} · ${(hours[s.value] || []).join('–')}` })),
     demoHint: demoUser ? `Demo: sign in as ${demoUser.email} with the password ${config.demoPassword}.` : '',
+    resetSent, mailReady: mail.configured(), notice: NOTICES[req.query.reset] || null,
   });
 }
+
+/* Address used in links inside emails. Set "Website address" in Admin → Hotel settings for production. */
+function siteUrl(req) {
+  if (req.settings.site_url) return req.settings.site_url.replace(/\/+$/, '');
+  const protocol = config.embed || config.cookieSecure ? 'https' : req.protocol;
+  return `${protocol}://${req.get('host')}`;
+}
+
+/* ------------------------------------------------------------------ forgotten passwords */
+router.post('/password/forgot', (req, res) => {
+  const db = req.db;
+  const email = String(req.body.email || '').trim().toLowerCase().slice(0, 120);
+  if (!auth.safeEqual(req.body._csrf, req.cookies[auth.LOGIN_COOKIE])) return renderLogin(req, res, { status: 403, errors: { password: 'The form expired. Please try again.' } });
+  // Same answer whether or not the account exists; quietly limited per email and per network address.
+  const allowed = limits.hit(`reset:${email}`, 3, 60 * 60 * 1000) && limits.hit(`reset-ip:${req.ip}`, 10, 60 * 60 * 1000);
+  const user = allowed && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? db.get('SELECT * FROM users WHERE email = ? AND active = 1', email) : null;
+  if (user) {
+    const token = auth.randomToken();
+    const now = Date.now();
+    db.run('INSERT INTO password_resets (user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?)',
+      user.id, crypto.createHash('sha256').update(token).digest('hex'), now + 60 * 60 * 1000, now);
+    mail.send(db, req.settings, emails.passwordReset(req.settings, user, `${siteUrl(req)}/password/reset?token=${token}`));
+    activity.log(db, { user, ip: req.ip, settings: req.settings }, 'auth.reset-request', `Password reset link sent to ${user.email}`);
+  }
+  renderLogin(req, res, { email, resetSent: true });
+});
+
+function findReset(db, token) {
+  if (!token || String(token).length < 30) return null;
+  const hash = crypto.createHash('sha256').update(String(token)).digest('hex');
+  const row = db.get('SELECT pr.*, u.name, u.email, u.active FROM password_resets pr JOIN users u ON u.id = pr.user_id WHERE pr.token_hash = ?', hash);
+  return row && !row.used_at && row.expires_at > Date.now() && row.active ? row : null;
+}
+
+function renderReset(req, res, { status = 200, errors = {}, token = '' } = {}) {
+  const reset = findReset(req.db, token);
+  res.status(reset ? status : 410).render('pages/password-reset', { hotel: { name: req.settings.hotel_name }, reset, token, errors });
+}
+
+router.get('/password/reset', (req, res) => renderReset(req, res, { token: req.query.token }));
+
+router.post('/password/reset', async (req, res, next) => {
+  try {
+    const db = req.db;
+    const token = String(req.body.token || '');
+    const reset = findReset(db, token);
+    if (!reset) return renderReset(req, res, { token });
+    const password = String(req.body.password || '');
+    if (password.length < 8 || password.length > 200) return renderReset(req, res, { status: 422, token, errors: { password: 'Use 8 to 200 characters.' } });
+    if (password !== String(req.body.confirm || '')) return renderReset(req, res, { status: 422, token, errors: { confirm: 'The two passwords don’t match.' } });
+    const hash = await auth.hashPassword(password);
+    db.tx(() => {
+      db.run('UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?', hash, reset.user_id);
+      db.run('UPDATE password_resets SET used_at = ? WHERE user_id = ? AND used_at IS NULL', Date.now(), reset.user_id);
+      db.run('DELETE FROM sessions WHERE user_id = ?', reset.user_id); // signed out everywhere
+      db.run('DELETE FROM login_attempts WHERE email = ?', reset.email);
+    });
+    activity.log(db, { user: { id: reset.user_id, name: reset.name }, ip: req.ip, settings: req.settings }, 'auth.reset', `${reset.name} set a new password with a reset link`);
+    res.redirect(303, '/login?reset=done');
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.get('/login', (req, res) => {
   if (req.user) return res.redirect(homeFor(req.user));

@@ -2,11 +2,14 @@
 /* Hotel settings (key/value JSON) with an in-memory cache. */
 const clock = require('../lib/clock');
 
+/* Defaults for a new, empty hotel (set up for India). The demo hotel overrides them in db/seed.js. */
 const DEFAULTS = {
-  hotel_name: 'My Hotel', hotel_city: '', hotel_address: '', hotel_phone: '', hotel_email: '', tax_id: '',
-  currency_code: 'USD', currency_symbol: '$', currency_locale: 'en-US', tax_mode: 'flat', tax_rate: 0, tax_label: 'Tax',
-  check_in_time: '15:00', check_out_time: '12:00', timezone: 'UTC', business_date_mode: 'auto', business_date: null,
+  hotel_name: 'My Hotel', hotel_city: '', hotel_address: '', hotel_phone: '', hotel_email: '', tax_id: '', hotel_state: '',
+  country: 'IN', currency_code: 'INR', currency_symbol: '₹', currency_locale: 'en-IN', tax_mode: 'gst_india', tax_rate: 0, tax_label: 'GST',
+  check_in_time: '14:00', check_out_time: '11:00', timezone: 'Asia/Kolkata', business_date_mode: 'auto', business_date: null,
   shifts: { morning: ['07:00', '15:00'], evening: ['15:00', '23:00'], night: ['23:00', '07:00'] }, demo_mode: false,
+  require_grc: true, default_room_type: '', confirmation_prefix: 'HTL', invoice_prefix: 'INV',
+  site_enabled: false, site_tagline: '', site_intro: '', site_amenities: [], site_policies: '', site_url: '',
 };
 
 let cache = null;

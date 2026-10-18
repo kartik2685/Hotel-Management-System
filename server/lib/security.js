@@ -38,8 +38,11 @@ function cookies(req, res, next) {
 const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 /* Every state-changing request from a signed-in user must carry the session's CSRF token. */
+/* Forms that work without a session carry their own token (checked in their routes). */
+const OWN_TOKEN = /^\/(hotel(\/|$)|login$|password\/)/;
+
 function csrf(req, res, next) {
-  if (!UNSAFE.has(req.method) || !req.session) return next();
+  if (!UNSAFE.has(req.method) || !req.session || OWN_TOKEN.test(req.path)) return next();
   const sent = req.get('x-csrf-token') || (req.body && req.body._csrf);
   if (safeEqual(sent, req.session.csrf_token)) return next();
   const error = new Error('Your session form expired. Reload the page and try again.');

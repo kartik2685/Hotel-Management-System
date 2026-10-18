@@ -11,10 +11,10 @@
               <div class="card__head" style="padding:20px 24px 0"><div><h2 class="card__title" id="plans-title">Rate plans</h2></div></div>
               <div class="table-scroll">
                 <table class="table admin-table">
-                  <thead><tr><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Change to base rate</th><th scope="col">On booking form</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+                  <thead><tr><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Change to base rate</th><th scope="col">Offered</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
                   <tbody>
 <% for (const p of plans) { -%>
-                    <tr<%- p.active ? '' : ' class="is-inactive"' %>><td class="mono"><%= p.code %></td><td><strong><%= p.name %></strong><br><small class="cell-note"><%= p.description %></small></td><td><%= adjust(p) %></td><td><%= p.bookable ? 'Yes' : 'No' %><%= p.active ? '' : ' · inactive' %></td><td class="actions"><a class="button button--secondary button--sm" href="/admin/rates?plan=<%= p.id %>">Edit</a></td></tr>
+                    <tr<%- p.active ? '' : ' class="is-inactive"' %>><td class="mono"><%= p.code %></td><td><strong><%= p.name %></strong><br><small class="cell-note"><%= p.description %></small></td><td><%= adjust(p) %></td><td><%= p.bookable ? 'Staff' : '' %><%= p.bookable && p.online ? ' · ' : '' %><%= p.online ? 'Website' : '' %><%= !p.bookable && !p.online ? 'No' : '' %><%= p.active ? '' : ' · inactive' %><br><small class="cell-note"><%= p.free_cancel_days === null ? 'Non-refundable' : 'Free cancellation ' + p.free_cancel_days + ' days before' %></small></td><td class="actions"><a class="button button--secondary button--sm" href="/admin/rates?plan=<%= p.id %>">Edit</a></td></tr>
 <% } -%>
                   </tbody>
                 </table>
@@ -47,7 +47,10 @@
                 <div class="form-grid__col"><label class="field-label" for="p-desc">Description <span class="field-label__hint">shown on the booking form</span></label><input class="input" id="p-desc" name="description" value="<%= pval('description') %>"></div>
                 <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="p-sort">Order</label><input class="input" id="p-sort" name="sort" type="number" value="<%= pval('sort', 0) %>"></div>
               </div>
-              <div class="check-row"><label><input type="checkbox" name="bookable"<%- (pv.bookable !== undefined ? pv.bookable : prec.bookable !== 0) ? ' checked' : '' %>> On the booking form</label><label><input type="checkbox" name="active"<%- (pv.active !== undefined ? pv.active : prec.active !== 0) ? ' checked' : '' %>> Active</label></div>
+              <div class="form-grid" style="margin-top:12px">
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="p-cancel">Free cancellation <span class="field-label__hint">days before arrival · blank = non-refundable</span></label><input class="input<%= pe.free_cancel_days ? ' is-invalid' : '' %>" id="p-cancel" name="free_cancel_days" type="number" min="0" max="60" value="<%= pv.free_cancel_days !== undefined ? pv.free_cancel_days : prec.free_cancel_days ?? (editPlan ? '' : 2) %>"><p class="field-error"><%= pe.free_cancel_days || '' %></p></div>
+              </div>
+              <div class="check-row"><label><input type="checkbox" name="bookable"<%- (pv.bookable !== undefined ? pv.bookable : prec.bookable !== 0) ? ' checked' : '' %>> On the staff booking form</label><label><input type="checkbox" name="online"<%- (pv.online !== undefined ? pv.online : prec.online !== 0) ? ' checked' : '' %>> On the website</label><label><input type="checkbox" name="active"<%- (pv.active !== undefined ? pv.active : prec.active !== 0) ? ' checked' : '' %>> Active</label></div>
               <div class="form-actions"><button class="button button--primary" type="submit"><%= editPlan ? 'Save changes' : 'Add rate plan' %></button><% if (editPlan) { %><a class="button button--secondary" href="/admin/rates">Cancel</a><% } %></div>
             </form>
             <form class="card" method="post" action="/admin/extras<%= editExtra ? '/' + editExtra.id : '' %>" novalidate>

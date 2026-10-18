@@ -1,0 +1,24 @@
+<%- include('_top') %>
+<% const val = (k) => (values[k] !== undefined ? values[k] : s[k] ?? ''); const err = (k) => errors[k] || ''; const inv = (k) => (errors[k] ? ' is-invalid' : ''); -%>
+        <div class="admin-grid">
+          <form class="card" method="post" action="/admin/website" novalidate>
+            <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+            <div class="check-row" style="margin-top:0"><label><input type="checkbox" name="site_enabled"<%- (values.site_enabled !== undefined ? values.site_enabled : s.site_enabled) ? ' checked' : '' %>> <strong>Website is on</strong> — guests can see rooms and book at <a href="/hotel" target="_blank" rel="noopener">/hotel</a></label></div>
+            <div class="form-grid" style="margin-top:16px">
+              <div class="form-grid__col"><label class="field-label" for="w-tag">Tagline <span class="field-label__hint">under the hotel name</span></label><input class="input<%= inv('site_tagline') %>" id="w-tag" name="site_tagline" value="<%= val('site_tagline') %>"><p class="field-error"><%= err('site_tagline') %></p></div>
+              <div class="form-grid__col"><label class="field-label" for="w-intro">Introduction</label><textarea class="input<%= inv('site_intro') %>" id="w-intro" name="site_intro" rows="3"><%= val('site_intro') %></textarea><p class="field-error"><%= err('site_intro') %></p></div>
+              <div class="form-grid__col"><label class="field-label" for="w-amen">Amenities <span class="field-label__hint">one per line</span></label><textarea class="input<%= inv('site_amenities') %>" id="w-amen" name="site_amenities" rows="5"><%= Array.isArray(val('site_amenities')) ? val('site_amenities').join('\n') : val('site_amenities') %></textarea><p class="field-error"><%= err('site_amenities') %></p></div>
+              <div class="form-grid__col"><label class="field-label" for="w-pol">Policies <span class="field-label__hint">check-in, cancellation, pets…</span></label><textarea class="input<%= inv('site_policies') %>" id="w-pol" name="site_policies" rows="3"><%= val('site_policies') %></textarea><p class="field-error"><%= err('site_policies') %></p></div>
+            </div>
+            <div class="form-actions"><button class="button button--primary" type="submit">Save website</button><a class="button button--secondary" href="/hotel" target="_blank" rel="noopener">Open the website</a></div>
+          </form>
+          <section class="card" aria-labelledby="w-rooms">
+            <div class="card__head"><div><h2 class="card__title" id="w-rooms">Rooms on the website</h2><p class="card__subtitle">Descriptions, photos and prices come from <a href="/admin/room-types">Room types</a> and <a href="/admin/rates">Rates</a>.</p></div></div>
+            <ul class="note-list">
+<% for (const t of types) { -%>
+              <li><span class="status-icon tone-<%= t.online && t.active ? 'clean' : 'ooo' %>" aria-hidden="true"><%- icon(t.online && t.active ? 'check' : 'close') %></span><div><p><strong><%= t.name %></strong> · <%= t.online && t.active ? 'shown' : 'hidden' %></p><small><%= t.photo ? 'Photo set' : 'No photo' %> · <%= t.description ? 'Has a description' : 'No description yet' %></small></div></li>
+<% } -%>
+            </ul>
+          </section>
+        </div>
+<%- include('_bottom') %>

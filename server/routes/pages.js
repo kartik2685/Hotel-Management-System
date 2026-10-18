@@ -22,7 +22,8 @@ router.get('/', (req, res) => {
     res.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-src 'self'");
     return res.sendFile(path.join(__dirname, '..', 'views', 'dev', 'preview.html'));
   }
-  res.redirect(req.user ? homeFor(req.user) : '/login');
+  if (req.user) return res.redirect(homeFor(req.user));
+  res.redirect(req.settings.site_enabled ? '/hotel' : '/login');
 });
 
 router.get('/dashboard', requireAbility('frontOffice'), (req, res) => {

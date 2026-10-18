@@ -1,0 +1,23 @@
+<%- include('_top') %>
+        <section class="card card--flush" aria-labelledby="inv-title">
+          <h2 class="sr-only" id="inv-title">Invoices</h2>
+          <form class="filter-bar" method="get" action="/admin/invoices" role="search" style="padding:20px 24px">
+            <div class="field field--search"><label class="field-label" for="i-q">Search</label><div class="icon-input"><%- icon('search') %><input class="input" id="i-q" name="q" type="search" value="<%= q %>" placeholder="Invoice, booking or guest"></div></div>
+            <div class="field field--reset"><button class="button button--secondary" type="submit">Search</button></div>
+            <div class="field field--reset"><a class="button button--secondary" href="/admin/invoices.csv"><%- icon('download') %>Export CSV</a></div>
+          </form>
+          <div class="table-scroll">
+            <table class="table admin-table">
+              <thead><tr><th scope="col">Invoice</th><th scope="col">Issued</th><th scope="col">Guest</th><th scope="col">Booking</th><th scope="col" class="numeric">Total</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+              <tbody>
+<% for (const r of rows) { -%>
+                <tr<%- r.status === 'cancelled' ? ' class="is-inactive"' : '' %>><td class="mono"><%= r.number %><% if (r.status === 'cancelled') { %> <span class="chip">Cancelled</span><% } %></td><td class="mono"><%= r.issued_at %></td><td><%= r.guest %></td><td><a href="/reservations/<%= r.confirmation %>"><%= r.confirmation %></a></td><td class="numeric"><%= fmt.money(r.total_cents) %></td><td class="actions"><a class="button button--secondary button--sm" href="/invoices/<%= r.id %>" target="_blank" rel="noopener">Open</a></td></tr>
+<% } -%>
+              </tbody>
+            </table>
+          </div>
+<% if (!rows.length) { -%>
+          <p class="empty-state">No invoices yet. Create one from a booking page once the guest has checked in.</p>
+<% } -%>
+        </section>
+<%- include('_bottom') %>

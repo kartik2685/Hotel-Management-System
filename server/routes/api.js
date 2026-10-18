@@ -24,7 +24,7 @@ const bookingAction = (fn) => (req, res, next) => {
 router.post('/reservations/:confirmation/check-in', requireAbility('bookings'), bookingAction((db, req, c) => reservations.checkIn(db, req, c)));
 router.post('/reservations/:confirmation/confirm', requireAbility('bookings'), bookingAction((db, req, c) => reservations.confirm(db, req, c)));
 router.post('/reservations/:confirmation/check-out', requireAbility('bookings'),
-  bookingAction((db, req, c, body) => reservations.checkOut(db, req, c, { settle: body.settle === true || body.settle === 'true' })));
+  bookingAction((db, req, c, body) => reservations.checkOut(db, req, c, { settle: body.settle === true || body.settle === 'true', method: body.method })));
 router.post('/reservations/:confirmation/cancel', requireAbility('bookings'), bookingAction((db, req, c) => reservations.cancel(db, req, c)));
 
 /* Room board: clean / dirty. */

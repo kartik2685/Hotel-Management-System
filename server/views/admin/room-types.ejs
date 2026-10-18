@@ -28,7 +28,15 @@
               <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="t-service">Stayover service (min)</label><input class="input<%= inv('service_minutes') %>" id="t-service" name="service_minutes" type="number" min="5" max="240" value="<%= v('service_minutes', 25) %>"><p class="field-error"><%= err('service_minutes') %></p></div>
               <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="t-sort">Order</label><input class="input" id="t-sort" name="sort" type="number" min="0" max="999" value="<%= v('sort', 0) %>"></div>
             </div>
-            <div class="check-row"><label><input type="checkbox" name="active"<%- (values.active !== undefined ? values.active : rec.active !== 0) ? ' checked' : '' %>> Active (can be booked)</label></div>
+            <h3 class="form-section__title" style="margin-top:18px">On the website</h3>
+            <div class="form-grid">
+              <div class="form-grid__col"><label class="field-label" for="t-desc">Description</label><textarea class="input<%= inv('description') %>" id="t-desc" name="description" rows="3"><%= v('description') %></textarea><p class="field-error"><%= err('description') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="t-bed">Beds</label><input class="input" id="t-bed" name="bed" value="<%= v('bed') %>" placeholder="e.g. King bed"></div>
+              <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="t-size">Size (m²)</label><input class="input<%= inv('size_sqm') %>" id="t-size" name="size_sqm" type="number" value="<%= v('size_sqm') %>"><p class="field-error"><%= err('size_sqm') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="t-photo">Photo <span class="field-label__hint">files in assets/img/rooms</span></label>
+                <select class="select<%= inv('photo') %>" id="t-photo" name="photo"><option value="">No photo</option><% for (const p of photos) { %><option<%- v('photo') === p ? ' selected' : '' %>><%= p %></option><% } %></select><p class="field-error"><%= err('photo') %></p></div>
+            </div>
+            <div class="check-row"><label><input type="checkbox" name="active"<%- (values.active !== undefined ? values.active : rec.active !== 0) ? ' checked' : '' %>> Active (can be booked)</label><label><input type="checkbox" name="online"<%- (values.online !== undefined ? values.online : rec.online !== 0) ? ' checked' : '' %>> Bookable on the website</label></div>
             <p class="field-error"><%= err('active') %></p>
             <div class="form-actions"><button class="button button--primary" type="submit"><%= editing ? 'Save changes' : 'Add room type' %></button><% if (editing) { %><a class="button button--secondary" href="/admin/room-types">Cancel</a><% } %></div>
           </form>

@@ -295,6 +295,7 @@ describe('admin panel', () => {
       hotel_name: 'Hotel Ganga View', hotel_city: 'Kolkata', currency_code: 'INR', currency_symbol: '₹', currency_locale: 'en-IN', tax_mode: 'gst_india', tax_rate: '0', tax_label: 'GST',
       check_in_time: '14:00', check_out_time: '11:00', timezone: 'Asia/Kolkata', business_date_mode: 'fixed', business_date: '2026-09-24', default_room_type: 'DK',
       confirmation_prefix: 'HLW', morning_start: '07:00', morning_end: '15:00', evening_start: '15:00', evening_end: '23:00', night_start: '23:00', night_end: '07:00',
+      country: 'IN', hotel_state: 'West Bengal', invoice_prefix: 'GNV',
     });
     assert.equal(r.status, 303);
     const page = await admin.get('/dashboard');

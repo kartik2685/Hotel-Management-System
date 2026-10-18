@@ -1,0 +1,58 @@
+<%- include('_top') %>
+<% const b = v.b; -%>
+    <section class="section">
+      <div class="site-wrap">
+<% if (fresh) { -%>
+        <%- include('_steps', { step: 3 }) %>
+        <div class="alert alert--ok no-print" role="status"><%- icon('check') %><p><strong>Your booking is confirmed.</strong> A confirmation <%= b.email ? 'is on its way to ' + b.email : 'has been saved' %>. Keep the number below to find your booking.</p></div>
+<% } -%>
+<% if (cancelled) { -%>
+        <div class="alert alert--ok" role="status"><%- icon('check') %><p><strong>Your booking is cancelled.</strong> Nothing will be charged.</p></div>
+<% } -%>
+<% if (error) { -%>
+        <div class="alert" role="alert"><%- icon('info') %><p><%= error %></p></div>
+<% } -%>
+        <h1 class="page-title"><%= b.status === 'cancelled' ? 'Cancelled booking' : 'Your stay' %></h1>
+        <p class="page-lead">Booking <span class="confirm__number"><%= b.confirmation %></span> · <span class="status-pill status-pill--<%= b.statusCss %>"><%= b.statusLabel %></span></p>
+        <div class="confirm">
+          <section class="card">
+            <dl class="facts">
+              <div><dt>Guest</dt><dd><%= b.name %></dd></div>
+              <div><dt>Room</dt><dd><%= v.type.name %></dd></div>
+              <div><dt>Arrival</dt><dd><%= fmt.formatDay(b.arrival) %>, from <%= s.check_in_time %></dd></div>
+              <div><dt>Departure</dt><dd><%= fmt.formatDay(b.departure) %>, by <%= s.check_out_time %></dd></div>
+              <div><dt>Guests</dt><dd><%= fmt.guestCount(b.adults, b.children, ', ') %></dd></div>
+              <div><dt>Rate</dt><dd><%= v.plan ? v.plan.name : 'Room only' %></dd></div>
+            </dl>
+            <dl class="summary__lines" style="margin-top:20px">
+              <div><dt><%= fmt.plural(b.nights, 'night', 'nights') %> × <%= fmt.money(b.nightly_rate_cents) %></dt><dd><%= fmt.money(b.room_total_cents) %></dd></div>
+              <div><dt>Tax</dt><dd><%= fmt.money(b.tax_cents) %></dd></div>
+<% for (const x of v.extras) { -%>
+              <div><dt><%= x.name %></dt><dd><%= fmt.money(x.amount_cents) %></dd></div>
+<% } -%>
+            </dl>
+            <p class="summary__total"><span>Total</span><span><%= fmt.money(b.total_cents) %></span></p>
+            <p class="summary__note" style="margin-top:10px"><%= v.policy %> Payment is taken at the hotel.</p>
+            <div class="form-actions no-print"><button class="button button--secondary" type="button" data-print><%- icon('printer') %>Print</button><a class="button button--secondary" href="/hotel">Back to the hotel</a></div>
+          </section>
+          <aside style="display:grid;gap:20px">
+            <div class="card summary" style="position:static">
+              <img class="summary__img" src="<%= v.type.photoUrl %>" alt="<%= v.type.name %>" width="1200" height="670">
+              <div class="summary__body"><p class="summary__note"><%= v.type.description %></p></div>
+            </div>
+<% if (v.canCancel) { -%>
+            <form class="card no-print" method="post" action="/hotel/booking/<%= b.confirmation %>/cancel">
+              <input type="hidden" name="_csrf" value="<%= siteToken %>"><input type="hidden" name="t" value="<%= t %>">
+              <h2 class="room__name" style="font-size:1.3rem">Cancel this booking</h2>
+              <p class="summary__note" style="margin:6px 0 12px"><%= v.policy %></p>
+              <div class="checkbox"><input class="checkbox__input" type="checkbox" id="c-sure" name="sure" required><label class="checkbox__label" for="c-sure">Yes, cancel my stay</label></div>
+              <div class="form-actions"><button class="button button--secondary" type="submit">Cancel booking</button></div>
+            </form>
+<% } else if (['confirmed', 'tentative'].includes(b.status)) { -%>
+            <div class="card"><p class="summary__note">Need to change or cancel? Call <%= s.hotel_phone || 'the hotel' %><%= s.hotel_email ? ' or email ' + s.hotel_email : '' %> with your booking number.</p></div>
+<% } -%>
+          </aside>
+        </div>
+      </div>
+    </section>
+<%- include('_bottom') %>

@@ -1,0 +1,21 @@
+<%- include('_top') %>
+<% if (!configured) { -%>
+        <div class="notice"><%- icon('info') %><p><strong>Emails are not being sent yet.</strong> They are kept here instead. To send them, set <span class="mono">SMTP_HOST</span>, <span class="mono">SMTP_PORT</span>, <span class="mono">SMTP_USER</span>, <span class="mono">SMTP_PASS</span> and <span class="mono">MAIL_FROM</span> on the server (see the README), then restart it.</p></div>
+<% } -%>
+        <section class="card card--flush" aria-labelledby="em-title">
+          <h2 class="sr-only" id="em-title">Emails</h2>
+          <div class="table-scroll">
+            <table class="table admin-table">
+              <thead><tr><th scope="col">Written</th><th scope="col">To</th><th scope="col">Subject and message</th><th scope="col">Status</th></tr></thead>
+              <tbody>
+<% for (const m of rows) { -%>
+                <tr><td class="mono"><%= m.created_at %></td><td><%= m.to_address %></td><td><details><summary><%= m.subject %></summary><pre style="white-space:pre-wrap;font:inherit;margin:10px 0 0;color:var(--text-2)"><%= m.body %></pre></details></td><td><span class="chip<%= m.status === 'sent' ? '' : m.status === 'failed' ? ' chip--rose' : ' chip--amber' %>"><%= { sent: 'Sent', failed: 'Failed', queued: 'Sending', logged: 'Not sent' }[m.status] %></span><% if (m.error) { %><br><small class="cell-note"><%= m.error %></small><% } %></td></tr>
+<% } -%>
+              </tbody>
+            </table>
+          </div>
+<% if (!rows.length) { -%>
+          <p class="empty-state">No emails yet.</p>
+<% } -%>
+        </section>
+<%- include('_bottom') %>

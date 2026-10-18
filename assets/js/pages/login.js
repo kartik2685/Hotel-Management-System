@@ -62,12 +62,15 @@
       }
     });
 
+    // A valid email goes to the server, which emails a reset link (if the account exists).
     $('[data-reset-form]').addEventListener('submit', (event) => {
-      event.preventDefault();
       const message = isEmail(resetEmail.value) ? '' : 'Enter the email you sign in with.';
       setFieldError(resetEmail, message);
-      $('[data-reset-done]').hidden = Boolean(message);
-      if (message) resetEmail.focus();
+      if (message) {
+        event.preventDefault();
+        $('[data-reset-done]').hidden = true;
+        resetEmail.focus();
+      }
     });
   }
 

@@ -65,6 +65,7 @@ function createApp(db) {
   app.use(require('./routes/auth'));
   app.use('/api', require('./routes/api'));
   app.use('/admin', require('./routes/admin'));
+  app.use('/hotel', require('./routes/site'));
   app.use(require('./routes/bookings'));
   app.use(require('./routes/pages'));
 

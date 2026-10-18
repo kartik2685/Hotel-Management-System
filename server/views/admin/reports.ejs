@@ -1,0 +1,48 @@
+<%- include('_top') %>
+        <form class="card filter-bar" method="get" action="/admin/reports" style="margin-bottom:20px">
+          <div class="field"><label class="field-label" for="rp-from">From</label><input class="input" id="rp-from" name="from" type="date" value="<%= r.from %>"></div>
+          <div class="field"><label class="field-label" for="rp-to">To</label><input class="input" id="rp-to" name="to" type="date" value="<%= r.to %>"></div>
+          <div class="field field--reset"><button class="button button--primary" type="submit">Show</button></div>
+          <div class="field field--reset"><a class="button button--secondary" href="/admin/reports.csv?from=<%= r.from %>&amp;to=<%= r.to %>"><%- icon('download') %>Daily CSV</a></div>
+          <div class="field field--reset"><a class="button button--secondary" href="/admin/reports.csv?kind=sources&amp;from=<%= r.from %>&amp;to=<%= r.to %>"><%- icon('download') %>Sources CSV</a></div>
+        </form>
+        <div class="admin-cards">
+          <div class="card admin-card"><span class="admin-card__num"><%= r.totals.occupancy %>%</span><span class="admin-card__label">occupancy · <%= r.totals.sold %> room nights</span></div>
+          <div class="card admin-card"><span class="admin-card__num"><%= fmt.moneyWhole(r.totals.revenue) %></span><span class="admin-card__label">room revenue</span></div>
+          <div class="card admin-card"><span class="admin-card__num"><%= fmt.money(r.totals.adr) %></span><span class="admin-card__label">ADR (average daily rate)</span></div>
+          <div class="card admin-card"><span class="admin-card__num"><%= fmt.money(r.totals.revpar) %></span><span class="admin-card__label">RevPAR</span></div>
+        </div>
+        <div class="admin-grid" style="margin-top:20px">
+          <section class="card card--flush" aria-labelledby="rp-days">
+            <div class="card__head" style="padding:20px 24px 0"><div><h2 class="card__title" id="rp-days">Day by day</h2><p class="card__subtitle"><%= fmt.formatDay(r.from) %> → <%= fmt.formatDay(r.to) %> · ✓ = closed by the night audit</p></div></div>
+            <div class="table-scroll">
+              <table class="table admin-table">
+                <thead><tr><th scope="col">Date</th><th scope="col" class="numeric">Sold</th><th scope="col" class="numeric">Occupancy</th><th scope="col" class="numeric">Room revenue</th><th scope="col" class="numeric">ADR</th><th scope="col" class="numeric">RevPAR</th></tr></thead>
+                <tbody>
+<% for (const d of r.days.slice().reverse()) { -%>
+                  <tr><td><%= fmt.formatDay(d.date) %><%= d.closed ? ' ✓' : '' %></td><td class="numeric"><%= d.sold %>/<%= d.rooms %></td><td class="numeric"><%= d.occupancy %>%</td><td class="numeric"><%= fmt.money(d.revenue) %></td><td class="numeric"><%= fmt.money(d.adr) %></td><td class="numeric"><%= fmt.money(d.revpar) %></td></tr>
+<% } -%>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <div class="admin-stack">
+            <section class="card" aria-labelledby="rp-src">
+              <div class="card__head"><div><h2 class="card__title" id="rp-src">Bookings by source</h2><p class="card__subtitle">Arrivals in the period · <%= r.cancellations %> cancelled or no-show</p></div></div>
+              <div class="table-scroll"><table class="table admin-table"><thead><tr><th scope="col">Source</th><th scope="col" class="numeric">Bookings</th><th scope="col" class="numeric">Nights</th><th scope="col" class="numeric">Revenue</th></tr></thead><tbody>
+<% for (const x of r.sources) { -%>
+                <tr><td><%= x.source %></td><td class="numeric"><%= x.bookings %></td><td class="numeric"><%= x.nights %></td><td class="numeric"><%= fmt.moneyWhole(x.revenue) %></td></tr>
+<% } -%>
+              </tbody></table></div>
+            </section>
+            <section class="card" aria-labelledby="rp-out">
+              <div class="card__head"><div><h2 class="card__title" id="rp-out">Revenue by outlet</h2><p class="card__subtitle">From the night audit</p></div></div>
+              <dl class="money-lines">
+<% for (const [key, label] of [['rooms', 'Rooms'], ['fnb', 'Food & beverage'], ['spa', 'Spa & other']]) { const o = r.outlets.find((x) => x.outlet === key); -%>
+                <div><dt><%= label %></dt><dd><%= fmt.money(o ? o.total : 0) %></dd></div>
+<% } -%>
+              </dl>
+            </section>
+          </div>
+        </div>
+<%- include('_bottom') %>

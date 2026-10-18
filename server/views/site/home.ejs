@@ -1,0 +1,75 @@
+<%- include('_top') %>
+    <section class="hero">
+      <div class="hero__media"><img src="/assets/img/lobby.jpg" alt="" width="1200" height="800"></div>
+      <div class="site-wrap hero__inner">
+        <p class="hero__kicker"><%= s.hotel_city || 'Welcome' %></p>
+        <h1 class="hero__title"><%= s.hotel_name %></h1>
+        <% if (s.site_tagline) { %><p class="hero__lead"><%= s.site_tagline %></p><% } %>
+        <%- include('_search', { stay, minDate: stay.arrival, inline: false }) %>
+      </div>
+    </section>
+
+    <section class="section" id="rooms" aria-labelledby="rooms-title">
+      <div class="site-wrap">
+        <div class="section__head"><div><p class="section__kicker">Stay</p><h2 class="section__title" id="rooms-title">Rooms and suites</h2><p class="section__lead">Prices are per night before tax. Pay at the hotel when you arrive.</p></div><a class="button button--secondary" href="/hotel/book">See all prices</a></div>
+        <div class="rooms">
+<% for (const t of h.types) { -%>
+          <article class="room">
+            <img class="room__img" src="<%= t.photoUrl %>" alt="<%= t.name %>" width="1200" height="670" loading="lazy">
+            <div class="room__body">
+              <h3 class="room__name"><%= t.name %></h3>
+              <p class="room__meta"><%= [t.bed, t.size_sqm ? t.size_sqm + ' m²' : '', 'Sleeps ' + t.max_guests].filter(Boolean).join(' · ') %></p>
+              <% if (t.description) { %><p class="room__text"><%= t.description %></p><% } %>
+              <div class="room__foot"><p class="room__price">From<strong><%= fmt.moneyWhole(t.from) %></strong>per night</p><a class="button button--primary button--sm" href="/hotel/book">Choose dates</a></div>
+            </div>
+          </article>
+<% } -%>
+        </div>
+<% if (!h.types.length) { -%>
+        <p class="empty-state">Rooms will appear here soon.</p>
+<% } -%>
+      </div>
+    </section>
+
+<% if (s.site_amenities && s.site_amenities.length) { -%>
+    <section class="section section--alt" aria-labelledby="amen-title">
+      <div class="site-wrap">
+        <div class="section__head"><div><p class="section__kicker">Included</p><h2 class="section__title" id="amen-title">Everything you need</h2></div></div>
+        <ul class="amenities">
+<% for (const a of s.site_amenities) { -%>
+          <li><%- icon('check') %><span><%= a %></span></li>
+<% } -%>
+        </ul>
+      </div>
+    </section>
+<% } -%>
+
+    <section class="section" id="about" aria-labelledby="about-title">
+      <div class="site-wrap split">
+        <img class="split__img" src="/assets/img/rooms/linden.jpg" alt="The hotel restaurant set for breakfast" width="1200" height="670" loading="lazy">
+        <div class="split__text">
+          <p class="section__kicker">About</p>
+          <h2 class="section__title" id="about-title">A small hotel that knows your name</h2>
+          <% if (s.site_intro) { %><p><%= s.site_intro %></p><% } %>
+<% if (h.plans.length) { -%>
+          <p><strong>Ways to book:</strong> <%= h.plans.map((p) => p.name).join(', ') %>.</p>
+<% } -%>
+          <a class="button button--primary" href="/hotel/book">Check availability</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--alt" id="location" aria-labelledby="loc-title">
+      <div class="site-wrap">
+        <div class="section__head"><div><p class="section__kicker">Plan your stay</p><h2 class="section__title" id="loc-title">Location and policies</h2></div></div>
+        <div class="info">
+          <div class="card"><h3>Address</h3><p><%= s.hotel_address || s.hotel_city || s.hotel_name %></p></div>
+          <div class="card"><h3>Times</h3><p>Check-in from <strong><%= s.check_in_time %></strong></p><p>Check-out by <strong><%= s.check_out_time %></strong></p></div>
+          <div class="card"><h3>Contact</h3><% if (s.hotel_phone) { %><p><%= s.hotel_phone %></p><% } %><% if (s.hotel_email) { %><p><%= s.hotel_email %></p><% } %><p><a href="/hotel/manage">Find or cancel a booking</a></p></div>
+<% if (s.site_policies) { -%>
+          <div class="card"><h3>Policies</h3><p><%= s.site_policies %></p></div>
+<% } -%>
+        </div>
+      </div>
+    </section>
+<%- include('_bottom') %>

@@ -10,7 +10,33 @@ function open(file) {
   db.exec('PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
   if (file !== ':memory:') db.exec('PRAGMA journal_mode = WAL;');
   db.exec(fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8'));
+  migrate(db);
   return wrap(db);
+}
+
+/* Applies db/migrations/NNN-*.sql in order. PRAGMA user_version holds the current version. */
+function migrate(db) {
+  let version = db.prepare('PRAGMA user_version').get().user_version;
+  if (version === 0) {
+    version = 1; // schema.sql is version 1
+    db.exec('PRAGMA user_version = 1');
+  }
+  const dir = path.join(__dirname, 'migrations');
+  const files = fs.readdirSync(dir).filter((f) => /^\d{3}-.*\.sql$/.test(f)).sort();
+  for (const file of files) {
+    const target = Number(file.slice(0, 3));
+    if (target <= version) continue;
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      db.exec(fs.readFileSync(path.join(dir, file), 'utf8'));
+      db.exec(`PRAGMA user_version = ${target}`);
+      db.exec('COMMIT');
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw new Error(`Database migration ${file} failed: ${error.message}`);
+    }
+    version = target;
+  }
 }
 
 function wrap(db) {

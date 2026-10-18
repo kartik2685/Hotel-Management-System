@@ -11,6 +11,19 @@ const settingsService = require('../services/settings');
 const shellService = require('../services/shell');
 const stats = require('../services/stats');
 const audit = require('../services/audit');
+const registration = require('../services/registration');
+const mail = require('../lib/mail');
+const fs = require('node:fs');
+const path = require('node:path');
+const config = require('../config');
+
+const PHOTOS = () => {
+  try {
+    return fs.readdirSync(path.join(config.root, 'assets', 'img', 'rooms')).filter((x) => /\.(jpe?g|png|webp)$/i.test(x)).sort();
+  } catch {
+    return [];
+  }
+};
 
 const router = express.Router();
 router.use(requireAbility('manage'));
@@ -23,8 +36,12 @@ const TABS = [
   { key: 'rates', href: '/admin/rates', label: 'Rates & extras', ability: 'manage' },
   { key: 'sources', href: '/admin/sources', label: 'Booking sources', ability: 'manage' },
   { key: 'staff', href: '/admin/staff', label: 'Staff accounts', ability: 'administer' },
+  { key: 'website', href: '/admin/website', label: 'Website', ability: 'manage' },
   { key: 'guests', href: '/admin/guests', label: 'Guests', ability: 'manage' },
+  { key: 'invoices', href: '/admin/invoices', label: 'Invoices', ability: 'manage' },
+  { key: 'reports', href: '/admin/reports', label: 'Reports', ability: 'manage' },
   { key: 'activity', href: '/admin/activity', label: 'Activity log', ability: 'manage' },
+  { key: 'emails', href: '/admin/emails', label: 'Emails', ability: 'administer' },
   { key: 'night-audit', href: '/admin/night-audit', label: 'Night audit', ability: 'manage' },
 ];
 const FLASH = {
@@ -88,7 +105,7 @@ const validZone = (zone) => {
 };
 
 router.get('/settings', requireAbility('administer'), (req, res) => {
-  render(req, res, 'settings', 'settings', { heading: 'Hotel settings', lead: 'Name, money and tax, times and the business date.', s: req.settings, types: req.db.all('SELECT code, name FROM room_types WHERE active = 1 ORDER BY sort'), timezones: TIMEZONES });
+  render(req, res, 'settings', 'settings', { heading: 'Hotel settings', lead: 'Name, money and tax, times and the business date.', s: req.settings, types: req.db.all('SELECT code, name FROM room_types WHERE active = 1 ORDER BY sort'), timezones: TIMEZONES, countries: registration.COUNTRIES });
 });
 
 router.post('/settings', requireAbility('administer'), (req, res) => {
@@ -115,6 +132,11 @@ router.post('/settings', requireAbility('administer'), (req, res) => {
     default_room_type: form.text('default_room_type', { label: 'Default room type', max: 10 }),
     confirmation_prefix: form.text('confirmation_prefix', { label: 'Confirmation prefix', max: 6, required: true, pattern: /^[A-Z0-9]{2,6}$/, message: 'Use 2 to 6 capital letters or digits, e.g. HLW.' }),
     demo_mode: form.bool('demo_mode'),
+    country: form.oneOf('country', registration.COUNTRIES.map((c) => c.code), { label: 'Country' }),
+    hotel_state: form.text('hotel_state', { label: 'State', max: 40 }),
+    require_grc: form.bool('require_grc'),
+    invoice_prefix: form.text('invoice_prefix', { label: 'Invoice prefix', max: 6, required: true, pattern: /^[A-Za-z0-9]{2,6}$/, message: 'Use 2 to 6 letters or digits.' })?.toUpperCase(),
+    site_url: form.text('site_url', { label: 'Website address', max: 120, pattern: /^https?:\/\/[^\s/]+(\/.*)?$/, message: 'Start with https:// e.g. https://www.yourhotel.com' }),
   };
   if (v.timezone && !validZone(v.timezone)) form.fail('timezone', 'Choose a time zone from the list.');
   const shifts = {};
@@ -124,7 +146,7 @@ router.post('/settings', requireAbility('administer'), (req, res) => {
   if (!form.ok) {
     return render(req, res, 'settings', 'settings', {
       heading: 'Hotel settings', lead: 'Name, money and tax, times and the business date.', s: { ...req.settings, ...form.values, shifts }, errors: form.errors,
-      types: db.all('SELECT code, name FROM room_types WHERE active = 1 ORDER BY sort'), timezones: TIMEZONES,
+      types: db.all('SELECT code, name FROM room_types WHERE active = 1 ORDER BY sort'), timezones: TIMEZONES, countries: registration.COUNTRIES,
     }, 422);
   }
   settingsService.save(db, { ...v, shifts, business_date: v.business_date || req.settings.business_date });
@@ -137,7 +159,7 @@ function typesPage(req, res, extra = {}, status = 200) {
   const db = req.db;
   const types = db.all(`SELECT rt.*, (SELECT COUNT(*) FROM rooms WHERE room_type_id = rt.id AND active = 1) AS rooms FROM room_types rt ORDER BY rt.sort, rt.name`);
   const editing = extra.editing !== undefined ? extra.editing : (req.query.edit ? types.find((t) => t.id === toInt(req.query.edit)) : null);
-  render(req, res, 'room-types', 'room-types', { heading: 'Room types', lead: 'Each type has a base rate per night, how many guests it sleeps and cleaning times.', types, editing, ...extra }, status);
+  render(req, res, 'room-types', 'room-types', { heading: 'Room types', lead: 'Each type has a base rate per night, how many guests it sleeps, cleaning times and what the website shows.', types, editing, photos: PHOTOS(), ...extra }, status);
 }
 router.get('/room-types', (req, res) => typesPage(req, res));
 
@@ -154,18 +176,26 @@ router.post(['/room-types', '/room-types/:id'], (req, res) => {
     service: form.int('service_minutes', { label: 'Stayover service', min: 5, max: 240 }),
     sort: form.int('sort', { label: 'Order', min: 0, max: 999, required: false }) ?? 0,
     active: form.bool('active'),
+    description: form.longText('description', { label: 'Description', max: 400 }),
+    bed: form.text('bed', { label: 'Beds', max: 60 }),
+    size: form.int('size_sqm', { label: 'Size', min: 5, max: 1000, required: false }),
+    photo: form.text('photo', { label: 'Photo', max: 80 }),
+    online: form.bool('online'),
   };
+  if (v.photo && !PHOTOS().includes(v.photo)) form.fail('photo', 'Choose a photo from the list.');
   if (v.code && db.get('SELECT 1 FROM room_types WHERE code = ? AND id <> ?', v.code, id || 0)) form.fail('code', 'Another room type already uses this code.');
   if (id && !v.active && db.get("SELECT 1 FROM reservations WHERE room_type_id = ? AND status IN ('confirmed', 'tentative', 'checked_in')", id)) {
     form.fail('active', 'This type has current or future bookings, so it must stay active.');
   }
   if (!form.ok) return typesPage(req, res, { errors: form.errors, values: form.values, editing: id ? { id } : null }, 422);
   if (id) {
-    db.run('UPDATE room_types SET code = ?, name = ?, base_rate_cents = ?, max_guests = ?, clean_minutes = ?, service_minutes = ?, sort = ?, active = ? WHERE id = ?',
-      v.code, v.name, v.rate, v.max, v.clean, v.service, v.sort, v.active ? 1 : 0, id);
+    db.run(`UPDATE room_types SET code = ?, name = ?, base_rate_cents = ?, max_guests = ?, clean_minutes = ?, service_minutes = ?, sort = ?, active = ?,
+              description = ?, bed = ?, size_sqm = ?, photo = ?, online = ? WHERE id = ?`,
+    v.code, v.name, v.rate, v.max, v.clean, v.service, v.sort, v.active ? 1 : 0, v.description, v.bed, v.size, v.photo, v.online ? 1 : 0, id);
   } else {
-    db.run('INSERT INTO room_types (code, name, base_rate_cents, max_guests, clean_minutes, service_minutes, sort, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      v.code, v.name, v.rate, v.max, v.clean, v.service, v.sort, v.active ? 1 : 0);
+    db.run(`INSERT INTO room_types (code, name, base_rate_cents, max_guests, clean_minutes, service_minutes, sort, active, description, bed, size_sqm, photo, online)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    v.code, v.name, v.rate, v.max, v.clean, v.service, v.sort, v.active ? 1 : 0, v.description, v.bed, v.size, v.photo, v.online ? 1 : 0);
   }
   activity.log(db, req, 'room-type.save', `${id ? 'Updated' : 'Added'} room type ${v.name} (${f.money(v.rate)})`);
   back(res, '/admin/room-types', id ? 'saved' : 'created');
@@ -287,16 +317,18 @@ router.post(['/plans', '/plans/:id'], (req, res) => {
     bookable: form.bool('bookable'),
     sort: form.int('sort', { label: 'Order', min: 0, max: 999, required: false }) ?? 0,
     active: form.bool('active'),
+    cancelDays: form.int('free_cancel_days', { label: 'Free cancellation', min: 0, max: 60, required: false }),
+    online: form.bool('online'),
   };
   v.value = v.type === 'percent' ? form.int('adjust_value', { label: 'Percent', min: -90, max: 200 }) : form.money('adjust_value', { label: 'Amount per night', min: -100000, max: 100000 });
   if (v.code && db.get('SELECT 1 FROM rate_plans WHERE code = ? AND id <> ?', v.code, id || 0)) form.fail('code', 'Another rate plan already uses this code.');
   if (!form.ok) return ratesPage(req, res, { planErrors: form.errors, planValues: form.values, editPlan: id ? { id } : null }, 422);
   if (id) {
-    db.run('UPDATE rate_plans SET code = ?, name = ?, adjust_type = ?, adjust_value = ?, description = ?, bookable = ?, sort = ?, active = ? WHERE id = ?',
-      v.code, v.name, v.type, v.value, v.description, v.bookable ? 1 : 0, v.sort, v.active ? 1 : 0, id);
+    db.run('UPDATE rate_plans SET code = ?, name = ?, adjust_type = ?, adjust_value = ?, description = ?, bookable = ?, sort = ?, active = ?, free_cancel_days = ?, online = ? WHERE id = ?',
+      v.code, v.name, v.type, v.value, v.description, v.bookable ? 1 : 0, v.sort, v.active ? 1 : 0, v.cancelDays, v.online ? 1 : 0, id);
   } else {
-    db.run('INSERT INTO rate_plans (code, name, adjust_type, adjust_value, description, bookable, sort, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      v.code, v.name, v.type, v.value, v.description, v.bookable ? 1 : 0, v.sort, v.active ? 1 : 0);
+    db.run('INSERT INTO rate_plans (code, name, adjust_type, adjust_value, description, bookable, sort, active, free_cancel_days, online) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      v.code, v.name, v.type, v.value, v.description, v.bookable ? 1 : 0, v.sort, v.active ? 1 : 0, v.cancelDays, v.online ? 1 : 0);
   }
   activity.log(db, req, 'rate-plan.save', `${id ? 'Updated' : 'Added'} rate plan ${v.name}`);
   back(res, '/admin/rates', id ? 'saved' : 'created');
@@ -428,6 +460,106 @@ router.get('/guests', (req, res) => {
   render(req, res, 'guests', 'guests', { heading: 'Guests', lead: 'Search every guest profile. Open one to change contact details, preferences or notes.', guests, q });
 });
 
+/* ------------------------------------------------------------------ guest website */
+function websitePage(req, res, extra = {}, status = 200) {
+  render(req, res, 'website', 'website', {
+    heading: 'Website', lead: 'The public site where guests see your rooms and book (pay at the hotel).',
+    s: req.settings, types: req.db.all('SELECT name, online, active, photo, description FROM room_types ORDER BY sort, name'), ...extra,
+  }, status);
+}
+router.get('/website', (req, res) => websitePage(req, res));
+router.post('/website', (req, res) => {
+  const form = new Form(req.body);
+  const v = {
+    site_enabled: form.bool('site_enabled'),
+    site_tagline: form.text('site_tagline', { label: 'Tagline', max: 140 }),
+    site_intro: form.longText('site_intro', { label: 'Introduction', max: 600 }),
+    site_amenities: form.list('site_amenities', { max: 12, maxLength: 60 }),
+    site_policies: form.longText('site_policies', { label: 'Policies', max: 800 }),
+  };
+  if (!form.ok) return websitePage(req, res, { errors: form.errors, values: form.values }, 422);
+  settingsService.save(req.db, v);
+  activity.log(req.db, req, 'website.update', `Website ${v.site_enabled ? 'on' : 'off'}; texts updated`);
+  back(res, '/admin/website', 'saved');
+});
+
+/* ------------------------------------------------------------------ invoices */
+function invoiceRows(db, q) {
+  const like = `%${String(q || '').replace(/[%_]/g, '')}%`;
+  return db.all(
+    `SELECT i.id, i.number, i.status, i.issued_at, i.total_cents, r.confirmation, g.first_name || ' ' || g.last_name AS guest
+       FROM invoices i JOIN reservations r ON r.id = i.reservation_id JOIN guests g ON g.id = r.guest_id
+      ${q ? "WHERE i.number LIKE ? OR r.confirmation LIKE ? OR (g.first_name || ' ' || g.last_name) LIKE ?" : ''}
+      ORDER BY i.id DESC LIMIT 500`, ...(q ? [like, like, like] : []),
+  );
+}
+router.get('/invoices', (req, res) => {
+  const q = String(req.query.q || '').trim().slice(0, 40);
+  render(req, res, 'invoices', 'invoices', { heading: 'Invoices', lead: 'Every invoice issued, newest first. Open one to print it again.', rows: invoiceRows(req.db, q), q });
+});
+const csvCell = (value) => {
+  const text = String(value ?? '');
+  const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text; // never let a spreadsheet run it as a formula
+  return /[",\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+};
+const sendCsv = (res, name, header, rows) => {
+  res.set('Content-Type', 'text/csv; charset=utf-8');
+  res.set('Content-Disposition', `attachment; filename="${name}"`);
+  res.send('\uFEFF' + [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n'));
+};
+router.get('/invoices.csv', (req, res) => {
+  sendCsv(res, 'invoices.csv', ['Number', 'Issued', 'Status', 'Booking', 'Guest', 'Total'],
+    invoiceRows(req.db, '').map((r) => [r.number, r.issued_at, r.status, r.confirmation, r.guest, (r.total_cents / 100).toFixed(2)]));
+});
+
+/* ------------------------------------------------------------------ reports */
+function reportData(db, query) {
+  const bd = settingsService.businessDate(db);
+  const to = /^\d{4}-\d{2}-\d{2}$/.test(query.to || '') ? query.to : bd;
+  let from = /^\d{4}-\d{2}-\d{2}$/.test(query.from || '') ? query.from : f.addDays(to, -29);
+  if (from > to) from = to;
+  if (f.daysBetween(from, to) > 366) from = f.addDays(to, -366);
+  const days = [];
+  for (let d = from; d <= to; d = f.addDays(d, 1)) {
+    const closed = stats.day(db, d);
+    const n = closed || stats.night(db, d);
+    days.push({ date: d, closed: Boolean(closed), sold: n.sold, rooms: n.rooms, revenue: n.revenue, adr: Math.round(n.adr), revpar: Math.round(n.revpar), occupancy: f.pct1(n.sold, n.rooms) });
+  }
+  const sum = (k) => days.reduce((a, x) => a + x[k], 0);
+  const totals = { sold: sum('sold'), rooms: sum('rooms'), revenue: sum('revenue') };
+  totals.adr = totals.sold ? Math.round(totals.revenue / totals.sold) : 0;
+  totals.revpar = totals.rooms ? Math.round(totals.revenue / totals.rooms) : 0;
+  totals.occupancy = f.pct1(totals.sold, totals.rooms);
+  const outlets = db.all("SELECT outlet, SUM(amount_cents) AS total FROM revenue WHERE date >= ? AND date <= ? GROUP BY outlet", from, to);
+  const sources = db.all(
+    `SELECT COALESCE(s.name, 'Unknown') AS source, COUNT(*) AS bookings, SUM(julianday(r.departure) - julianday(r.arrival)) AS nights, SUM(r.total_cents) AS revenue
+       FROM reservations r LEFT JOIN sources s ON s.id = r.source_id
+      WHERE r.arrival >= ? AND r.arrival <= ? AND r.status NOT IN ('cancelled', 'no_show') GROUP BY 1 ORDER BY revenue DESC`, from, to,
+  );
+  const cancellations = db.get("SELECT COUNT(*) AS n FROM reservations WHERE arrival >= ? AND arrival <= ? AND status IN ('cancelled', 'no_show')", from, to).n;
+  return { from, to, days, totals, outlets, sources, cancellations };
+}
+router.get('/reports', (req, res) => {
+  render(req, res, 'reports', 'reports', { heading: 'Reports', lead: 'Occupancy, ADR, RevPAR and revenue for any period (closed days use night-audit figures).', r: reportData(req.db, req.query) });
+});
+router.get('/reports.csv', (req, res) => {
+  const r = reportData(req.db, req.query);
+  if (req.query.kind === 'sources') {
+    return sendCsv(res, `sources-${r.from}-to-${r.to}.csv`, ['Source', 'Bookings', 'Room nights', 'Revenue'],
+      r.sources.map((x) => [x.source, x.bookings, x.nights, (x.revenue / 100).toFixed(2)]));
+  }
+  sendCsv(res, `daily-${r.from}-to-${r.to}.csv`, ['Date', 'Rooms sold', 'Rooms', 'Occupancy %', 'Room revenue', 'ADR', 'RevPAR', 'Closed'],
+    r.days.map((d) => [d.date, d.sold, d.rooms, d.occupancy, (d.revenue / 100).toFixed(2), (d.adr / 100).toFixed(2), (d.revpar / 100).toFixed(2), d.closed ? 'yes' : 'no']));
+});
+
+/* ------------------------------------------------------------------ emails (outbox) */
+router.get('/emails', requireAbility('administer'), (req, res) => {
+  render(req, res, 'emails', 'emails', {
+    heading: 'Emails', lead: 'Every email the system has written: booking confirmations, cancellations and password resets.',
+    rows: req.db.all('SELECT * FROM outbox ORDER BY id DESC LIMIT 200'), configured: mail.configured(),
+  });
+});
+
 /* ------------------------------------------------------------------ activity log */
 router.get('/activity', (req, res) => {
   const db = req.db;
@@ -441,7 +573,7 @@ router.get('/activity', (req, res) => {
 
 /* ------------------------------------------------------------------ night audit */
 router.get('/night-audit', (req, res) => {
-  render(req, res, 'night-audit', 'night-audit', { heading: 'Night audit', lead: 'Close the business day: check what is still open, record outlet revenue and move the date on.', a: audit.summary(req.db) });
+  render(req, res, 'night-audit', 'night-audit', { heading: 'Night audit', lead: 'Close the business day: check what is still open, record outlet revenue and move the date on.', a: audit.summary(req.db), form3: registration.pendingForm3(req.db) });
 });
 
 router.post('/night-audit/revenue', (req, res) => {
@@ -449,7 +581,7 @@ router.post('/night-audit/revenue', (req, res) => {
   const form = new Form(req.body);
   const fnb = form.money('fnb', { label: 'Food & beverage', min: 0, max: 10000000, required: false }) ?? 0;
   const spa = form.money('spa', { label: 'Spa & other', min: 0, max: 10000000, required: false }) ?? 0;
-  if (!form.ok) return render(req, res, 'night-audit', 'night-audit', { heading: 'Night audit', lead: '', a: audit.summary(db), errors: form.errors, values: form.values }, 422);
+  if (!form.ok) return render(req, res, 'night-audit', 'night-audit', { heading: 'Night audit', lead: '', a: audit.summary(db), form3: registration.pendingForm3(db), errors: form.errors, values: form.values }, 422);
   const bd = settingsService.businessDate(db);
   for (const [outlet, amount] of [['fnb', fnb], ['spa', spa]]) {
     db.run('INSERT INTO revenue (date, outlet, amount_cents) VALUES (?, ?, ?) ON CONFLICT(date, outlet) DO UPDATE SET amount_cents = excluded.amount_cents', bd, outlet, amount);
@@ -464,7 +596,7 @@ router.post('/night-audit', (req, res) => {
     audit.close(db, req, { noShows: req.body.no_shows === 'on' });
   } catch (error) {
     if (error.status !== 422) throw error;
-    return render(req, res, 'night-audit', 'night-audit', { heading: 'Night audit', lead: 'Close the business day: check what is still open, record outlet revenue and move the date on.', a: audit.summary(db), closeError: error.message }, 422);
+    return render(req, res, 'night-audit', 'night-audit', { heading: 'Night audit', lead: 'Close the business day: check what is still open, record outlet revenue and move the date on.', a: audit.summary(db), form3: registration.pendingForm3(db), closeError: error.message }, 422);
   }
   back(res, '/admin/night-audit', 'closed');
 });

@@ -16,6 +16,27 @@ const settingsService = require('../services/settings');
 
 const DEMO = path.join(__dirname, 'demo-data.json');
 
+/* Demo hotel extras that are not in demo-data.json (website, invoices, registration). */
+const DEMO_SETTINGS = {
+  currency_locale: 'en-US', default_room_type: 'DK', confirmation_prefix: 'HLW', country: 'US', require_grc: false,
+  hotel_address: '400 North Wabash Avenue, Chicago, IL 60611', hotel_phone: '+1 (312) 555-0100', hotel_email: 'stay@harlowhotel.example',
+  invoice_prefix: 'HLW', site_enabled: true,
+  site_tagline: 'An art deco hotel on the river, two blocks from the Magnificent Mile.',
+  site_intro: 'Forty-eight quiet rooms above the Chicago River, breakfast at Linden every morning and a front desk that remembers how you take your coffee.',
+  site_amenities: ['Fast Wi-Fi in every room', 'Breakfast at Linden, 06:30–10:30', '24-hour front desk', 'Valet parking', 'Fitness room', 'Airport transfers'],
+  site_policies: 'Check-in from 15:00, check-out by 12:00. Free cancellation up to 48 hours before arrival unless your rate says otherwise. Pets by arrangement.',
+};
+const ROOM_CONTENT = [
+  ['CQ', 'A calm, light room with a queen bed, a writing desk by the window and a walk-in rain shower.', 'Queen bed', 24],
+  ['CT', 'Two single beds, a reading chair by the window and room to unpack — good for friends or colleagues.', 'Two single beds', 24],
+  ['DK', 'Our most-booked room: a king bed with a velvet headboard, an armchair by the window and the skyline at sunset.', 'King bed', 30],
+  ['JS', 'A king bedroom opening onto its own sitting room with a sofa — made for longer stays and small families.', 'King bed and sofa', 42],
+  ['HS', 'The corner suite on the top floor, with a living room, a bar cart and views over the river and the lake.', 'King bed and living room', 68],
+];
+const ROOM_PHOTOS = { CQ: 'classic-queen.jpg', CT: 'classic-twin.jpg', DK: 'deluxe-king.jpg', JS: 'junior-suite.jpg', HS: 'harlow-suite.jpg' };
+const NATIONALITY = { Georgia: 'US', Illinois: 'US', California: 'US', Massachusetts: 'US', Texas: 'US', Washington: 'US', Minnesota: 'US', Sweden: 'SE', Quebec: 'CA', Denmark: 'DK' };
+const nationalityFor = (city) => (city ? NATIONALITY[city.split(', ').pop()] || null : null);
+
 function planAdjust(text) {
   if (text.endsWith('%')) return { type: 'percent', value: Number(text.slice(0, -1)) };
   return { type: 'amount', value: Math.round(Number(text) * 100) };
@@ -28,7 +49,7 @@ async function loadDemo(db, { password = config.demoPassword } = {}) {
   const created = '2026-01-05 09:00';
 
   db.tx(() => {
-    const settings = { ...data.settings, currency_locale: 'en-US', default_room_type: 'DK', confirmation_prefix: 'HLW' };
+    const settings = { ...data.settings, ...DEMO_SETTINGS, site_secret: crypto.randomBytes(32).toString('base64url') };
     for (const [key, value] of Object.entries(settings)) db.run('INSERT INTO settings (key, value) VALUES (?, ?)', key, JSON.stringify(value));
 
     const userId = {};
@@ -131,6 +152,19 @@ async function loadDemo(db, { password = config.demoPassword } = {}) {
     for (const w of data.revenue) {
       for (const outlet of ['rooms', 'fnb', 'spa']) db.run('INSERT INTO revenue (date, outlet, amount_cents) VALUES (?, ?, ?)', w.date, outlet, w[outlet]);
     }
+    // ---- version 2: website content, cancellation rules, nationalities, payment history
+    for (const [code, description, bed, size] of ROOM_CONTENT) {
+      db.run('UPDATE room_types SET description = ?, bed = ?, size_sqm = ?, photo = ? WHERE code = ?', description, bed, size, ROOM_PHOTOS[code], code);
+    }
+    for (const [code, days, online] of [['BAR', 2, 1], ['BB', 2, 1], ['ADV', null, 1], ['CORP', 1, 0]]) {
+      db.run('UPDATE rate_plans SET free_cancel_days = ?, online = ? WHERE code = ?', days, online, code);
+    }
+    for (const g of data.guests) {
+      const country = nationalityFor(g.city);
+      if (country) db.run('UPDATE guests SET nationality = ? WHERE id = ?', country, guestId[g.key]);
+    }
+    db.run(`INSERT INTO payments (reservation_id, amount_cents, method, reference, taken_by_name, created_at)
+            SELECT id, paid_cents, 'Card', 'Paid before the system went live', 'Imported', COALESCE(checked_in_at, created_at) FROM reservations WHERE paid_cents > 0`);
     db.run("INSERT INTO activity_log (user_id, user_name, action, summary, created_at) VALUES (NULL, 'System', 'setup.demo', 'Demo data loaded', ?)",
       `${data.businessDate} 06:00`);
   });
@@ -142,7 +176,7 @@ async function createEmptyHotel(db, { email, name, hotelName }) {
   const password = crypto.randomBytes(9).toString('base64url');
   const hash = await hashPassword(password);
   db.tx(() => {
-    const settings = { ...settingsService.DEFAULTS, hotel_name: hotelName || 'My Hotel', business_date_mode: 'auto' };
+    const settings = { ...settingsService.DEFAULTS, hotel_name: hotelName || 'My Hotel', business_date_mode: 'auto', site_secret: crypto.randomBytes(32).toString('base64url') };
     for (const [key, value] of Object.entries(settings)) db.run('INSERT INTO settings (key, value) VALUES (?, ?)', key, JSON.stringify(value));
     db.run(`INSERT INTO users (name, email, password_hash, role, title, department, shift, code, avatar_tone, must_change_password, created_at)
             VALUES (?, ?, ?, 'admin', 'Administrator', 'Management', 'morning', 'ad', 'gold', 1, datetime('now'))`, name || 'Administrator', email, hash);

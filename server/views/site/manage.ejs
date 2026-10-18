@@ -1,0 +1,19 @@
+<%- include('_top') %>
+    <section class="section">
+      <div class="site-wrap narrow">
+        <h1 class="page-title">Find your booking</h1>
+        <p class="page-lead">Enter the booking number from your confirmation and the email you booked with.</p>
+<% if (error) { -%>
+        <div class="alert" role="alert"><%- icon('info') %><p><%= error %></p></div>
+<% } -%>
+        <form class="card" method="post" action="/hotel/manage" novalidate>
+          <input type="hidden" name="_csrf" value="<%= siteToken %>">
+          <div class="form-grid">
+            <div class="form-grid__col"><label class="field-label" for="m-conf">Booking number</label><input class="input" id="m-conf" name="confirmation" value="<%= values.confirmation || '' %>" placeholder="e.g. HLW-52418" autocomplete="off" required></div>
+            <div class="form-grid__col"><label class="field-label" for="m-email">Email</label><input class="input" id="m-email" name="email" type="email" value="<%= values.email || '' %>" autocomplete="email" required></div>
+          </div>
+          <div class="form-actions"><button class="button button--primary" type="submit">Find booking</button></div>
+        </form>
+      </div>
+    </section>
+<%- include('_bottom') %>

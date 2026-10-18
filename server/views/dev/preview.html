@@ -18,7 +18,7 @@
   .seg button:focus-visible, .open:focus-visible { outline: 2px solid #5fb4ff; outline-offset: 1px; }
   .open { color: #e8edf3; text-decoration: none; padding: 7px 10px; border: 1px solid #2c3b4d; border-radius: 8px; }
   .open:hover { background: #1e2a38; }
-  @media (max-width: 560px) { .bar strong, .size { display: none; } .seg { margin-left: 0; } }
+  @media (max-width: 760px) { .bar strong, .size { display: none; } .seg { margin-left: 0 !important; } .bar { overflow-x: auto; } }
   .stage { flex: 1 1 auto; position: relative; overflow: hidden; display: flex; justify-content: center; }
   .frame { position: relative; overflow: hidden; background: #fff; }
   .frame iframe { position: absolute; top: 0; left: 0; border: 0; display: block; transform-origin: 0 0; }
@@ -28,7 +28,11 @@
   <div class="bar">
     <strong>Frontdesk preview</strong>
     <span class="size" id="size"></span>
-    <div class="seg" role="group" aria-label="Screen size">
+    <div class="seg" role="group" aria-label="Which side" style="margin-left:auto">
+      <button type="button" data-app="/dashboard" aria-pressed="true">Staff app</button>
+      <button type="button" data-app="/hotel" aria-pressed="false">Guest website</button>
+    </div>
+    <div class="seg" role="group" aria-label="Screen size" style="margin-left:0">
       <button type="button" data-mode="desktop" aria-pressed="true">Desktop</button>
       <button type="button" data-mode="768" aria-pressed="false">Tablet</button>
       <button type="button" data-mode="375" aria-pressed="false">Mobile</button>
@@ -64,6 +68,18 @@
     frame.style.height = height + 'px';
     label.textContent = width + ' px wide' + (scale < 1 ? ' · shown at ' + Math.round(scale * 100) + '%' : '');
   }
+
+  // Staff app or guest website inside the frame.
+  var apps = Array.prototype.slice.call(document.querySelectorAll('[data-app]'));
+  var open = document.querySelector('.open');
+  apps.forEach(function (button) {
+    button.addEventListener('click', function () {
+      var target = button.getAttribute('data-app');
+      apps.forEach(function (b) { b.setAttribute('aria-pressed', String(b === button)); });
+      site.src = target;
+      open.href = target;
+    });
+  });
 
   buttons.forEach(function (button) {
     button.addEventListener('click', function () {

@@ -21,6 +21,10 @@
 <% } else { -%>
               <p class="empty-state empty-state--inline">Everyone due out has checked out.</p>
 <% } -%>
+<% if (form3.length) { -%>
+              <h3 class="form-section__title" style="margin-top:18px">Form III reports to file (<%= form3.length %>)</h3>
+              <ul class="note-list"><% for (const x of form3) { %><li><span class="status-icon tone-<%= x.overdue ? 'ooo' : 'dirty' %>" aria-hidden="true"><%- icon('info') %></span><div><p><a href="/reservations/<%= x.confirmation %>#form3"><%= x.name %></a> · <%= x.country %> · <%= x.kind %> report</p><small><%= x.overdue ? 'Overdue since' : 'Due by' %> <%= x.due %></small></div></li><% } %></ul>
+<% } -%>
               <h3 class="form-section__title" style="margin-top:18px">Arrivals not checked in (<%= a.expected.length %>)</h3>
 <% if (a.expected.length) { -%>
               <ul class="note-list"><% for (const x of a.expected) { %><li><span class="status-icon tone-clean" aria-hidden="true"><%- icon('luggage') %></span><div><p><a href="/reservations/<%= x.confirmation %>"><%= x.name %></a> · room <%= x.room || 'not assigned' %></p><small><%= x.confirmation %><%= x.eta ? ' · ETA ' + x.eta : '' %></small></div></li><% } %></ul>

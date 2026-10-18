@@ -79,30 +79,31 @@
               <input class="checkbox__input" type="checkbox" id="login-remember" name="remember"<%- remember ? ' checked' : '' %>>
               <label class="checkbox__label" for="login-remember">Keep me signed in on this workstation</label>
             </div>
-            <button class="text-button" type="button" aria-expanded="false" aria-controls="reset-panel" data-reset-toggle>Forgot password?</button>
+            <button class="text-button" type="button" aria-expanded="<%= resetSent ? 'true' : 'false' %>" aria-controls="reset-panel" data-reset-toggle>Forgot password?</button>
           </div>
           <button class="button button--primary button--lg button--block" type="submit">Sign in</button>
 <% if (demoHint) { -%>
           <p class="auth__hint"><%- icon('info') %><%= demoHint %></p>
 <% } -%>
         </form>
-        <div class="reset-box" id="reset-panel" data-reset-panel hidden>
+        <div class="reset-box" id="reset-panel" data-reset-panel<%- resetSent ? '' : ' hidden' %>>
           <h2 class="reset-box__title">Reset your password</h2>
           <p>Enter your staff email and we will show you the next step.</p>
-          <form class="reset-box__form" data-reset-form novalidate>
+          <form class="reset-box__form" method="post" action="/password/forgot" data-reset-form novalidate>
+            <input type="hidden" name="_csrf" value="<%= loginToken %>">
             <label class="sr-only" for="reset-email">Staff email</label>
-            <input class="input" id="reset-email" type="email" placeholder="elena.marsh@example.com" required aria-describedby="reset-email-err">
+            <input class="input" id="reset-email" name="email" type="email" placeholder="elena.marsh@example.com" required aria-describedby="reset-email-err">
             <button class="button button--secondary" type="submit">Continue</button>
           </form>
           <p class="field-error" id="reset-email-err"></p>
-          <p class="reset-box__done" data-reset-done role="status" hidden>Thanks. Ask your manager or the hotel administrator to set a new password for you in Admin panel → Staff accounts.</p>
+          <p class="reset-box__done" data-reset-done role="status"<%- resetSent ? '' : ' hidden' %>>If that email belongs to a staff account, a link to choose a new password is on its way. It works once, for one hour.<%= mailReady ? '' : ' (Email isn’t set up yet: an administrator can find the link in Admin panel → Emails.)' %></p>
         </div>
 
-        <div class="success-box auth__success" data-login-success hidden tabindex="-1" role="status">
+        <div class="success-box auth__success" data-login-success<%- notice ? '' : ' hidden' %> tabindex="-1" role="status">
           <span class="success-box__icon"><%- icon('check') %></span>
           <div>
-            <p class="success-box__title">Signed in</p>
-            <p class="success-box__text">Opening the dashboard…</p>
+            <p class="success-box__title"><%= notice ? notice.title : 'Signed in' %></p>
+            <p class="success-box__text"><%= notice ? notice.text : 'Opening the dashboard…' %></p>
           </div>
         </div>
       </main>

@@ -151,9 +151,16 @@ function readBooking(db, input, bd) {
 }
 
 function create(db, req, input) {
-  const settings = settingsService.all(db);
   const bd = settingsService.businessDate(db);
-  const v = readBooking(db, input, bd);
+  return insertBooking(db, req, readBooking(db, input, bd), { createdBy: req.user.id });
+}
+
+/*
+ * Saves a validated booking (staff form or website): checks availability for every night,
+ * assigns a free room, finds or creates the guest by email, prices the stay and logs it.
+ */
+function insertBooking(db, req, v, { createdBy = null, actor, online = false } = {}) {
+  const settings = settingsService.all(db);
   return db.tx(() => {
     if (!typeAvailable(db, v.type.id, v.arrival, v.departure)) {
       throw new BookingError(`No ${v.type.name} is free for those dates. Try other dates or another room type.`, 'type');
@@ -162,29 +169,31 @@ function create(db, req, input) {
     let guest = db.get('SELECT * FROM guests WHERE email = ? COLLATE NOCASE ORDER BY id LIMIT 1', v.email);
     const stamp = clock.stamp(settings.timezone);
     if (!guest) {
-      const r = db.run('INSERT INTO guests (first_name, last_name, email, phone, created_at) VALUES (?, ?, ?, ?, ?)', v.first, v.last, v.email, v.phone || null, stamp);
+      const r = db.run('INSERT INTO guests (first_name, last_name, email, phone, nationality, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        v.first, v.last, v.email, v.phone || null, v.nationality || null, stamp);
       guest = db.get('SELECT * FROM guests WHERE id = ?', r.lastInsertRowid);
-    } else if (v.phone && !guest.phone) {
-      db.run('UPDATE guests SET phone = ?, updated_at = ? WHERE id = ?', v.phone, stamp, guest.id);
+    } else {
+      if (v.phone && !guest.phone) db.run('UPDATE guests SET phone = ?, updated_at = ? WHERE id = ?', v.phone, stamp, guest.id);
+      if (v.nationality && !guest.nationality) db.run('UPDATE guests SET nationality = ?, updated_at = ? WHERE id = ?', v.nationality, stamp, guest.id);
     }
     const tags = guestStays(db, guest.id) === 0 ? ['first-stay'] : [];
     const q = pricing.quote({ settings, baseCents: v.type.base_rate_cents, plan: v.plan, nights: v.nights, extras: v.extras });
     const confirmation = nextConfirmation(db, settings);
     const result = db.run(
       `INSERT INTO reservations (confirmation, guest_id, room_type_id, room_id, arrival, departure, adults, children, rate_plan_id, nightly_rate_cents,
-         source_id, status, tags, requests, room_total_cents, tax_cents, extras_cents, total_cents, created_by, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?, ?)`,
+         source_id, status, tags, requests, room_total_cents, tax_cents, extras_cents, total_cents, created_by, created_at, booked_online)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       confirmation, guest.id, v.type.id, room ? room.id : null, v.arrival, v.departure, v.adults, v.children, v.plan.id, q.rate,
-      v.source ? v.source.id : null, JSON.stringify(tags), v.requests, q.roomTotal, q.tax, q.extras, q.total, req.user.id, stamp,
+      v.source ? v.source.id : null, JSON.stringify(tags), v.requests, q.roomTotal, q.tax, q.extras, q.total, createdBy, stamp, online ? 1 : 0,
     );
     for (const x of v.extras) {
       db.run('INSERT INTO reservation_extras (reservation_id, extra_id, amount_cents) VALUES (?, ?, ?)',
         result.lastInsertRowid, x.id, x.per === 'night' ? x.price_cents * v.nights : x.price_cents);
     }
     const summary = `${v.first} ${v.last} · ${v.type.name} · ${f.formatDay(v.arrival)} → ${f.formatDay(v.departure)}`;
-    activity.log(db, req, 'reservation.create', `Booked ${confirmation}: ${summary}`);
+    activity.log(db, req, 'reservation.create', `Booked ${confirmation}${online ? ' online' : ''}: ${summary}`, actor);
     db.run('INSERT INTO notifications (icon, tone, title, detail, created_at) VALUES (?, ?, ?, ?, ?)',
-      'calendar-check', '', `New booking ${confirmation}`, summary, stamp);
+      'calendar-check', online ? 'gold' : '', `New ${online ? 'website ' : ''}booking ${confirmation}`, summary, stamp);
     return byConfirmation(db, confirmation);
   });
 }
@@ -214,14 +223,20 @@ function checkIn(db, req, confirmation) {
     if (busy) throw new BookingError(`Room ${r.room_number} is still occupied (${busy.confirmation}).`);
     const blocked = db.get('SELECT 1 FROM room_blocks WHERE room_id = ? AND start_date <= ? AND end_date > ?', r.room_id, bd, bd);
     if (blocked) throw new BookingError(`Room ${r.room_number} is out of order.`);
+    if (settings.require_grc && !r.grc_at) throw new BookingError(`Fill in ${r.first_name}’s registration card (GRC) on the booking page before checking in.`);
     const stamp = clock.stamp(settings.timezone);
     db.run("UPDATE reservations SET status = 'checked_in', checked_in_at = ?, updated_at = ? WHERE id = ?", stamp, stamp, r.id);
     activity.log(db, req, 'reservation.check-in', `Checked in ${r.name} (${r.confirmation}) to room ${r.room_number}`);
+    const nationality = db.get('SELECT nationality FROM guests WHERE id = ?', r.guest_id).nationality;
+    if (settings.country === 'IN' && nationality && !['IN', 'NP', 'BT'].includes(nationality)) {
+      db.run('INSERT INTO notifications (icon, tone, title, detail, created_at) VALUES (?, ?, ?, ?, ?)', 'info', 'warn',
+        `Form III due for ${r.name}`, `Room ${r.room_number} · file with the FRRO within 24 hours of check-in (${stamp.slice(11)})`, stamp);
+    }
     return byConfirmation(db, confirmation);
   });
 }
 
-function checkOut(db, req, confirmation, { settle = false } = {}) {
+function checkOut(db, req, confirmation, { settle = false, method = 'Card' } = {}) {
   const settings = settingsService.all(db);
   const bd = settingsService.businessDate(db);
   return db.tx(() => {
@@ -232,6 +247,10 @@ function checkOut(db, req, confirmation, { settle = false } = {}) {
     const stamp = clock.stamp(settings.timezone);
     // Leaving early: the stay now ends today (at least one night is kept).
     const departure = r.departure > bd ? (bd > r.arrival ? bd : f.addDays(r.arrival, 1)) : r.departure;
+    if (owing > 0 && settle) {
+      db.run('INSERT INTO payments (reservation_id, amount_cents, method, reference, taken_by, taken_by_name, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        r.id, owing, ['Card', 'Cash', 'UPI', 'Bank transfer'].includes(method) ? method : 'Card', 'Settled at check-out', req.user ? req.user.id : null, req.user ? req.user.name : 'System', stamp);
+    }
     db.run(
       "UPDATE reservations SET status = 'checked_out', checked_out_at = ?, departure = ?, paid_cents = CASE WHEN ? THEN total_cents ELSE paid_cents END, updated_at = ? WHERE id = ?",
       stamp, departure, settle ? 1 : 0, stamp, r.id,
@@ -256,7 +275,7 @@ function cancel(db, req, confirmation) {
 
 module.exports = {
   STATUS, TAGS, BookingError, list, listCount, byConfirmation, row, guestStays, freeRooms, typeAvailable, create, checkIn, checkOut, cancel,
-  readBooking, requireBooking, isDate, isEmail, clean, nextConfirmation, HOLDS_ROOM,
+  readBooking, requireBooking, isDate, isEmail, clean, nextConfirmation, HOLDS_ROOM, insertBooking,
 };
 
 /* ---------------------------------------------------------------- page model */

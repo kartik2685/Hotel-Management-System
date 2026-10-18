@@ -8,11 +8,14 @@ const clock = require('../lib/clock');
 const f = require('../lib/format');
 const shellService = require('../services/shell');
 const reservations = require('../services/reservations');
+const billing = require('../services/billing');
+const registration = require('../services/registration');
 
 const router = express.Router();
 const FLASH = {
   saved: 'Booking saved.', created: 'Booking created and saved.', 'check-in': 'Checked in. The room now shows as occupied.', 'check-out': 'Checked out. The room is marked dirty for housekeeping.',
-  cancel: 'Booking cancelled. The room is free again.', confirm: 'Booking confirmed.', payment: 'Payment recorded.',
+  cancel: 'Booking cancelled. The room is free again.', confirm: 'Booking confirmed.', payment: 'Payment recorded.', refund: 'Refund recorded.',
+  grc: 'Registration card saved and complete.', 'grc-partial': 'Registration card saved. Some details are still missing.', form3: 'Form III acknowledgement saved.',
 };
 
 function renderBooking(req, res, next, extra = {}, status = 200) {
@@ -23,7 +26,11 @@ function renderBooking(req, res, next, extra = {}, status = 200) {
   res.status(status).render('pages/reservation', {
     title: `${d.b.confirmation} · ${d.b.name} · Frontdesk Hotel Management`, description: `Booking ${d.b.confirmation} for ${d.b.name}.`,
     page: 'reservation', css: ['pages/admin'], scripts: [], shell, d, flash: FLASH[req.query.ok] || '',
-    errors: {}, values: {}, payErrors: {}, payValues: {}, actionError: '', canBook: can(req.user, 'bookings'), ...extra,
+    errors: {}, values: {}, payErrors: {}, payValues: {}, grcErrors: {}, grcValues: {}, invErrors: {}, invValues: {}, f3Errors: {}, actionError: '',
+    canBook: can(req.user, 'bookings'), canRefund: can(req.user, 'manage'),
+    payments: billing.payments(db, d.b.id), invoices: billing.forReservation(db, d.b.id), methods: billing.METHODS,
+    reg: registration.view(db, d.b), countries: registration.COUNTRIES, idTypes: registration.ID_TYPES, visaTypes: registration.VISA_TYPES, purposes: registration.PURPOSES,
+    gst: req.settings.tax_mode === 'gst_india', ...extra,
   });
 }
 
@@ -41,7 +48,7 @@ router.post('/reservations/:confirmation', requireAbility('bookings'), (req, res
 
 router.post('/reservations/:confirmation/payment', requireAbility('bookings'), (req, res, next) => {
   try {
-    const b = reservations.addPayment(req.db, req, req.params.confirmation, req.body);
+    const b = billing.addPayment(req.db, req, req.params.confirmation, req.body);
     res.redirect(303, `/reservations/${encodeURIComponent(b.confirmation)}?ok=payment`);
   } catch (error) {
     if (error instanceof reservations.FormError) return renderBooking(req, res, next, { payErrors: error.errors, payValues: error.values }, 422);
@@ -54,7 +61,7 @@ router.post('/reservations/:confirmation/action', requireAbility('bookings'), (r
   const action = String(req.body.action || '');
   try {
     if (action === 'check-in') reservations.checkIn(req.db, req, conf);
-    else if (action === 'check-out') reservations.checkOut(req.db, req, conf, { settle: req.body.settle === 'on' });
+    else if (action === 'check-out') reservations.checkOut(req.db, req, conf, { settle: req.body.settle === 'on', method: req.body.method });
     else if (action === 'confirm') reservations.confirm(req.db, req, conf);
     else if (action === 'cancel') {
       if (req.body.sure !== 'on') throw Object.assign(new Error('Tick “Yes, cancel this booking” to cancel it.'), { status: 422 });
@@ -65,6 +72,59 @@ router.post('/reservations/:confirmation/action', requireAbility('bookings'), (r
     if (error.status === 422) return renderBooking(req, res, next, { actionError: error.message }, 422);
     next(error);
   }
+});
+
+router.post('/reservations/:confirmation/refund', requireAbility('manage'), (req, res, next) => {
+  try {
+    const b = billing.refund(req.db, req, req.params.confirmation, req.body);
+    res.redirect(303, `/reservations/${encodeURIComponent(b.confirmation)}?ok=refund`);
+  } catch (error) {
+    if (error instanceof reservations.FormError) return renderBooking(req, res, next, { payErrors: error.errors, payValues: error.values }, 422);
+    next(error);
+  }
+});
+
+/* Registration card (GRC) and Form III. */
+router.post('/reservations/:confirmation/grc', requireAbility('bookings'), (req, res, next) => {
+  try {
+    const complete = registration.saveGrc(req.db, req, req.params.confirmation, req.body);
+    res.redirect(303, `/reservations/${encodeURIComponent(req.params.confirmation)}?ok=${complete ? 'grc' : 'grc-partial'}#grc`);
+  } catch (error) {
+    if (error instanceof reservations.FormError) return renderBooking(req, res, next, { grcErrors: error.errors, grcValues: error.values }, 422);
+    next(error);
+  }
+});
+router.get('/reservations/:confirmation/grc', requireAbility('frontOffice'), (req, res, next) => {
+  const b = reservations.byConfirmation(req.db, req.params.confirmation);
+  if (!b) return next();
+  res.render('pages/grc-print', { s: req.settings, b, reg: registration.view(req.db, b), today: require('../services/settings').businessDate(req.db) });
+});
+router.post('/reservations/:confirmation/form3', requireAbility('bookings'), (req, res, next) => {
+  try {
+    registration.recordForm3(req.db, req, req.params.confirmation, req.body);
+    res.redirect(303, `/reservations/${encodeURIComponent(req.params.confirmation)}?ok=form3#form3`);
+  } catch (error) {
+    if (error instanceof reservations.FormError) return renderBooking(req, res, next, { f3Errors: error.errors }, 422);
+    next(error);
+  }
+});
+
+/* Invoices. */
+router.post('/reservations/:confirmation/invoice', requireAbility('bookings'), (req, res, next) => {
+  try {
+    const id = billing.createInvoice(req.db, req, req.params.confirmation, req.body);
+    res.redirect(303, `/invoices/${id}`);
+  } catch (error) {
+    if (error instanceof reservations.FormError) return renderBooking(req, res, next, { invErrors: error.errors, invValues: error.values }, 422);
+    if (error.status === 422) return renderBooking(req, res, next, { actionError: error.message }, 422);
+    next(error);
+  }
+});
+router.get('/invoices/:id', requireAbility('frontOffice'), (req, res, next) => {
+  const inv = billing.invoice(req.db, Number.parseInt(req.params.id, 10) || 0);
+  if (!inv) return next();
+  require('../lib/format').setCurrency(inv.data.currency.symbol, inv.data.currency.locale); // amounts as issued
+  res.render('pages/invoice', { inv, d: inv.data });
 });
 
 /* ------------------------------------------------------------------ handover notes */
