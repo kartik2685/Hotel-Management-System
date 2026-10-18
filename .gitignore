@@ -1,3 +1,19 @@
+# Dependencies
+node_modules/
+
+# Database (contains guest data — never commit it)
+data/
+*.db
+*.db-wal
+*.db-shm
+backups/
+
+# Local settings
+.env
+
+# OS / editor files
 .DS_Store
 Thumbs.db
-node_modules/
+*.log
+.vscode/
+.idea/

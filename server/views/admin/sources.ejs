@@ -1,0 +1,32 @@
+<%- include('_top') %>
+<% const rec = editing ? (sources.find((s) => s.id === editing.id) || {}) : {};
+   const v = (k, d) => (values[k] !== undefined ? values[k] : rec[k] !== undefined && rec[k] !== null ? rec[k] : d ?? '');
+   const KINDS = { direct: 'Direct', ota: 'Online travel agency', corporate: 'Corporate', walk_in: 'Walk-in' }; -%>
+        <div class="admin-grid">
+          <section class="card card--flush" aria-labelledby="src-title">
+            <h2 class="sr-only" id="src-title">Booking sources</h2>
+            <div class="table-scroll">
+              <table class="table admin-table">
+                <thead><tr><th scope="col">Name</th><th scope="col">Kind</th><th scope="col">Booking form</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+                <tbody>
+<% for (const s of sources) { -%>
+                  <tr<%- s.active ? '' : ' class="is-inactive"' %>><td><strong><%= s.name %></strong></td><td><%= KINDS[s.kind] %></td><td><%= s.form_sort ? 'Position ' + s.form_sort : '—' %><%= s.active ? '' : ' · inactive' %></td><td class="actions"><a class="button button--secondary button--sm" href="/admin/sources?edit=<%= s.id %>">Edit</a></td></tr>
+<% } -%>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <form class="card" method="post" action="/admin/sources<%= editing ? '/' + editing.id : '' %>" novalidate>
+            <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+            <div class="card__head"><div><h2 class="card__title"><%= editing ? 'Edit ' + (rec.name || 'source') : 'Add a booking source' %></h2></div></div>
+            <div class="form-grid">
+              <div class="form-grid__col"><label class="field-label" for="src-name">Name</label><input class="input<%= errors.name ? ' is-invalid' : '' %>" id="src-name" name="name" value="<%= v('name') %>" placeholder="e.g. MakeMyTrip"><p class="field-error"><%= errors.name || '' %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="src-kind">Kind</label><select class="select" id="src-kind" name="kind"><% for (const [k, l] of Object.entries(KINDS)) { %><option value="<%= k %>"<%- v('kind') === k ? ' selected' : '' %>><%= l %></option><% } %></select></div>
+              <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="src-form">Form position <span class="field-label__hint">blank = hidden</span></label><input class="input<%= errors.form_sort ? ' is-invalid' : '' %>" id="src-form" name="form_sort" type="number" min="1" value="<%= v('form_sort') %>"><p class="field-error"><%= errors.form_sort || '' %></p></div>
+              <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="src-sort">List order</label><input class="input" id="src-sort" name="sort" type="number" value="<%= v('sort', 0) %>"></div>
+            </div>
+            <div class="check-row"><label><input type="checkbox" name="active"<%- (values.active !== undefined ? values.active : rec.active !== 0) ? ' checked' : '' %>> Active</label></div>
+            <div class="form-actions"><button class="button button--primary" type="submit"><%= editing ? 'Save changes' : 'Add source' %></button><% if (editing) { %><a class="button button--secondary" href="/admin/sources">Cancel</a><% } %></div>
+          </form>
+        </div>
+<%- include('_bottom') %>

@@ -1,0 +1,19 @@
+<%- include('../partials/shell-top') %>
+        <div class="page-header">
+          <div>
+            <p class="kicker">Admin panel</p>
+            <h1 class="page-header__title"><%= heading %></h1>
+            <p class="page-header__lead"><%= lead %></p>
+          </div>
+        </div>
+        <nav class="admin-tabs" aria-label="Admin sections">
+<% for (const t of tabs) { -%>
+          <a href="<%= t.href %>"<%- t.key === tab ? ' aria-current="page"' : '' %>><%= t.label %></a>
+<% } -%>
+        </nav>
+<% if (flash) { -%>
+        <div class="notice notice--ok" role="status"><%- icon('check') %><p><%= flash %></p></div>
+<% } -%>
+<% if (Object.keys(errors || {}).length) { -%>
+        <div class="notice notice--error" role="alert"><%- icon('info') %><p>Please fix the highlighted fields.</p></div>
+<% } -%>

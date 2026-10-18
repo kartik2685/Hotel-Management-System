@@ -1,0 +1,99 @@
+/* =====================================================================
+ * Frontdesk HMS · pages/admin.css
+ * Admin panel, booking page, handover notes and account page.
+ * Built from the same tokens and components as the rest of the app.
+ * ===================================================================== */
+
+/* Admin section tabs */
+.admin-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  margin: 0 0 22px;
+  border-radius: 11px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.admin-tabs a {
+  padding: 7px 12px;
+  border-radius: 8px;
+  color: var(--text-2);
+  font-size: .8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.admin-tabs a:hover { color: var(--text); }
+.admin-tabs a[aria-current="page"] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .08), 0 0 0 1px var(--line);
+}
+
+/* Layout */
+.admin-grid { display: grid; gap: 20px; align-items: start; }
+@media (min-width: 1200px) { .admin-grid { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); } }
+.admin-stack { display: grid; gap: 20px; }
+.admin-cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.admin-card { display: grid; gap: 6px; text-decoration: none; color: inherit; transition: border-color .15s var(--ease), transform .15s var(--ease); }
+.admin-card:hover { border-color: var(--brass-line); transform: translateY(-1px); }
+.admin-card__num { font-size: 1.75rem; font-weight: 800; line-height: 1.1; }
+.admin-card__label { color: var(--text-2); font-size: .85rem; }
+
+/* Forms */
+.form-section + .form-section { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line); }
+.form-section__title { margin: 0 0 12px; font-size: .78rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); }
+.form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 20px; }
+.form-hint { margin: 6px 0 0; color: var(--muted); font-size: .8rem; }
+.inline-form { display: inline; margin: 0; }
+.check-row { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 4px; }
+.check-row label { display: inline-flex; align-items: center; gap: 8px; font-size: .875rem; }
+textarea.input { min-height: 84px; resize: vertical; }
+
+/* Tables */
+.admin-table td, .admin-table th { vertical-align: middle; }
+.admin-table .actions { text-align: right; white-space: nowrap; }
+.admin-table .actions .button + .button, .admin-table .actions form + form, .admin-table .actions .button + form { margin-left: 6px; }
+.admin-table tr.is-inactive td { color: var(--muted); }
+.mono { font-family: var(--font-mono); font-size: .82rem; }
+
+/* Notices */
+.notice {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--brass-soft);
+  border: 1px solid var(--brass-line);
+  font-size: .875rem;
+}
+.notice .icon { flex-shrink: 0; margin-top: 1px; }
+.notice--ok { background: var(--clean-soft); border-color: color-mix(in srgb, var(--clean) 35%, transparent); }
+.notice--error { background: var(--ooo-soft); border-color: color-mix(in srgb, var(--ooo) 35%, transparent); }
+.notice p { margin: 0; }
+
+/* Booking page */
+.booking-facts { display: grid; gap: 12px 24px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); margin: 0; }
+.booking-facts dt { color: var(--muted); font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.booking-facts dd { margin: 2px 0 0; font-weight: 700; }
+.money-lines { display: grid; gap: 8px; margin: 0; }
+.money-lines div { display: flex; justify-content: space-between; gap: 12px; }
+.money-lines dt { color: var(--text-2); }
+.money-lines dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.money-lines .is-total { padding-top: 8px; border-top: 1px solid var(--line); }
+
+/* Handover notes page */
+.note-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.note-list li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; }
+.note-list p { margin: 0; }
+.note-list small { color: var(--muted); }
+
+/* Error page */
+.error-page { display: grid; place-items: center; min-height: 100vh; padding: 24px; }
+.error-page__card { max-width: 520px; width: 100%; display: grid; gap: 10px; }
+.error-page__card .logo { margin-bottom: 8px; }
+.error-page__actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 0; }

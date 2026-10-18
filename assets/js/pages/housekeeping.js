@@ -6,7 +6,7 @@
 (function () {
   'use strict';
 
-  const { $, $$ } = HMS.util;
+  const { $, $$, api, toast } = HMS.util;
 
   function initHousekeeping() {
     const tasks = $$('.task');
@@ -81,7 +81,15 @@
     }
 
     document.addEventListener('change', (event) => {
-      if (event.target.classList && event.target.classList.contains('task__check')) update();
+      const box = event.target;
+      if (!box.classList || !box.classList.contains('task__check')) return;
+      update();
+      const task = box.closest('.task');
+      api('/api/tasks/' + encodeURIComponent(task.dataset.taskId), { done: box.checked }).catch((error) => {
+        box.checked = !box.checked; // the server said no: undo
+        update();
+        toast(error.message);
+      });
     });
     if (attendantFilter) attendantFilter.addEventListener('change', applyFilters);
     if (hideDone) hideDone.addEventListener('change', applyFilters);

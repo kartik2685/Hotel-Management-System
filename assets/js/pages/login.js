@@ -22,23 +22,15 @@
     });
 
     form.addEventListener('submit', (event) => {
-      event.preventDefault();
       const emailError = !email.value.trim() ? 'Enter your staff email.'
         : isEmail(email.value) ? '' : 'That email doesn’t look right.';
       const passwordError = !password.value ? 'Enter your password.'
         : password.value.length < 8 ? 'Passwords are at least 8 characters.' : '';
       setFieldError(email, emailError);
       setFieldError(password, passwordError);
-      if (emailError) { email.focus(); return; }
-      if (passwordError) { password.focus(); return; }
-
-      const success = $('[data-login-success]');
-      const resetPanel = $('[data-reset-panel]');
-      form.hidden = true;
-      if (resetPanel) resetPanel.hidden = true;
-      success.hidden = false;
-      success.focus();
-      window.setTimeout(() => { window.location.href = 'index.html'; }, 1200);
+      // Valid input goes to the server, which checks the password and opens the right page.
+      if (emailError) { event.preventDefault(); email.focus(); return; }
+      if (passwordError) { event.preventDefault(); password.focus(); }
     });
 
     const toggle = $('[data-password-toggle]');

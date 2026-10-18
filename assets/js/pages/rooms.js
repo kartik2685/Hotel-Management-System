@@ -6,7 +6,7 @@
 (function () {
   'use strict';
 
-  const { $, $$ } = HMS.util;
+  const { $, $$, api, toast } = HMS.util;
 
   function initRoomBoard() {
     const cards = $$('.room-card');
@@ -89,11 +89,8 @@
     }
 
     // Clean / dirty switch. A vacant room's status follows housekeeping.
-    document.addEventListener('click', (event) => {
-      const toggle = event.target.closest('[data-clean-toggle]');
-      if (!toggle || toggle.disabled) return;
+    function setClean(toggle, clean) {
       const card = toggle.closest('.room-card');
-      const clean = toggle.getAttribute('aria-checked') !== 'true';
       toggle.setAttribute('aria-checked', String(clean));
       $('[data-clean-label]', toggle).textContent = clean ? 'Clean' : 'Dirty';
       card.dataset.housekeeping = clean ? 'clean' : 'dirty';
@@ -105,14 +102,35 @@
       updateCounts();
       applyFilters(true);
       announce('Room ' + card.dataset.room + ' marked ' + card.dataset.housekeeping);
+    }
+
+    document.addEventListener('click', (event) => {
+      const toggle = event.target.closest('[data-clean-toggle]');
+      if (!toggle || toggle.disabled) return;
+      const card = toggle.closest('.room-card');
+      const clean = toggle.getAttribute('aria-checked') !== 'true';
+      setClean(toggle, clean);
+      api('/api/rooms/' + encodeURIComponent(card.dataset.room) + '/status', { status: clean ? 'clean' : 'dirty' }).catch((error) => {
+        setClean(toggle, !clean); // put it back
+        toast(error.message);
+      });
     });
 
+    // Remember the previous housekeeper so a refused change can be undone.
+    document.addEventListener('focusin', (event) => {
+      const select = event.target.closest('[data-assign]');
+      if (select) select.dataset.previous = select.value;
+    });
     document.addEventListener('change', (event) => {
       const select = event.target.closest('[data-assign]');
       if (!select) return;
       const card = select.closest('.room-card');
       announce('Room ' + card.dataset.room + (select.value ? ' assigned to ' + select.selectedOptions[0].textContent : ' unassigned'));
       if (attendant && attendant.value) applyFilters(true);
+      api('/api/rooms/' + encodeURIComponent(card.dataset.room) + '/attendant', { attendant: select.value }).catch((error) => {
+        select.value = select.dataset.previous || '';
+        toast(error.message);
+      });
     });
 
     updateCounts();

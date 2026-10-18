@@ -1,0 +1,30 @@
+<%- include('_top') %>
+<% if (demo) { -%>
+        <div class="notice"><%- icon('info') %><p><strong>Demo data is loaded.</strong> All demo staff use the same password, shown on the sign-in page. Before real use, change the passwords in <a href="/admin/staff">Staff accounts</a>, set your hotel’s details in <a href="/admin/settings">Hotel settings</a> and turn demo mode off there.</p></div>
+<% } -%>
+        <div class="admin-cards">
+<% for (const c of cards) { -%>
+          <a class="card admin-card" href="<%= c.href %>"><span class="admin-card__num"><%= c.num %></span><span class="admin-card__label"><%= c.label %></span></a>
+<% } -%>
+        </div>
+        <div class="admin-grid" style="margin-top:20px">
+          <section class="card" aria-labelledby="recent-title">
+            <div class="card__head"><div><h2 class="card__title" id="recent-title">Recent activity</h2><p class="card__subtitle">The latest changes across the hotel</p></div><a class="arrow-link" href="/admin/activity">Activity log<%- icon('chevron-right') %></a></div>
+            <div class="table-scroll">
+              <table class="table admin-table">
+                <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th></tr></thead>
+                <tbody>
+<% for (const r of recent) { -%>
+                  <tr><td class="mono"><%= r.created_at %></td><td><%= r.user_name %></td><td><%= r.summary %></td></tr>
+<% } -%>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section class="card" aria-labelledby="day-title">
+            <div class="card__head"><div><h2 class="card__title" id="day-title">Business date</h2><p class="card__subtitle"><%= businessDate %></p></div></div>
+            <p class="form-hint">At the end of each day, run the night audit. It records the day’s figures, marks no-shows if you choose, moves the business date on and creates the next day’s housekeeping tasks.</p>
+            <div class="form-actions"><a class="button button--primary" href="/admin/night-audit"><%- icon('calendar-check') %>Open the night audit</a></div>
+          </section>
+        </div>
+<%- include('_bottom') %>

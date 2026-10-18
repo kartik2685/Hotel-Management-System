@@ -62,8 +62,11 @@
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   /** 1234.5 -> "$1,234.50" */
+  // Currency comes from the hotel settings (set on <html> by the server).
+  const CURRENCY = document.documentElement.dataset.currency || '$';
+  const LOCALE = document.documentElement.dataset.locale || 'en-US';
   const money = (amount) =>
-    '$' + amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    CURRENCY + amount.toLocaleString(LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   /** "2026-09-24" -> Date at midnight UTC (avoids time-zone drift). */
   const parseDate = (iso) => new Date(iso + 'T00:00:00Z');
@@ -110,9 +113,53 @@
     if (holder) holder.textContent = message || '';
   }
 
+  /**
+   * POST JSON to the server with the page's CSRF token.
+   * Resolves with the reply; rejects with an Error whose message can be shown to staff.
+   */
+  async function api(url, body) {
+    const token = document.querySelector('meta[name="csrf-token"]');
+    let response;
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-Token': token ? token.content : '' },
+        body: JSON.stringify(body || {}),
+      });
+    } catch (error) {
+      throw new Error('No connection to the server. Check the network and try again.');
+    }
+    const data = await response.json().catch(() => ({}));
+    if (response.status === 401) {
+      window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+    }
+    if (!response.ok) {
+      const error = new Error(data.error || 'That did not work. Please try again.');
+      error.field = data.field;
+      error.status = response.status;
+      throw error;
+    }
+    return data;
+  }
+
+  /** Short message at the bottom of the screen (errors from the server, mostly). */
+  function toast(message, tone) {
+    let box = document.querySelector('.toast');
+    if (!box) {
+      box = h('div', { class: 'toast', role: 'status', 'aria-live': 'polite' });
+      document.body.append(box);
+    }
+    box.textContent = message;
+    box.dataset.tone = tone || 'error';
+    box.hidden = false;
+    window.clearTimeout(toast.timer);
+    toast.timer = window.setTimeout(() => { box.hidden = true; }, 6000);
+  }
+
   HMS.util = {
     $, $$, h, svg, icon, money, parseDate, formatDay, clockTime, plural, isEmail,
-    prefersReducedMotion, afterTransition, setFieldError, DAY_MS, WEEKDAYS, MONTHS,
+    prefersReducedMotion, afterTransition, setFieldError, api, toast, DAY_MS, WEEKDAYS, MONTHS,
   };
 
   HMS.ready = (callback) => {
@@ -412,6 +459,7 @@
       const button = $('.alerts__button');
       if (button) button.setAttribute('aria-label', 'Notifications, none unread');
       clear.disabled = true;
+      HMS.util.api('/api/notifications/read').catch(() => {});
     });
   }
 

@@ -1,0 +1,22 @@
+<%- include('_top') %>
+        <section class="card card--flush" aria-labelledby="g-title">
+          <h2 class="sr-only" id="g-title">Guests</h2>
+          <form class="filter-bar" method="get" action="/admin/guests" role="search" style="padding:20px 24px">
+            <div class="field field--search"><label class="field-label" for="g-q">Search</label><div class="icon-input"><%- icon('search') %><input class="input" id="g-q" name="q" type="search" value="<%= q %>" placeholder="Name, email or phone"></div></div>
+            <div class="field field--reset"><button class="button button--secondary" type="submit">Search</button></div>
+          </form>
+          <div class="table-scroll">
+            <table class="table admin-table">
+              <thead><tr><th scope="col">Guest</th><th scope="col">Contact</th><th scope="col" class="numeric">Stays</th><th scope="col">Latest booking</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+              <tbody>
+<% for (const g of guests) { -%>
+                <tr><td><strong><%= g.first_name %> <%= g.last_name %></strong><% if (g.vip) { %> <span class="chip chip--gold">VIP</span><% } %><% if (g.company) { %><br><small class="cell-note"><%= g.company %></small><% } %></td><td><%= g.email || '—' %><% if (g.phone) { %><br><small class="cell-note"><%= g.phone %></small><% } %></td><td class="numeric"><%= g.stays %></td><td><%= g.last_arrival ? fmt.formatDay(g.last_arrival) : '—' %></td><td class="actions"><a class="button button--secondary button--sm" href="/guests?guest=<%= g.id %>">Profile</a><a class="button button--secondary button--sm" href="/guests/<%= g.id %>/edit">Edit</a></td></tr>
+<% } -%>
+              </tbody>
+            </table>
+          </div>
+<% if (!guests.length) { -%>
+          <p class="empty-state">No guests match “<%= q %>”.</p>
+<% } -%>
+        </section>
+<%- include('_bottom') %>

@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const { $, $$, h, svg, icon, clockTime } = HMS.util;
+  const { $, $$, h, svg, icon, clockTime, api, toast } = HMS.util;
 
   /* -------------------------------------------------------------------
    * Sparklines: <svg data-sparkline="231.4,236.9,..." viewBox="0 0 120 32">
@@ -241,11 +241,22 @@
       });
     });
 
-    list.addEventListener('click', (event) => {
+    list.addEventListener('click', async (event) => {
       const button = event.target.closest('[data-check-in]');
       if (!button || button.disabled) return;
       const item = button.closest('.arrival');
-      const time = clockTime();
+      button.disabled = true;
+      button.setAttribute('aria-busy', 'true');
+      let reply;
+      try {
+        reply = await api('/api/reservations/' + encodeURIComponent(item.dataset.confirmation) + '/check-in');
+      } catch (error) {
+        button.disabled = false;
+        button.removeAttribute('aria-busy');
+        toast(error.message);
+        return;
+      }
+      const time = reply.time || clockTime();
       item.dataset.state = 'in';
       const etaLabel = $('.arrival__eta small', item);
       const etaTime = $('.arrival__eta strong', item);

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-currency="<%= shell.currency.symbol %>" data-locale="<%= shell.currency.locale %>" data-tax-mode="<%= shell.tax.mode %>" data-tax-rate="<%= shell.tax.rate %>">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %></title>
+  <meta name="description" content="<%= description %>">
+  <meta name="theme-color" content="#1c1b19">
+  <meta name="csrf-token" content="<%= shell.csrf %>">
+  <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <script src="/assets/js/theme-init.js"></script>
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+<% for (const sheet of [].concat(css)) { -%>
+  <link rel="stylesheet" href="/assets/css/<%= sheet %>.css">
+<% } -%>
+</head>
+<body data-page="<%= page %>">
+<%- include('sprite') -%>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <div class="shell">
+    <aside class="sidenav" id="sidebar" tabindex="-1" aria-label="Sidebar">
+      <div class="sidenav__head">
+        <a class="logo" href="<%= shell.home %>" aria-label="Frontdesk, go to dashboard">
+          <span class="logo__mark"><%- icon('cloche') %></span>
+          <span class="logo__word">Frontdesk</span>
+        </a>
+        <button class="icon-button sidenav__close js-only" type="button" data-drawer-close aria-label="Close navigation"><%- icon('close') %></button>
+      </div>
+
+      <nav class="sidenav__nav" aria-label="Main">
+<% for (const group of shell.nav) { -%>
+        <p class="sidenav__label"><%= group.label %></p>
+        <ul class="sidenav__list">
+<% for (const item of group.items) { -%>
+          <li><a class="sidenav__link" href="<%= item.href %>"<%- item.key === shell.active ? ' aria-current="page"' : '' %>><%- icon(item.icon) %><span><%= item.label %></span><% if (item.badge) { %><span class="sidenav__badge<%= item.warn ? ' sidenav__badge--warn' : '' %>"><%= item.badge %></span><% } %></a></li>
+<% } -%>
+        </ul>
+<% } -%>
+      </nav>
+
+      <div class="tonight">
+        <div class="tonight__head">
+          <span class="tonight__label">Tonight</span>
+          <strong class="tonight__value"><%= shell.tonight.pct %>%</strong>
+        </div>
+        <div class="tonight__meter" role="img" aria-label="<%= shell.tonight.sold %> of <%= shell.tonight.total %> rooms sold tonight"><span class="tonight__fill" style="width:<%= shell.tonight.pct %>%"></span></div>
+        <p class="tonight__note"><%= shell.tonight.sold %> of <%= shell.tonight.total %> rooms sold · <%= shell.tonight.available %> available</p>
+      </div>
+
+      <div class="sidenav__user">
+        <span class="avatar avatar--sm<%= shell.user.tone ? ' avatar--' + shell.user.tone : '' %>" aria-hidden="true"><%= shell.user.initials %></span>
+        <span class="sidenav__user-text">
+          <strong><%= shell.user.name %></strong>
+          <small><%= shell.user.title %></small>
+        </span>
+        <a class="icon-button" href="<%= shell.signOut %>" aria-label="Sign out"><%- icon('sign-out') %></a>
+      </div>
+    </aside>
+
+    <div class="shell__main">
+      <header class="appbar">
+        <button class="icon-button appbar__menu js-only" type="button" data-drawer-open aria-controls="sidebar" aria-label="Open navigation"><%- icon('menu') %></button>
+
+        <div class="menu hotel-switch">
+          <button class="hotel-switch__button" type="button" data-menu-toggle aria-expanded="false" aria-label="Property: <%= shell.hotel.name %>. Switch property">
+            <span class="hotel-switch__icon" aria-hidden="true"><%- icon('building') %></span>
+            <span class="hotel-switch__text">
+              <span class="hotel-switch__name" data-current-hotel><%= shell.hotel.name %></span>
+              <span class="hotel-switch__meta" data-current-hotel-meta><%= shell.hotel.meta %></span>
+            </span>
+            <svg class="icon hotel-switch__chevron" aria-hidden="true"><use href="#icon-chevron-down"></use></svg>
+          </button>
+          <ul class="menu__panel hotel-switch__menu" data-hotel-menu>
+            <li><p class="menu__heading">Switch property</p></li>
+            <li><button class="menu__item is-selected" type="button" data-hotel="<%= shell.hotel.name %>" data-meta="<%= shell.hotel.meta %>" aria-current="true"><span class="hotel-switch__option"><strong><%= shell.hotel.name %></strong><small><%= shell.hotel.meta %></small></span><svg class="icon hotel-switch__check" aria-hidden="true"><use href="#icon-check"></use></svg></button></li>
+          </ul>
+        </div>
+
+        <form class="appbar__search" action="/reservations" method="get" role="search">
+          <label class="sr-only" for="topbar-q">Search reservations</label>
+          <%- icon('search') %>
+          <input id="topbar-q" name="q" type="search" placeholder="Guest, room or confirmation" autocomplete="off">
+          <kbd aria-hidden="true">/</kbd>
+        </form>
+
+        <div class="appbar__actions">
+          <span class="business-date"><%- icon('calendar') %><span>Business date</span><strong><%= shell.businessDate %></strong></span>
+          <button class="icon-button theme-switch js-only" type="button" aria-label="Dark theme" aria-pressed="false" data-theme-toggle>
+            <span class="theme-switch__moon"><%- icon('moon') %></span>
+            <span class="theme-switch__sun"><%- icon('sun') %></span>
+          </button>
+          <div class="menu">
+            <button class="icon-button alerts__button" type="button" data-menu-toggle data-menu-keep-open aria-expanded="false" aria-label="<%= shell.unread ? 'Notifications, ' + shell.unread + ' unread' : 'Notifications' %>"><%- icon('bell') %><span class="alerts__dot" data-alerts-dot<%- shell.unread ? '' : ' hidden' %>></span></button>
+            <div class="menu__panel menu__panel--end alerts__menu">
+              <div class="alerts__head">
+                <p class="alerts__title">Notifications</p>
+                <button class="text-button" type="button" data-alerts-clear>Mark all read</button>
+              </div>
+              <ul class="alerts__list">
+<% for (const n of shell.notifications) { -%>
+                <li class="alert-item<%= n.unread ? ' is-unread' : '' %>"><span class="alerts__icon<%= n.tone ? ' alerts__icon--' + n.tone : '' %>"><%- icon(n.icon) %></span><span><strong><%= n.title %></strong><small><%= n.detail %></small></span><time><%= n.ago %></time></li>
+<% } -%>
+              </ul>
+            </div>
+          </div>
+          <div class="menu">
+            <button class="account__button" type="button" data-menu-toggle aria-expanded="false" aria-label="Account menu for <%= shell.user.name %>">
+              <span class="avatar avatar--sm<%= shell.user.tone ? ' avatar--' + shell.user.tone : '' %>" aria-hidden="true"><%= shell.user.initials %></span>
+              <span class="account__name"><strong><%= shell.user.name %></strong><small><%= shell.user.shiftLabel %></small></span>
+            </button>
+            <ul class="menu__panel menu__panel--end">
+              <li><p class="menu__note"><%= shell.user.shiftLabel %> · <%= shell.user.shiftHours %></p></li>
+              <li><hr class="menu__divider"></li>
+<% for (const link of shell.accountLinks) { -%>
+              <li><a class="menu__item" href="<%= link.href %>"><%= link.label %></a></li>
+<% } -%>
+            </ul>
+          </div>
+        </div>
+      </header>
+
+      <main id="main" class="page" tabindex="-1">

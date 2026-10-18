@@ -1,0 +1,20 @@
+<%- include('_top') %>
+        <section class="card card--flush" aria-labelledby="a-title">
+          <h2 class="sr-only" id="a-title">Activity</h2>
+          <form class="filter-bar" method="get" action="/admin/activity" style="padding:20px 24px">
+            <div class="field"><label class="field-label" for="a-user">Person</label>
+              <select class="select" id="a-user" name="user"><option value="">Everyone</option><% for (const u of users) { %><option value="<%= u.id %>"<%- who === u.id ? ' selected' : '' %>><%= u.name %></option><% } %></select></div>
+            <div class="field field--reset"><button class="button button--secondary" type="submit">Show</button></div>
+          </form>
+          <div class="table-scroll">
+            <table class="table admin-table">
+              <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th><th scope="col">Type</th></tr></thead>
+              <tbody>
+<% for (const r of rows) { -%>
+                <tr><td class="mono"><%= r.created_at %></td><td><%= r.user_name %></td><td><%= r.summary %></td><td class="mono"><%= r.action %></td></tr>
+<% } -%>
+              </tbody>
+            </table>
+          </div>
+        </section>
+<%- include('_bottom') %>

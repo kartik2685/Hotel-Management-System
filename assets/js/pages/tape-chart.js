@@ -1,12 +1,12 @@
 /* =====================================================================
  * Frontdesk HMS · pages/tape-chart.js
- * Draws the rooms × 14 nights tape chart from window.TAPE_CHART_DATA
- * (assets/data/tape-chart.js). Selecting a stay opens it in a <dialog>.
+ * Draws the rooms × 14 nights tape chart from the JSON data the server
+ * puts in the page (#tape-chart-data). Selecting a stay opens it in a <dialog>.
  * ===================================================================== */
 (function () {
   'use strict';
 
-  const { $, $$, h, icon, money, formatDay, clockTime, plural, DAY_MS, WEEKDAYS, MONTHS } = HMS.util;
+  const { $, $$, h, icon, money, formatDay, clockTime, plural, api, DAY_MS, WEEKDAYS, MONTHS } = HMS.util;
 
   const DAYS_SHOWN = 14;
   const EARLIEST = -7; // how far back the chart can page (days)
@@ -190,8 +190,10 @@
       field('status').replaceChildren(h('span', { class: 'status-pill status-pill--' + STATUS_PILL[b.status], text: STATUS_LABEL[b.status] }));
       set('room', b.room + ' · ' + data.types[room.type]);
       set('guests', plural(b.adults, 'adult', 'adults') + (b.children ? ', ' + plural(b.children, 'child', 'children') : ''));
-      set('in', formatDay(dayDate(b.start)) + ' · from 15:00');
-      set('out', formatDay(dayDate(b.end)) + ' · by 12:00');
+      set('in', formatDay(dayDate(b.start)) + ' · from ' + (data.checkInTime || '15:00'));
+      set('out', formatDay(dayDate(b.end)) + ' · by ' + (data.checkOutTime || '12:00'));
+      const link = $('[data-detail-link]', dialog);
+      if (link) link.href = '/reservations/' + encodeURIComponent(b.id);
       set('rate', money(b.rate));
       set('total', money(b.rate * (b.end - b.start)));
       set('source', b.source);
@@ -229,10 +231,21 @@
       }
     });
 
-    actionButton.addEventListener('click', () => {
+    actionButton.addEventListener('click', async () => {
       if (!current) return;
-      const message = current.status === 'arr' ? 'Checked in at ' + clockTime() + '.' : 'Booking confirmed.';
-      current.status = current.status === 'arr' ? 'in' : 'conf';
+      const arriving = current.status === 'arr';
+      actionButton.disabled = true;
+      let reply;
+      try {
+        reply = await api('/api/reservations/' + encodeURIComponent(current.id) + (arriving ? '/check-in' : '/confirm'));
+      } catch (error) {
+        actionButton.disabled = false;
+        set('done', error.message);
+        return;
+      }
+      actionButton.disabled = false;
+      const message = arriving ? 'Checked in at ' + (reply.time || clockTime()) + '.' : 'Booking confirmed.';
+      current.status = arriving ? 'in' : 'conf';
       render();
       fill(current);
       set('done', message);
@@ -241,5 +254,14 @@
     });
   }
 
-  HMS.ready(() => initTapeChart(window.TAPE_CHART_DATA));
+  // The server embeds the chart data as JSON (see views/pages/tape-chart.ejs).
+  function readData() {
+    const island = document.getElementById('tape-chart-data');
+    return island ? JSON.parse(island.textContent) : window.TAPE_CHART_DATA;
+  }
+
+  HMS.ready(() => {
+    const data = readData();
+    if (data) initTapeChart(data);
+  });
 })();

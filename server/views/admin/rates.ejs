@@ -1,0 +1,68 @@
+<%- include('_top') %>
+<% const pe = typeof planErrors !== 'undefined' ? planErrors : {}; const pv = typeof planValues !== 'undefined' ? planValues : {};
+   const xe = typeof extraErrors !== 'undefined' ? extraErrors : {}; const xv = typeof extraValues !== 'undefined' ? extraValues : {};
+   const prec = editPlan ? (plans.find((p) => p.id === editPlan.id) || {}) : {}; const xrec = editExtra ? (extras.find((x) => x.id === editExtra.id) || {}) : {};
+   const pval = (k, d) => (pv[k] !== undefined ? pv[k] : prec[k] !== undefined && prec[k] !== null ? prec[k] : d ?? '');
+   const xval = (k, d) => (xv[k] !== undefined ? xv[k] : xrec[k] !== undefined && xrec[k] !== null ? xrec[k] : d ?? '');
+   const adjust = (p) => (p.adjust_type === 'percent' ? (p.adjust_value > 0 ? '+' : '') + p.adjust_value + '%' : (p.adjust_value >= 0 ? '+' : '−') + fmt.money(Math.abs(p.adjust_value)) + ' / night'); -%>
+        <div class="admin-grid">
+          <div class="admin-stack">
+            <section class="card card--flush" aria-labelledby="plans-title">
+              <div class="card__head" style="padding:20px 24px 0"><div><h2 class="card__title" id="plans-title">Rate plans</h2></div></div>
+              <div class="table-scroll">
+                <table class="table admin-table">
+                  <thead><tr><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Change to base rate</th><th scope="col">On booking form</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+                  <tbody>
+<% for (const p of plans) { -%>
+                    <tr<%- p.active ? '' : ' class="is-inactive"' %>><td class="mono"><%= p.code %></td><td><strong><%= p.name %></strong><br><small class="cell-note"><%= p.description %></small></td><td><%= adjust(p) %></td><td><%= p.bookable ? 'Yes' : 'No' %><%= p.active ? '' : ' · inactive' %></td><td class="actions"><a class="button button--secondary button--sm" href="/admin/rates?plan=<%= p.id %>">Edit</a></td></tr>
+<% } -%>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+            <section class="card card--flush" aria-labelledby="extras-title">
+              <div class="card__head" style="padding:20px 24px 0"><div><h2 class="card__title" id="extras-title">Extras</h2></div></div>
+              <div class="table-scroll">
+                <table class="table admin-table">
+                  <thead><tr><th scope="col">Code</th><th scope="col">Name</th><th scope="col" class="numeric">Price</th><th scope="col">Charged</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+                  <tbody>
+<% for (const x of extras) { -%>
+                    <tr<%- x.active ? '' : ' class="is-inactive"' %>><td class="mono"><%= x.code %></td><td><strong><%= x.name %></strong></td><td class="numeric"><%= fmt.money(x.price_cents) %></td><td><%= x.per === 'night' ? 'Per night' : 'Per stay' %><%= x.active ? '' : ' · inactive' %></td><td class="actions"><a class="button button--secondary button--sm" href="/admin/rates?extra=<%= x.id %>">Edit</a></td></tr>
+<% } -%>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+          <div class="admin-stack">
+            <form class="card" method="post" action="/admin/plans<%= editPlan ? '/' + editPlan.id : '' %>" novalidate>
+              <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+              <div class="card__head"><div><h2 class="card__title"><%= editPlan ? 'Edit ' + (prec.name || 'rate plan') : 'Add a rate plan' %></h2><p class="card__subtitle">Amount per night (e.g. 32 or -20) or a percentage (e.g. -12).</p></div></div>
+              <div class="form-grid">
+                <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="p-code">Code</label><input class="input<%= pe.code ? ' is-invalid' : '' %>" id="p-code" name="code" value="<%= pval('code') %>"><p class="field-error"><%= pe.code || '' %></p></div>
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="p-name">Name</label><input class="input<%= pe.name ? ' is-invalid' : '' %>" id="p-name" name="name" value="<%= pval('name') %>"><p class="field-error"><%= pe.name || '' %></p></div>
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="p-type">Adjustment</label>
+                  <select class="select" id="p-type" name="adjust_type"><option value="amount"<%- pval('adjust_type') !== 'percent' ? ' selected' : '' %>>Amount per night</option><option value="percent"<%- pval('adjust_type') === 'percent' ? ' selected' : '' %>>Percentage</option></select></div>
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="p-value">Value</label><input class="input<%= pe.adjust_value ? ' is-invalid' : '' %>" id="p-value" name="adjust_value" value="<%= pv.adjust_value !== undefined ? pv.adjust_value : prec.adjust_type === 'amount' ? prec.adjust_value / 100 : prec.adjust_value ?? 0 %>"><p class="field-error"><%= pe.adjust_value || '' %></p></div>
+                <div class="form-grid__col"><label class="field-label" for="p-desc">Description <span class="field-label__hint">shown on the booking form</span></label><input class="input" id="p-desc" name="description" value="<%= pval('description') %>"></div>
+                <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="p-sort">Order</label><input class="input" id="p-sort" name="sort" type="number" value="<%= pval('sort', 0) %>"></div>
+              </div>
+              <div class="check-row"><label><input type="checkbox" name="bookable"<%- (pv.bookable !== undefined ? pv.bookable : prec.bookable !== 0) ? ' checked' : '' %>> On the booking form</label><label><input type="checkbox" name="active"<%- (pv.active !== undefined ? pv.active : prec.active !== 0) ? ' checked' : '' %>> Active</label></div>
+              <div class="form-actions"><button class="button button--primary" type="submit"><%= editPlan ? 'Save changes' : 'Add rate plan' %></button><% if (editPlan) { %><a class="button button--secondary" href="/admin/rates">Cancel</a><% } %></div>
+            </form>
+            <form class="card" method="post" action="/admin/extras<%= editExtra ? '/' + editExtra.id : '' %>" novalidate>
+              <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+              <div class="card__head"><div><h2 class="card__title"><%= editExtra ? 'Edit ' + (xrec.name || 'extra') : 'Add an extra' %></h2></div></div>
+              <div class="form-grid">
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="x-code">Code</label><input class="input<%= xe.code ? ' is-invalid' : '' %>" id="x-code" name="code" value="<%= xval('code') %>" placeholder="e.g. breakfast"><p class="field-error"><%= xe.code || '' %></p></div>
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="x-name">Name</label><input class="input<%= xe.name ? ' is-invalid' : '' %>" id="x-name" name="name" value="<%= xval('name') %>"><p class="field-error"><%= xe.name || '' %></p></div>
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="x-price">Price (<%= fmt.symbol() %>)</label><input class="input<%= xe.price ? ' is-invalid' : '' %>" id="x-price" name="price" inputmode="decimal" value="<%= xv.price !== undefined ? xv.price : xrec.price_cents !== undefined ? xrec.price_cents / 100 : '' %>"><p class="field-error"><%= xe.price || '' %></p></div>
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="x-per">Charged</label><select class="select" id="x-per" name="per"><option value="stay"<%- xval('per') !== 'night' ? ' selected' : '' %>>Once per stay</option><option value="night"<%- xval('per') === 'night' ? ' selected' : '' %>>Every night</option></select></div>
+                <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="x-sort">Order</label><input class="input" id="x-sort" name="sort" type="number" value="<%= xval('sort', 0) %>"></div>
+              </div>
+              <div class="check-row"><label><input type="checkbox" name="active"<%- (xv.active !== undefined ? xv.active : xrec.active !== 0) ? ' checked' : '' %>> Active</label></div>
+              <div class="form-actions"><button class="button button--primary" type="submit"><%= editExtra ? 'Save changes' : 'Add extra' %></button><% if (editExtra) { %><a class="button button--secondary" href="/admin/rates">Cancel</a><% } %></div>
+            </form>
+          </div>
+        </div>
+<%- include('_bottom') %>

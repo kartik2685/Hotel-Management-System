@@ -1,0 +1,20 @@
+      </main>
+      <footer class="site-footer">
+        <p>© <%= shell.hotel.name %> · Frontdesk property management</p>
+        <p>Template by <a href="https://uicookies.com/">uiCookies</a></p>
+      </footer>
+    </div>
+  </div>
+<% if (typeof afterShell !== 'undefined' && afterShell) { -%>
+
+<%- include(afterShell) %>
+<% } -%>
+<% if (typeof dataIsland !== 'undefined' && dataIsland) { -%>
+  <script type="application/json" id="<%= dataIsland.id %>"><%- dataIsland.json %></script>
+<% } -%>
+  <script src="/assets/js/core.js"></script>
+<% for (const file of [].concat(scripts || [])) { -%>
+  <script src="/assets/js/<%= file %>.js"></script>
+<% } -%>
+</body>
+</html>

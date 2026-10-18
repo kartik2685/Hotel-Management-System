@@ -1,0 +1,24 @@
+<%- include('../partials/shell-top') %>
+        <div class="page-header">
+          <div>
+            <p class="kicker">Your account</p>
+            <h1 class="page-header__title">Change password</h1>
+            <p class="page-header__lead">Use at least 8 characters. Changing it signs you out on every other device.</p>
+          </div>
+        </div>
+<% if (mustChange && !done) { -%>
+        <div class="notice" role="status"><%- icon('info') %><p>Please choose your own password before you continue.</p></div>
+<% } -%>
+<% if (done) { -%>
+        <div class="notice notice--ok" role="status"><%- icon('check') %><p>Your password was changed. <a href="<%= shell.home %>">Continue</a></p></div>
+<% } -%>
+        <form class="card" method="post" action="/account" novalidate style="max-width:560px">
+          <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+          <div class="form-grid">
+            <div class="form-grid__col"><label class="field-label" for="a-current">Current password</label><input class="input<%= errors.current ? ' is-invalid' : '' %>" id="a-current" name="current" type="password" autocomplete="current-password"><p class="field-error"><%= errors.current || '' %></p></div>
+            <div class="form-grid__col"><label class="field-label" for="a-new">New password</label><input class="input<%= errors.password ? ' is-invalid' : '' %>" id="a-new" name="password" type="password" autocomplete="new-password" minlength="8"><p class="field-error"><%= errors.password || '' %></p></div>
+            <div class="form-grid__col"><label class="field-label" for="a-confirm">New password again</label><input class="input<%= errors.confirm ? ' is-invalid' : '' %>" id="a-confirm" name="confirm" type="password" autocomplete="new-password"><p class="field-error"><%= errors.confirm || '' %></p></div>
+          </div>
+          <div class="form-actions"><button class="button button--primary" type="submit">Change password</button></div>
+        </form>
+<%- include('../partials/shell-bottom') %>

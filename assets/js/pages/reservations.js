@@ -6,7 +6,7 @@
 (function () {
   'use strict';
 
-  const { $, $$, h, money, parseDate, formatDay, plural, isEmail, setFieldError, prefersReducedMotion, DAY_MS } = HMS.util;
+  const { $, $$, h, money, parseDate, formatDay, plural, isEmail, setFieldError, prefersReducedMotion, api, toast, DAY_MS } = HMS.util;
   const BOOKING_ADDED = 'hms:booking-added';
 
   /* -------------------------------------------------------------------
@@ -129,7 +129,14 @@
   function initBookingForm() {
     const form = $('[data-booking-form]');
     if (!form) return;
-    const TAX_RATE = 0.1749; // room tax, applied to the room charge only
+    // Tax rules come from the hotel settings: a flat rate, India's GST bands, or none.
+    const TAX_MODE = document.documentElement.dataset.taxMode || 'flat';
+    const TAX_PERCENT = Number(document.documentElement.dataset.taxRate || 0);
+    const taxPercent = (rate) => {
+      if (TAX_MODE === 'none') return 0;
+      if (TAX_MODE === 'gst_india') return rate < 1000 ? 0 : rate <= 7500 ? 5 : 18;
+      return TAX_PERCENT;
+    };
     const f = form.elements;
     const success = $('[data-booking-success]');
     const output = (name) => $('[data-quote="' + name + '"]', form);
@@ -150,7 +157,7 @@
       let rate = adjust.endsWith('%') ? baseRate * (1 + parseFloat(adjust) / 100) : baseRate + parseFloat(adjust);
       rate = Math.round(rate * 100) / 100;
       const roomTotal = rate * nights;
-      const tax = Math.round(roomTotal * TAX_RATE * 100) / 100;
+      const tax = Math.round(roomTotal * taxPercent(rate)) / 100;
       const extras = $$('input[name="extra"]:checked', form).reduce(
         (sum, box) => sum + Number(box.dataset.price) * (box.dataset.per === 'night' ? nights : 1),
         0
@@ -181,7 +188,7 @@
       output('deposit').textContent =
         q.planCode === 'ADV'
           ? 'Advance purchase: ' + money(q.total) + ' is charged today.'
-          : 'Deposit today: first night with tax, ' + money(q.nights ? q.rate * (1 + TAX_RATE) : 0) + '.';
+          : 'Deposit today: first night with tax, ' + money(q.nights ? Math.round(q.rate * (100 + taxPercent(q.rate))) / 100 : 0) + '.';
     }
 
     /* Returns the fields that failed, in form order. */
@@ -217,45 +224,38 @@
       return failed;
     }
 
-    /* Put the new booking at the top of the bookings table. */
-    function addToTable(id, q) {
+    /* Put the saved booking (as returned by the server) at the top of the bookings table. */
+    function addToTable(b) {
       const table = $('[data-reservation-table]');
       if (!table) return null;
-      const first = f.first.value.trim();
-      const last = f.last.value.trim();
-      const adults = Number(f.adults.value);
-      const children = Number(f.children.value);
-      const guests = plural(adults, 'adult', 'adults') + (children ? ', ' + plural(children, 'child', 'children') : '');
-
       const row = h('tr', {
         class: 'is-new',
-        'data-status': 'confirmed',
-        'data-source': f.source.value,
-        'data-arrival': f.arrival.value,
-        'data-total': q.total.toFixed(2),
-        'data-name': last + ' ' + first,
-        'data-email': f.email.value.trim(),
+        'data-status': b.status,
+        'data-source': b.source || '',
+        'data-arrival': b.arrival,
+        'data-total': String(b.total),
+        'data-name': b.sortName,
+        'data-email': b.email || '',
       }, [
         h('td', { 'data-label': 'Guest' }, [
           h('span', { class: 'guest-cell' }, [
-            h('span', { class: 'avatar avatar--sm', 'aria-hidden': 'true', text: (first[0] + last[0]).toUpperCase() }),
+            h('span', { class: 'avatar avatar--sm', 'aria-hidden': 'true', text: b.initials }),
             h('span', { class: 'guest-cell__text' }, [
-              h('strong', { text: first + ' ' + last }),
-              h('small', { class: 'text-mono', text: id }),
+              h('strong', {}, [h('a', { class: 'row-link', href: '/reservations/' + encodeURIComponent(b.confirmation), text: b.name })]),
+              h('small', { class: 'text-mono', text: b.confirmation }),
             ]),
           ]),
         ]),
-        h('td', { 'data-label': 'Room' }, [
-          h('span', { class: 'text-muted', text: 'Unassigned' }),
-          h('small', { class: 'cell-note', text: q.typeName }),
-        ]),
+        h('td', { 'data-label': 'Room' }, b.room
+          ? [h('strong', { text: b.room }), h('small', { class: 'cell-note', text: b.typeName })]
+          : [h('span', { class: 'text-muted', text: 'Unassigned' }), h('small', { class: 'cell-note', text: b.typeName })]),
         h('td', { 'data-label': 'Stay' }, [
-          h('span', { class: 'stay-dates', text: stayLabel() }),
-          h('small', { class: 'cell-note', text: plural(q.nights, 'night', 'nights') + ' · ' + guests }),
+          h('span', { class: 'stay-dates', text: b.from + ' → ' + b.to }),
+          h('small', { class: 'cell-note', text: b.stayNote }),
         ]),
-        h('td', { 'data-label': 'Source', text: f.source.value }),
-        h('td', { 'data-label': 'Status' }, [h('span', { class: 'status-pill status-pill--confirmed', text: 'Confirmed' })]),
-        h('td', { 'data-label': 'Total', class: 'numeric', text: money(q.total) }),
+        h('td', { 'data-label': 'Source', text: b.source || '—' }),
+        h('td', { 'data-label': 'Status' }, [h('span', { class: 'status-pill status-pill--' + b.status, text: b.statusLabel })]),
+        h('td', { 'data-label': 'Total', class: 'numeric', text: b.totalText }),
       ]);
       table.tBodies[0].prepend(row);
       document.dispatchEvent(new CustomEvent(BOOKING_ADDED));
@@ -277,20 +277,38 @@
     });
     form.addEventListener('change', showQuote);
 
-    form.addEventListener('submit', (event) => {
+    form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const failed = validate();
       if (failed.length) {
         failed[0].focus();
         return;
       }
-      const q = quote();
-      const id = 'HLW-' + (41900 + Math.floor(Math.random() * 99));
-      addedRow = addToTable(id, q);
-      $('[data-success-id]', success).textContent = id;
+      const submit = $('[type="submit"]', form);
+      const payload = Object.fromEntries(new FormData(form));
+      payload.extra = $$('input[name="extra"]:checked', form).map((box) => box.value);
+      submit.disabled = true;
+      let reply;
+      try {
+        reply = await api(form.getAttribute('action') || '/reservations', payload);
+      } catch (error) {
+        submit.disabled = false;
+        const input = error.field && f[error.field];
+        if (input && input.nodeType === 1) {
+          setFieldError(input, error.message);
+          input.focus();
+        } else {
+          toast(error.message);
+        }
+        return;
+      }
+      submit.disabled = false;
+      const b = reply.booking;
+      addedRow = addToTable(b);
+      $('[data-success-id]', success).textContent = b.confirmation;
       $('[data-success-text]', success).textContent =
-        f.first.value.trim() + ' ' + f.last.value.trim() + ' · ' + q.typeName + ' · ' + stayLabel() + ' · ' +
-        money(q.total) + '. It lives on this page only; connect the form to your booking system to save it.';
+        b.name + ' · ' + b.typeName + (b.room ? ' ' + b.room : '') + ' · ' + b.from + ' → ' + b.to + ' · ' + b.totalText +
+        '. Saved' + (b.room ? '' : '; assign a room from the booking page before arrival') + '.';
       form.hidden = true;
       success.hidden = false;
       success.focus();
