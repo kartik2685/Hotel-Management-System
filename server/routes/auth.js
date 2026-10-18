@@ -14,6 +14,7 @@ const crypto = require('node:crypto');
 const mail = require('../lib/mail');
 const emails = require('../services/emails');
 const limits = require('../lib/limits');
+const formtoken = require('../lib/formtoken');
 
 const router = express.Router();
 const SHIFTS = [
@@ -26,16 +27,32 @@ const safeNext = (value) => (typeof value === 'string' && /^\/(?![/\\])[\w\-./?=
 
 const NOTICES = { done: { title: 'Password changed', text: 'Sign in with your new password.' } };
 
-function renderLogin(req, res, { status = 200, email = '', errors = {}, shift = 'morning', remember = false, resetSent = false } = {}) {
+/* The sign-in and password-reset forms carry their own token (see lib/formtoken.js). */
+const loginForm = (req) => ({
+  secret: settingsService.siteSecret(req.db), purpose: 'login', cookie: auth.LOGIN_COOKIE, maxAge: 12 * 60 * 60 * 1000, cookieOptions: auth.cookieOptions,
+});
+
+/* "ok", "blocked" (the browser sent no cookie at all, so a session could not stick either) or "expired". */
+function checkLoginForm(req) {
+  const result = formtoken.check(req, loginForm(req));
+  if (!result.cookieSent && result.fresh) return 'blocked';
+  return result.ok ? 'ok' : 'expired';
+}
+
+/* One line in the server log, to tell blocked cookies from old pages when someone cannot sign in. */
+function logFormProblem(req, problem) {
+  const why = problem === 'blocked' ? 'the browser sent no cookie (it blocks cookies here)' : 'the form token was old or not ours';
+  console.warn(`[sign-in] refused: ${why} · sec-fetch-site=${req.get('sec-fetch-site') || '-'} · ${String(req.get('user-agent') || '-').slice(0, 160)}`);
+}
+
+function renderLogin(req, res, { status = 200, email = '', errors = {}, shift = 'morning', remember = false, resetSent = false, cookieBlocked = false } = {}) {
   const db = req.db;
   const settings = req.settings;
   const bd = settingsService.businessDate(db);
   const tonight = stats.night(db, bd);
-  let token = req.cookies[auth.LOGIN_COOKIE];
-  if (!token || token.length < 30) {
-    token = auth.randomToken();
-    res.cookie(auth.LOGIN_COOKIE, token, auth.cookieOptions(2 * 60 * 60 * 1000));
-  }
+  const token = formtoken.forForm(req, res, loginForm(req));
+  const next = safeNext(req.query.next || req.body?.next);
+  const loginPath = `/login${next ? `?next=${encodeURIComponent(next)}` : ''}`;
   const hours = settings.shifts || {};
   const demoUser = settings.demo_mode ? db.get("SELECT email FROM users WHERE role = 'admin' AND active = 1 ORDER BY id LIMIT 1") : null;
   res.status(status).render('pages/login', {
@@ -45,12 +62,15 @@ function renderLogin(req, res, { status = 200, email = '', errors = {}, shift = 
     },
     idleMinutes: config.sessionIdleMinutes,
     loginToken: token,
-    next: safeNext(req.query.next || req.body?.next),
+    next,
     email, errors, remember,
     shift,
     shifts: SHIFTS.map((s) => ({ ...s, label: `${s.label} · ${(hours[s.value] || []).join('–')}` })),
     demoHint: demoUser ? `Demo: sign in as ${demoUser.email} with the password ${config.demoPassword}.` : '',
     resetSent, mailReady: mail.configured(), notice: NOTICES[req.query.reset] || null,
+    // When this browser blocks our cookies: inside a frame (preview panel) or in a normal tab.
+    cookieBlocked: cookieBlocked && (req.get('sec-fetch-dest') === 'iframe' ? 'frame' : 'page'),
+    loginPath, loginAddress: siteUrl(req) + loginPath, loginHost: req.get('host'), // the page script fills in the address the browser sees
   });
 }
 
@@ -65,7 +85,10 @@ function siteUrl(req) {
 router.post('/password/forgot', (req, res) => {
   const db = req.db;
   const email = String(req.body.email || '').trim().toLowerCase().slice(0, 120);
-  if (!auth.safeEqual(req.body._csrf, req.cookies[auth.LOGIN_COOKIE])) return renderLogin(req, res, { status: 403, errors: { password: 'The form expired. Please try again.' } });
+  if (!formtoken.check(req, loginForm(req)).ok) {
+    logFormProblem(req, 'expired');
+    return renderLogin(req, res, { status: 403, errors: { password: 'The form expired. Please try again.' } });
+  }
   // Same answer whether or not the account exists; quietly limited per email and per network address.
   const allowed = limits.hit(`reset:${email}`, 3, 60 * 60 * 1000) && limits.hit(`reset-ip:${req.ip}`, 10, 60 * 60 * 1000);
   const user = allowed && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? db.get('SELECT * FROM users WHERE email = ? AND active = 1', email) : null;
@@ -122,6 +145,11 @@ router.get('/login', (req, res) => {
   renderLogin(req, res, { shift: shiftNow(req) });
 });
 
+/* Lets the sign-in page find out whether this browser keeps our cookies (some block them inside preview panels). */
+router.get('/login/cookie-check', (req, res) => {
+  res.json({ cookies: Boolean(req.cookies[auth.LOGIN_COOKIE]) });
+});
+
 /* Shift that matches the hotel clock, used to preselect the login form. */
 function shiftNow(req) {
   const time = clock.hotelNow(req.settings.timezone).time;
@@ -138,7 +166,13 @@ router.post('/login', async (req, res, next) => {
     const shift = SHIFTS.some((s) => s.value === req.body.shift) ? req.body.shift : 'morning';
     const remember = Boolean(req.body.remember);
     const form = { email, shift, remember };
-    if (!auth.safeEqual(req.body._csrf, req.cookies[auth.LOGIN_COOKIE])) {
+    const formState = checkLoginForm(req);
+    if (formState === 'blocked') {
+      logFormProblem(req, formState);
+      return renderLogin(req, res, { ...form, status: 403, cookieBlocked: true, errors: { password: 'This browser blocked the sign-in cookie, so you can’t stay signed in here.' } });
+    }
+    if (formState !== 'ok') {
+      logFormProblem(req, formState);
       return renderLogin(req, res, { ...form, status: 403, errors: { password: 'The form expired. Please sign in again.' } });
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return renderLogin(req, res, { ...form, status: 422, errors: { email: 'Enter the email you sign in with.' } });
@@ -153,7 +187,6 @@ router.post('/login', async (req, res, next) => {
 
     const session = auth.createSession(db, user, { remember, shift, ip: req.ip, userAgent: req.get('user-agent') });
     res.cookie(auth.COOKIE, session.token, auth.cookieOptions(session.maxAge));
-    res.clearCookie(auth.LOGIN_COOKIE, auth.cookieOptions());
     db.run('UPDATE users SET last_login_at = ? WHERE id = ?', clock.stamp(req.settings.timezone), user.id);
     req.user = user;
     activity.log(db, req, 'auth.sign-in', `${user.name} signed in`);

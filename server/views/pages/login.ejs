@@ -51,6 +51,21 @@
         <p class="kicker"><%= hotel.name %> · Front office</p>
         <h1 class="auth__title">Sign in to Frontdesk</h1>
         <p class="auth__lead">Use your staff email. Shared workstations sign out after <%= idleMinutes %> minutes idle.</p>
+        <div class="success-box auth__notice" data-cookie-notice role="alert"<%- locals.cookieBlocked ? '' : ' hidden' %>>
+          <span class="success-box__icon"><%- icon('info') %></span>
+          <div data-cookie-help="frame"<%- locals.cookieBlocked === 'page' ? ' hidden' : '' %>>
+            <p class="success-box__title">Sign in from a new tab</p>
+            <p class="success-box__text">This browser blocks cookies inside the preview panel, and signing in needs one. Open Frontdesk in its own tab and sign in there.</p>
+            <div class="success-box__actions">
+              <a class="button button--primary button--sm" href="<%= loginPath %>" target="_blank" rel="noopener" data-cookie-open>Open in a new tab</a>
+            </div>
+            <p class="auth__notice-address">Or copy this address: <span data-cookie-address><%= loginAddress %></span></p>
+          </div>
+          <div data-cookie-help="page"<%- locals.cookieBlocked === 'page' ? '' : ' hidden' %>>
+            <p class="success-box__title">Allow cookies to sign in</p>
+            <p class="success-box__text">This browser is blocking cookies for this site, and signing in needs one. Allow cookies for <span data-cookie-host><%= loginHost %></span> in the browser settings, then reload this page.</p>
+          </div>
+        </div>
         <form class="auth__form" method="post" action="/login" data-login-form novalidate>
           <input type="hidden" name="_csrf" value="<%= loginToken %>">
           <input type="hidden" name="next" value="<%= next %>">

@@ -108,14 +108,7 @@ function offer(db, query) {
   };
 }
 
-function secret(db) {
-  let value = settingsService.all(db).site_secret;
-  if (!value) {
-    value = crypto.randomBytes(32).toString('base64url');
-    settingsService.save(db, { site_secret: value });
-  }
-  return value;
-}
+const secret = (db) => settingsService.siteSecret(db);
 /* Signed link token: only someone with the confirmation email can open the booking. */
 const token = (db, confirmation, email) => crypto.createHmac('sha256', secret(db)).update(`${confirmation}:${String(email || '').toLowerCase()}`).digest('base64url').slice(0, 32);
 const tokenOk = (db, booking, given) => {

@@ -4,6 +4,8 @@ const express = require('express');
 const auth = require('../lib/auth');
 const f = require('../lib/format');
 const limits = require('../lib/limits');
+const formtoken = require('../lib/formtoken');
+const settingsService = require('../services/settings');
 const website = require('../services/website');
 const registration = require('../services/registration');
 const reservations = require('../services/reservations');
@@ -17,27 +19,26 @@ router.use((req, res, next) => {
   res.status(404).render('site/off', { s: req.settings });
 });
 
-/* A per-visitor token for the public forms (double-submit cookie). */
+/* A per-visitor token for the public forms: a double-submit cookie, or a recent token signed
+ * by this server when the browser blocks cookies (see lib/formtoken.js). No cookie is needed to book. */
+const siteForm = (req) => ({
+  secret: settingsService.siteSecret(req.db), purpose: 'site', cookie: SITE_COOKIE, maxAge: 24 * 60 * 60 * 1000, cookieOptions: auth.cookieOptions,
+});
 router.use((req, res, next) => {
-  let token = req.cookies[SITE_COOKIE];
-  if (!token || token.length < 30) {
-    token = auth.randomToken();
-    res.cookie(SITE_COOKIE, token, auth.cookieOptions(24 * 60 * 60 * 1000));
-  }
-  res.locals.siteToken = token;
+  res.locals.siteToken = formtoken.forForm(req, res, siteForm(req));
   res.locals.s = req.settings;
   res.locals.preview = !req.settings.site_enabled;
   res.set('Cache-Control', 'no-store');
   next();
 });
-const formOk = (req) => auth.safeEqual(req.body && req.body._csrf, req.cookies[SITE_COOKIE]);
+const formOk = (req) => formtoken.check(req, siteForm(req)).ok;
 const refused = (res) => res.status(403).render('site/message', { title: 'Please try again', text: 'That form expired. Go back, reload the page and send it again.' });
 
 const page = (res, view, data) => res.render(`site/${view}`, { fmt: f, ...data });
 
 router.get('/', (req, res) => {
   const h = website.home(req.db);
-  const stay = website.readStay({}, require('../services/settings').businessDate(req.db));
+  const stay = website.readStay({}, settingsService.businessDate(req.db));
   page(res, 'home', { title: req.settings.hotel_name, h, stay });
 });
 

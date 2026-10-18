@@ -109,4 +109,11 @@
 .reset-box .reset-box__done { margin: 12px 0 0; color: var(--clean-text); font-weight: 600; }
 
 .auth__success { margin-top: 18px; }
+
+/* Only shown when the browser blocks the sign-in cookie, e.g. inside an embedded preview panel */
+.auth__notice { margin: 0 0 24px; background: var(--dirty-soft); border-color: color-mix(in srgb, var(--dirty) 40%, transparent); }
+.auth__notice .success-box__icon { background: var(--dirty); }
+.auth__notice-address { margin: 10px 0 0; font-size: .78rem; color: var(--text-2); overflow-wrap: anywhere; }
+.auth__notice-address span { color: var(--text); font-weight: 700; user-select: all; }
+
 .site-footer--centered { border-top: 0; justify-content: center; text-align: center; }

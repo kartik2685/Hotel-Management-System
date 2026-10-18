@@ -1,15 +1,15 @@
 /* =====================================================================
  * Frontdesk HMS · pages/login.js
- * Sign-in form checks, show/hide password and the password reset panel.
+ * Sign-in form checks, show/hide password, the password reset panel and
+ * a note when the browser blocks the sign-in cookie.
  *
- * This is a front-end demo: any well-formed email with a password of at
- * least 8 characters opens the dashboard. Real authentication must
- * happen on a server; never trust checks made in the browser.
+ * These checks only help people fix typos: the server checks the
+ * password and decides what each account may open.
  * ===================================================================== */
 (function () {
   'use strict';
 
-  const { $, isEmail, setFieldError } = HMS.util;
+  const { $, $$, isEmail, setFieldError } = HMS.util;
 
   function initSignIn() {
     const form = $('[data-login-form]');
@@ -44,6 +44,30 @@
     }
 
     initPasswordReset(email);
+    initCookieCheck();
+  }
+
+  // Some browsers block cookies when the app is shown inside another site's frame (such as a
+  // preview panel). Signing in can't work there, so say so before anyone types a password.
+  function initCookieCheck() {
+    const notice = $('[data-cookie-notice]');
+    if (!notice) return;
+    // The address as this browser sees it (the server may sit behind a proxy).
+    const open = $('[data-cookie-open]', notice);
+    const address = $('[data-cookie-address]', notice);
+    const host = $('[data-cookie-host]', notice);
+    if (open && address) address.textContent = new URL(open.getAttribute('href'), window.location.href).href;
+    if (host) host.textContent = window.location.host;
+    if (!window.fetch) return;
+    fetch('/login/cookie-check', { credentials: 'same-origin', cache: 'no-store', headers: { accept: 'application/json' } })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((result) => {
+        if (!result || typeof result.cookies !== 'boolean') return;
+        const framed = window.top !== window.self;
+        $$('[data-cookie-help]', notice).forEach((help) => { help.hidden = help.dataset.cookieHelp !== (framed ? 'frame' : 'page'); });
+        notice.hidden = result.cookies;
+      })
+      .catch(() => { /* unknown: leave the page as it is */ });
   }
 
   function initPasswordReset(loginEmail) {

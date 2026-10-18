@@ -130,6 +130,12 @@ Settings are environment variables (see `.env.example`):
 | `HMS_NOW` | — | Freeze the hotel clock, e.g. `2026-09-24T10:42` (demos and tests only) |
 | `EMBED_PREVIEW`, `PREVIEW_BAR` | — | Development only: allow framing by a preview panel; `/` shows a Desktop/Tablet/Mobile bar |
 
+> **Signing in inside a preview panel.** With `EMBED_PREVIEW` the cookies are made for frames
+> (`SameSite=None; Secure; Partitioned`). Most browsers then work inside the panel. Some keep
+> blocking cookies there, for example Safari before 26.2 or a browser set to block all cookies.
+> The sign-in page notices this and shows **Sign in from a new tab**, with a button and the
+> address. The guest website still works there, because it doesn’t need cookies.
+
 ### Going live (any Node host)
 
 - Run `npm ci --omit=dev && npm start` with `NODE_ENV=production`, `TRUST_PROXY=1` and HTTPS in front.
@@ -143,6 +149,9 @@ Settings are environment variables (see `.env.example`):
 - Sessions are stored server-side; only a hash of the cookie is kept. Cookies are HttpOnly and SameSite.
   Sessions end after 30 minutes idle on shared workstations.
 - Every form and API call carries a CSRF token, and the login form has its own.
+  Forms that work without a session (sign-in, password reset, guest website) accept either the
+  visitor’s cookie token or a recent token signed by the server. The signed token only counts when
+  the browser reports that the form was sent from this site (`Sec-Fetch-Site`, or `Origin`).
 - Five wrong passwords lock the account for 15 minutes.
 - Roles are checked on the server for every page and action: admin, manager, front desk, housekeeping.
 - All database queries are parameterised, and all output is escaped.
@@ -160,8 +169,9 @@ Settings are environment variables (see `.env.example`):
 npm test
 ```
 
-37 end-to-end tests run against a fresh demo hotel. They cover:
+44 end-to-end tests run against a fresh demo hotel. They cover:
 - sign-in, lockout, CSRF and redirect safety;
+- browsers that block cookies in a preview panel (sign-in note, guest booking, cross-site refusal);
 - roles;
 - booking rules, payments and refunds;
 - the guest website (booking, signed links, cancellation rules, spam protection);

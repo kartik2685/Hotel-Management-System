@@ -1,5 +1,6 @@
 'use strict';
 /* Hotel settings (key/value JSON) with an in-memory cache. */
+const crypto = require('node:crypto');
 const clock = require('../lib/clock');
 
 /* Defaults for a new, empty hotel (set up for India). The demo hotel overrides them in db/seed.js. */
@@ -38,6 +39,16 @@ function businessDate(db) {
   return clock.hotelNow(s.timezone).date;
 }
 
+/* Server-side key for signed links and form tokens (created once per hotel). */
+function siteSecret(db) {
+  let value = all(db).site_secret;
+  if (!value) {
+    value = crypto.randomBytes(32).toString('base64url');
+    save(db, { site_secret: value });
+  }
+  return value;
+}
+
 const reset = () => { cache = null; };
 
-module.exports = { all, save, businessDate, reset, DEFAULTS };
+module.exports = { all, save, businessDate, siteSecret, reset, DEFAULTS };
