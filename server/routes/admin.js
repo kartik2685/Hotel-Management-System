@@ -86,14 +86,14 @@ router.get('/', (req, res) => {
     demo: req.settings.demo_mode,
     recent: db.all('SELECT * FROM activity_log ORDER BY id DESC LIMIT 8'),
     // Where the data is kept (admins only): lets the owner check the Supabase connection from the browser.
-    database: admin ? system.databaseInfo(db) : null,
+    database: admin ? system.databaseInfo(db, { today: clock.hotelNow(req.settings.timezone).date }) : null,
     lastBackup: admin ? db.get("SELECT created_at, user_name FROM activity_log WHERE action = 'database.backup' ORDER BY id DESC LIMIT 1") || null : null,
   });
 });
 
 /* ------------------------------------------------------------------ backup */
-// The whole database as one SQLite file, straight to the browser. Supabase's free plan keeps no backups,
-// and a free Render instance has no disk to keep them on.
+// The whole database as one SQLite file, straight to the browser. Free databases (Render, Supabase) keep no
+// backups of their own, and a free Render instance has no disk to keep them on.
 router.post('/backup', requireAbility('administer'), (req, res, next) => {
   const db = req.db;
   const file = path.join(os.tmpdir(), `hms-backup-${process.pid}-${crypto.randomBytes(6).toString('hex')}.db`);

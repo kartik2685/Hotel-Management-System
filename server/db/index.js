@@ -116,4 +116,22 @@ function transaction({ begin, exec }) {
   };
 }
 
-module.exports = { open, isPostgres, transaction };
+/* open(), trying again while the database is still starting: a new Render Blueprint creates the database and
+   the app at the same time, so the app's first start can come before the database answers. Only problems that
+   go away by themselves are retried (no answer, refused, name not known yet); a wrong password fails at once. */
+const PASSING = new Set(['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'EHOSTUNREACH', '57P03']);
+
+async function openWhenReady(target, { attempts = 1, waitMs = 10_000, log = console.log } = {}) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return open(target);
+    } catch (error) {
+      const passing = error.connecting && (PASSING.has(error.code) || /timeout|starting up/i.test(error.message));
+      if (!passing || attempt >= attempts) throw error;
+      log(`The database is not answering yet (${error.code || 'timeout'}); trying again in ${Math.round(waitMs / 1000)} seconds (attempt ${attempt + 1} of ${attempts}).`);
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+  }
+}
+
+module.exports = { open, openWhenReady, isPostgres, transaction };

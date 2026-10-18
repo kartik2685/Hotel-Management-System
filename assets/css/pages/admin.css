@@ -101,3 +101,4 @@ textarea.input { min-height: 84px; resize: vertical; }
 /* Admin overview: the database card */
 .db-lines dd { min-width: 0; text-align: right; overflow-wrap: anywhere; }
 .db-lines + .form-hint { margin-top: 14px; }
+.nowrap { white-space: nowrap; }

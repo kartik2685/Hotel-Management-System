@@ -61,6 +61,9 @@ function setUp(db) {
       db.run("UPDATE app_meta SET value = ? WHERE key = 'schema_version'", String(target));
       version = target;
     }
+    // The day the app first set this database up: Admin → Overview reminds the owner when a free
+    // Render database (which expires 30 days after it is created) is about to stop.
+    db.run("INSERT INTO app_meta (key, value) VALUES ('created_at', ?) ON CONFLICT (key) DO NOTHING", new Date().toISOString().slice(0, 10));
   });
 }
 
@@ -217,20 +220,21 @@ function describe(raw) {
 }
 
 const HINTS = {
-  url: 'Copy it again from Supabase (Connect → Session pooler). If the password contains characters like @ # / ? % reset it to letters and numbers only, or URL-encode them.',
+  url: 'Copy it again (Render: your database → Connect; Supabase: Connect → Session pooler). If the password contains characters like @ # / ? % reset it to letters and numbers only, or URL-encode them.',
   ipv6: 'This server cannot reach the database over IPv6. On Supabase use the "Session pooler" connection string (Connect → Session pooler, host ….pooler.supabase.com), not the direct connection (db.….supabase.co).',
-  host: 'The database host name was not found. Check DATABASE_URL (Supabase: Connect → Session pooler).',
-  password: 'Wrong database password. Supabase: Project Settings → Database → Reset database password, then put the new one in DATABASE_URL.',
+  host: 'The database host name was not found. Check DATABASE_URL (Render: your database → Connect; Supabase: Connect → Session pooler).',
+  renderPrivate: 'dpg-… is the private address of a Render database: it only works from a Render service in the same region. Anywhere else, use its External Database URL (Render → your database → Connect → External).',
+  password: 'Wrong database password. Copy the connection string again (Render: your database → Connect). Supabase: Database → Settings → Reset database password, then put the new one in DATABASE_URL.',
   tenant: 'Supabase did not recognise the user. For the pooler the user name is postgres.<project-ref>, exactly as shown under Connect → Session pooler.',
   refused: 'Nothing answered at that address and port. Check the host and port in DATABASE_URL.',
-  timeout: 'The database did not answer. Check DATABASE_URL, and on Supabase that the project is not paused (free projects pause after a week without use).',
+  timeout: 'The database did not answer. Check DATABASE_URL. A free Render database stops 30 days after it was created unless it is upgraded; a free Supabase project pauses after a week without use.',
 };
 
 function hintFor(error) {
   const code = error.code || '';
   const message = String(error.message || '');
   if (code === 'ENETUNREACH' || code === 'EHOSTUNREACH' || code === 'EADDRNOTAVAIL') return HINTS.ipv6;
-  if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') return HINTS.host;
+  if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') return /\bdpg-[a-z0-9]+-[a-z](?![\w.-])/i.test(message) ? HINTS.renderPrivate : HINTS.host;
   if (code === '28P01' || /password authentication failed/i.test(message)) return HINTS.password;
   if (/tenant or user not found/i.test(message)) return HINTS.tenant;
   if (code === 'ECONNREFUSED') return HINTS.refused;

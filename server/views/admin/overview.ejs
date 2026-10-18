@@ -29,23 +29,29 @@
             </section>
 <% if (database) { -%>
             <section class="card" aria-labelledby="db-title">
-              <div class="card__head"><div><h2 class="card__title" id="db-title">Database</h2><p class="card__subtitle"><%= database.name %><%= database.region ? ' · ' + database.region : '' %></p></div></div>
+              <div class="card__head"><div><h2 class="card__title" id="db-title">Database</h2><p class="card__subtitle"><%= database.title %></p></div></div>
 <% if (database.temporary) { -%>
-              <div class="notice notice--error" role="alert"><%- icon('info') %><p><strong>The data is in a temporary file.</strong> Render’s free plan deletes it on every restart and redeploy and after 15 minutes without visitors. In Render → Environment, add <code>DATABASE_URL</code> with your Supabase connection string (Connect → Session pooler).</p></div>
+              <div class="notice notice--error" role="alert"><%- icon('info') %><p><strong>The data is in a temporary file.</strong> Render’s free plan deletes it on every restart and redeploy and after 15 minutes without visitors. Connect a PostgreSQL database through <code>DATABASE_URL</code>: the Blueprint in <code>render.yaml</code> creates one and connects it for you.</p></div>
+<% } -%>
+<% if (database.freePlan) { const p = database.freePlan; -%>
+              <div class="notice<%= p.urgent ? ' notice--error' : '' %>"<%- p.urgent ? ' role="alert"' : '' %>><%- icon('info') %><p><strong><%= p.daysLeft === 0 ? 'Last day' : p.daysLeft + (p.daysLeft === 1 ? ' day' : ' days') + ' left' %> on Render’s free database, if it is still on the free plan.</strong> It stops on <%= p.stops %> and is deleted on <%= p.deleted %>. Upgrade it before then in Render → <strong>hotel-db</strong> → <strong>Upgrade</strong> (<span class="nowrap">0.1c-256mb</span>, about $6 a month): the data stays.</p></div>
 <% } -%>
               <dl class="money-lines db-lines">
                 <div><dt>Where</dt><dd class="mono"><%= database.where %></dd></div>
                 <div><dt>Tables</dt><dd><%= database.tables %> · version <%= database.version %></dd></div>
                 <div><dt>Size</dt><dd><%= database.size %></dd></div>
+<% if (database.setUp) { -%>
+                <div><dt>Set up</dt><dd><%= database.setUp %></dd></div>
+<% } -%>
 <% if (database.ms) { -%>
                 <div><dt>Round trip</dt><dd><%= database.ms %></dd></div>
 <% } -%>
                 <div><dt>Last backup</dt><dd><%= lastBackup ? lastBackup.created_at + ' · ' + lastBackup.user_name : 'none yet' %></dd></div>
               </dl>
 <% if (database.far) { -%>
-              <p class="form-hint">The database is far from this server, so every page waits for it. Keep both in the same region (Singapore on Render and Supabase).</p>
+              <p class="form-hint">The database is far from this server, so every page waits for it. Keep the app and the database in the same region.</p>
 <% } -%>
-              <p class="form-hint">A backup is one file with every table in it. Supabase’s free plan keeps no backups of its own, so download one now and then and keep it safe: it holds guest details.</p>
+              <p class="form-hint">A backup is one file with every table in it. Free databases keep no backups of their own, so download one now and then and keep it safe: it holds guest details.</p>
               <form class="form-actions" method="post" action="/admin/backup">
                 <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
                 <button class="button button--secondary" type="submit"><%- icon('download') %>Download a backup</button>

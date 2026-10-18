@@ -12,7 +12,7 @@ A working hotel management system (PMS) for the front office, housekeeping and m
 It keeps the exact look of the *Frontdesk* template by uiCookies. Every page is now drawn
 by the server from a real database, and every change is saved.
 
-- **Stack:** Node.js (22.13 or newer) · Express · EJS templates · SQLite (built into Node, nothing to install) or PostgreSQL / **Supabase**
+- **Stack:** Node.js (22.13 or newer) · Express · EJS templates · SQLite (built into Node, nothing to install) or PostgreSQL (**Render**, Supabase…)
 - **Runs anywhere Node runs:** your laptop, a VPS, Render, Railway…
 - **No build step:** plain HTML, CSS and JavaScript in the browser
 
@@ -71,9 +71,10 @@ All demo accounts share the password `harlow-demo` (change it with `DEMO_PASSWOR
 
 Open it from the **account menu** (click your name, top right) → **Admin panel**, or go to `/admin`.
 
-- **Overview → Database** (admins): which database the hotel runs on (*Supabase (PostgreSQL) · Singapore*, or the
-  SQLite file), its tables, size and round-trip time, and **Download a backup**: every table in one file.
-  On Render without `DATABASE_URL` it warns in red that the data is in a temporary file.
+- **Overview → Database** (admins): which database the hotel runs on (*Render PostgreSQL*, *Supabase (PostgreSQL)*
+  or the SQLite file), its tables, size and round-trip time, and **Download a backup**: every table in one file.
+  On Render's free database it counts down the days before it expires; on Render without a database it warns in
+  red that the data is in a temporary file.
 - **Hotel settings** (admins): name, city, contact details, GSTIN, currency (₹ / $ / …), number format,
   tax rule (**one flat rate**, **India GST on rooms**, or **none**), check-in/out times, time zone,
   shift hours, business date.
@@ -121,7 +122,7 @@ Settings are environment variables (see `.env.example`). On your own computer yo
 | Variable | Default | Meaning |
 |---|---|---|
 | `PORT` / `HOST` | `3000` / `0.0.0.0` | Where the server listens |
-| `DATABASE_URL` | — | A PostgreSQL connection string, e.g. from **Supabase** (see below). When set, it is used instead of the SQLite file and the tables are created automatically |
+| `DATABASE_URL` | — | A PostgreSQL connection string. On Render the Blueprint fills it in (see below). When set, it is used instead of the SQLite file and the tables are created automatically |
 | `DB_PATH` | `./data/frontdesk.db` | The SQLite database file, used when there is no `DATABASE_URL`. **Back up this folder** |
 | `NODE_ENV` | — | Set to `production` on a live server (secure cookies, HSTS) |
 | `TRUST_PROXY` | off | Set to `1` behind a proxy or load balancer (Render, Railway, nginx) |
@@ -142,26 +143,36 @@ Settings are environment variables (see `.env.example`). On your own computer yo
 > The sign-in page notices this and shows **Sign in from a new tab**, with a button and the
 > address. The guest website still works there, because it doesn’t need cookies.
 
-### Going live on Render
+### Going live on Render (website, backend and database)
 
-> **Step by step in Hinglish, with every click:** [docs/SETUP-SUPABASE-RENDER.md](docs/SETUP-SUPABASE-RENDER.md)
+> **Step by step in Hinglish, with every click:** [docs/SETUP-RENDER.md](docs/SETUP-RENDER.md)
 
-**Easiest: the Blueprint.** The repository has a [`render.yaml`](render.yaml). In Render → **New → Blueprint**,
-connect the repository and pick the branch with this code. Render asks for four values:
+**How the code gets there:** Render deploys straight from GitHub. You connect it once (the Blueprint below);
+after that every push to the branch is deployed by itself, and the data stays in the database.
 
-| Value | What to enter |
-|---|---|
-| `DATABASE_URL` | your Supabase connection string (next section) |
-| `ADMIN_EMAIL` | your sign-in email: the app starts as an empty hotel with this admin account |
-| `ADMIN_PASSWORD` | your sign-in password (8+ characters) |
-| `HOTEL_NAME` | the hotel's name |
+**The Blueprint.** [`render.yaml`](render.yaml) creates two resources in Singapore and connects them:
 
-Click **Deploy Blueprint**. Everything else is filled in: a free web service in Singapore, `npm ci`, `npm start`,
-health check `/login`, `NODE_ENV=production` and `TRUST_PROXY=1`. Leave `ADMIN_EMAIL` empty to get the demo hotel
-instead; its staff password is then printed once in the **Logs**. `render.yaml` names the branch it deploys
-(`branch:`); change it to `main` once the code is merged there.
+| Resource | What it is | Plan |
+|---|---|---|
+| `hotel-management-system` | the web service: guest website, staff app and backend (`npm ci`, `npm start`, health check `/login`, `NODE_ENV=production`, `TRUST_PROXY=1`) | Free |
+| `hotel-db` | Render PostgreSQL with all the data. `DATABASE_URL` is set to its private address by Render | Free for 30 days |
 
-**Or by hand:** in **New → Web Service**, connect the GitHub repository and fill in:
+In Render → **New → Blueprint**, connect the repository and pick the branch with this code. Render asks for three
+values: `ADMIN_EMAIL` (your sign-in), `ADMIN_PASSWORD` (8+ characters) and `HOTEL_NAME`. Click **Deploy Blueprint**.
+The app waits up to about a minute for a database that is still starting, creates its 26 tables and starts as an
+empty hotel with that admin account. Leave `ADMIN_EMAIL` empty to get the demo hotel instead; its staff password is
+then printed once in the **Logs**. Check it in **Admin → Overview**: the **Database** card shows
+*Render PostgreSQL · private network*, 26 tables and a round trip of a few milliseconds. `render.yaml` names the
+branch it deploys (`branch:`); change it to `main` once the code is merged there.
+
+> **Render's free database lasts 30 days.** Then it stops, and 14 days later Render deletes it with all its data.
+> Before that, upgrade `hotel-db` in the Render Dashboard to `0.1c-256mb` (about $6 a month plus $0.30 per GB of
+> storage; the data stays) and set `plan: 0.1c-256mb` in `render.yaml` so the Blueprint agrees. **Admin → Overview**
+> counts the days down (in red during the last week), and Render sends emails too.
+> The free web service sleeps after 15 minutes without visitors and takes about a minute to wake up; the Starter
+> plan ($7 a month) keeps it awake.
+
+**Or by hand:** create a database (**New → Postgres**, region Singapore) and a **Web Service** in the same region:
 
 | Field | Value |
 |---|---|
@@ -172,8 +183,8 @@ instead; its staff password is then printed once in the **Logs**. `render.yaml` 
 | Start Command | `npm start` |
 | Health Check Path (Advanced) | `/login` |
 
-Then add the environment variables `NODE_ENV=production`, `TRUST_PROXY=1` and **`DATABASE_URL`** (your
-Supabase database, next section — without it a free instance forgets everything), plus one of:
+Then add the environment variables `NODE_ENV=production`, `TRUST_PROXY=1`, **`DATABASE_URL`** = the database's
+**Internal Database URL** (without it a free instance forgets everything on every restart), plus one of:
 
 - **To show the demo:** `DEMO_PASSWORD` = a password of your own (8+ characters). Sign in as
   `elena.marsh@example.com` with it. The sign-in page never shows the password on a live server.
@@ -181,51 +192,40 @@ Supabase database, next section — without it a free instance forgets everythin
   with that admin account. Then follow *Setting it up for a real hotel* above.
 
 The site’s address (`https://<name>.onrender.com`) opens the guest website, or the sign-in page while the
-website is switched off (an empty hotel starts with it off). Staff always sign in at `/login`.
-Render uses Node 24 here (from `engines` in `package.json`).
-
-> **Keep the data in Supabase.** Render's free instances lose their files on every restart, redeploy and
-> after 15 minutes without visitors, so a SQLite file there starts again from the beginning. With
-> `DATABASE_URL` the data lives in Supabase and survives all of that. (The other way: a paid instance
-> with a **Disk** at `/var/data` and `DB_PATH=/var/data/frontdesk.db`.)
-
-### Database on Supabase (free)
-
-1. On [supabase.com](https://supabase.com) create a **New project**. Choose a database password (letters
-   and digits are easiest; keep it) and the region **Southeast Asia (Singapore)**. In Render pick
-   **Singapore** too: every page asks the database a few things, so both should be in the same place.
-2. When the project is ready, click **Connect** at the top, choose **Session pooler** and copy the URI:
-   `postgresql://postgres.<project-ref>:[YOUR-PASSWORD]@aws-…-ap-southeast-1.pooler.supabase.com:5432/postgres`.
-   Replace `[YOUR-PASSWORD]` (brackets included) with your database password.
-   Use the **Session pooler**, not *Direct connection*: the direct address only works over IPv6, which Render doesn't have.
-3. Put that string in `DATABASE_URL`: the Blueprint asks for it; on a service made by hand, add it in Render →
-   your service → **Environment** and deploy. The log shows `Database: PostgreSQL on aws-…pooler.supabase.com:5432/postgres`,
-   and the app creates its 26 tables by itself (see them in Supabase → **Table Editor**). Nothing to run in the SQL Editor.
-4. Sign in and open **Admin → Overview**. The **Database** card shows *Supabase (PostgreSQL) · Singapore*, 26 tables
-   and the round trip: a few milliseconds when both are in Singapore. (Much more means they are in different regions,
-   and every page waits for it.)
-5. Restarts, redeploys and sleeping no longer lose anything; staff even stay signed in.
+website is switched off (an empty hotel starts with it off). Staff always sign in at `/login`. Links in emails use
+that address unless *Website address* is set in Hotel settings. Render uses Node 24 here (from `engines` in `package.json`).
 
 Good to know:
-- **Wrong string?** The deploy log says what to fix (wrong password, placeholder left in, IPv6 direct address, unknown host).
-- **Free projects pause** after a week with no use at all, and are restored with one click in the Supabase dashboard.
-  A hotel that uses the system every day keeps it awake. The free plan has 500 MB, years of bookings for a small hotel.
-- **Backups:** the free plan has no automatic backups. **Admin → Overview → Download a backup** saves every table
-  in one file: a SQLite database the app can open as it is (`DB_PATH=<file> npm start`). On a computer with
-  `DATABASE_URL` in `.env`, `npm run backup` writes the same file to `backups/`. Both read one consistent snapshot, so
-  bookings made meanwhile can't half-appear. `npm run db:copy -- --from <file>.db --to "<empty database URL>"` puts a
-  backup back.
-- **Already have data in SQLite?** Copy it before the first start on Supabase (the database must be empty):
-  `npm run db:copy -- --from data/frontdesk.db --to "<DATABASE_URL>"`.
-- **Security:** the connection string contains the password, so keep it in Render's Environment only.
-  Every table has row level security switched on, so Supabase's public API keys can't read hotel data;
-  the app connects as the database owner.
-- If you ever want the tables before the first deploy, paste `server/db/schema.pg.sql` into the SQL Editor and run it.
+- **Backups:** free databases have none. **Admin → Overview → Download a backup** saves every table in one file:
+  a SQLite database the app can open as it is (`DB_PATH=<file> npm start`). On a computer with the database's
+  **External Database URL** in `.env` as `DATABASE_URL`, `npm run backup` writes the same file to `backups/`.
+  Both read one consistent snapshot, so bookings made meanwhile can't half-appear.
+  `npm run db:copy -- --from <file>.db --to "<empty database URL>"` puts a backup back.
+- **Already have data in SQLite?** Copy it before the first start (the database must be empty):
+  `npm run db:copy -- --from data/frontdesk.db --to "<External Database URL>"`.
+- **A wrong setting?** The deploy log says what to fix (wrong password, unknown host, the private `dpg-…` address
+  used from outside Render…).
+- **Security:** the database URL contains its password; Render keeps it in the service's Environment, never in Git.
+- **Without a database** the Database card and the start log warn in red that the data is in a temporary file.
+  (A paid instance can also keep the SQLite file on a **Disk**: mount it at `/var/data`, set `DB_PATH=/var/data/frontdesk.db`.)
+
+### Other PostgreSQL databases (Supabase, Neon…)
+
+`DATABASE_URL` takes any PostgreSQL 14+ connection string; remote servers are reached over TLS. To use one with the
+Blueprint, delete the `databases:` block and the `fromDatabase` entry from `render.yaml`, and set `DATABASE_URL` in
+the service's **Environment** instead.
+
+- **Supabase** (free plan: 500 MB, doesn't expire, pauses after a week without any use): create the project in
+  **Southeast Asia (Singapore)**, then **Connect → Session pooler** and copy the URI, replacing `[YOUR-PASSWORD]`.
+  Not *Direct connection*: it only works over IPv6, which Render doesn't have. Every table has row level security
+  switched on, so Supabase's public API keys can't read hotel data. If you want the tables before the first deploy,
+  paste `server/db/schema.pg.sql` into the SQL Editor and run it.
+- Keep the database in the same region as the app: every page asks it a dozen things or more.
 
 ### Going live (any Node host)
 
 - Run `npm ci --omit=dev && npm start` with `NODE_ENV=production`, `TRUST_PROXY=1` and HTTPS in front.
-- Keep the data somewhere that lasts: set `DATABASE_URL` to a PostgreSQL database (Supabase, Neon, your own),
+- Keep the data somewhere that lasts: set `DATABASE_URL` to a PostgreSQL database (Render, Supabase, Neon, your own),
   or give the app a **persistent disk** for `data/` and point `DB_PATH` at it.
 - Back up regularly: **Admin → Overview → Download a backup**, or `npm run backup`, which writes the same file to
   `backups/` (safe while the app runs; with `DATABASE_URL` it is a SQLite file with the same tables).
@@ -258,7 +258,7 @@ Good to know:
 npm test
 ```
 
-67 tests run against a fresh demo hotel. `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
+71 tests run against a fresh demo hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
 copy, nothing to install), and `TEST_DATABASE=postgres://user:pass@host/postgres npm test` on a real server.
 They cover:
 - sign-in, lockout, CSRF and redirect safety;
@@ -271,7 +271,8 @@ They cover:
 - password reset, reports and CSV safety;
 - database upgrades, and what a new database starts with on a live server;
 - PostgreSQL: the same tables and answers as SQLite, row level security, copying between the two;
-- the admin's database card and backup downloads (who may, and that the file holds every row).
+- the admin's database card (Render and Supabase recognised, the free-plan countdown) and backup downloads
+  (who may, and that the file holds every row); waiting for a database that is still starting.
 
 ## Project structure
 
@@ -280,7 +281,7 @@ server/
   index.js            start-up (creates and seeds the database on first run)
   app.js              Express app: security headers, sessions, routes, error pages
   config.js           environment settings
-  db/                 index.js (SQLite) and postgres.js (PostgreSQL / Supabase) behind one API; schema.sql + migrations/
+  db/                 index.js (SQLite) and postgres.js (PostgreSQL: Render, Supabase…) behind one API; schema.sql + migrations/
                       and schema.pg.sql (applied automatically); seed.js (demo or empty hotel), copy.js, backup.js, demo-data.json
   lib/                auth (passwords, sessions), security (CSP, CSRF, roles), forms, pricing, formatting, clock, activity log
   services/           business logic: reservations, rooms, guests, housekeeping, dashboard, stats, night audit, billing,
@@ -289,8 +290,8 @@ server/
   views/              EJS templates: staff pages (same markup as the original design), admin panel, guest website, printables
 assets/               CSS, browser JavaScript, fonts and images
 test/                 end-to-end tests (node:test)
-docs/                 SETUP-SUPABASE-RENDER.md: going live with Supabase and Render, step by step (Hinglish)
-render.yaml           Render Blueprint: one free web service, data in Supabase
+docs/                 SETUP-RENDER.md: going live on Render, step by step (Hinglish)
+render.yaml           Render Blueprint: the web service and its PostgreSQL database, connected
 ```
 
 ## Not included yet

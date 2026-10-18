@@ -31,6 +31,8 @@ describe('database card', () => {
     assert.match(page.text, sqlite() ? /<dt>Tables<\/dt><dd>25 · version 2<\/dd>/ : /<dt>Tables<\/dt><dd>26 · version 2<\/dd>/);
     assert.match(page.text, /<dt>Size<\/dt><dd>[\d.]+ (KB|MB)<\/dd>/);
     assert.equal(/<dt>Round trip<\/dt>/.test(page.text), !sqlite()); // only a database server has a network round trip
+    assert.equal(/<dt>Set up<\/dt><dd>\d{1,2} [A-Z][a-z]{2,3} \d{4}<\/dd>/.test(page.text), !sqlite()); // the day PostgreSQL was set up
+    assert.doesNotMatch(page.text, /free database/); // not a Render database
     assert.match(page.text, /<dt>Last backup<\/dt><dd>none yet<\/dd>/);
     assert.match(page.text, /<form class="form-actions" method="post" action="\/admin\/backup">/);
     assert.doesNotMatch(page.text, /temporary file/);
@@ -60,19 +62,58 @@ describe('database card', () => {
     assert.equal(system.temporaryFile(fake('sqlite'), {}), false);
   });
 
-  test('Supabase connections are recognised, with their region', () => {
-    assert.deepEqual(system.postgresHost('PostgreSQL on aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres'),
-      { host: 'aws-1-ap-southeast-1.pooler.supabase.com', supabase: true, region: 'Singapore' });
-    assert.deepEqual(system.postgresHost('PostgreSQL on aws-0-ap-south-1.pooler.supabase.com:5432/postgres'),
-      { host: 'aws-0-ap-south-1.pooler.supabase.com', supabase: true, region: 'Mumbai' });
-    assert.deepEqual(system.postgresHost('PostgreSQL on aws-0-xx-newplace-9.pooler.supabase.com:6543/postgres').region, 'xx-newplace-9');
-    assert.deepEqual(system.postgresHost('PostgreSQL on db.abcdefghijklmnop.supabase.co:5432/postgres'),
-      { host: 'db.abcdefghijklmnop.supabase.co', supabase: true, region: null });
-    assert.deepEqual(system.postgresHost('PostgreSQL on 127.0.0.1:54329/postgres'), { host: '127.0.0.1', supabase: false, region: null });
-    assert.deepEqual(system.postgresHost('PostgreSQL (embedded, in memory)'), { host: null, supabase: false, region: null });
+  test('Render and Supabase databases are recognised, with their region', () => {
+    const host = (label) => system.postgresHost(label);
+    assert.deepEqual(host('PostgreSQL on dpg-d3k9abc123def4567890-a:5432/frontdesk'),
+      { host: 'dpg-d3k9abc123def4567890-a', provider: 'render', region: null, privateNetwork: true }); // render.yaml's DATABASE_URL
+    assert.deepEqual(host('PostgreSQL on dpg-d3k9abc123def4567890-a.singapore-postgres.render.com:5432/frontdesk'),
+      { host: 'dpg-d3k9abc123def4567890-a.singapore-postgres.render.com', provider: 'render', region: 'Singapore', privateNetwork: false });
+    assert.deepEqual(host('PostgreSQL on aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres'),
+      { host: 'aws-1-ap-southeast-1.pooler.supabase.com', provider: 'supabase', region: 'Singapore', privateNetwork: false });
+    assert.equal(host('PostgreSQL on aws-0-ap-south-1.pooler.supabase.com:5432/postgres').region, 'Mumbai');
+    assert.equal(host('PostgreSQL on aws-0-xx-newplace-9.pooler.supabase.com:6543/postgres').region, 'xx-newplace-9');
+    assert.deepEqual(host('PostgreSQL on db.abcdefghijklmnop.supabase.co:5432/postgres'),
+      { host: 'db.abcdefghijklmnop.supabase.co', provider: 'supabase', region: null, privateNetwork: false });
+    assert.deepEqual(host('PostgreSQL on 127.0.0.1:54329/postgres'), { host: '127.0.0.1', provider: null, region: null, privateNetwork: false });
+    assert.deepEqual(host('PostgreSQL (embedded, in memory)'), { host: null, provider: null, region: null, privateNetwork: false });
     assert.equal(system.sizeText(300), '1 KB');
     assert.equal(system.sizeText(9.6 * 1024 * 1024), '9.6 MB');
     assert.equal(system.sizeText(1.5 * 1024 ** 3), '1.50 GB');
+  });
+
+  test('a free Render database: when it stops and is deleted, and when that becomes urgent', () => {
+    const plan = (today) => system.renderFreePlan('2026-09-20', today);
+    assert.deepEqual(plan('2026-09-24'), { stops: '20 Oct 2026', deleted: '3 Nov 2026', daysLeft: 26, urgent: false });
+    assert.deepEqual(plan('2026-10-13'), { stops: '20 Oct 2026', deleted: '3 Nov 2026', daysLeft: 7, urgent: true });
+    assert.equal(plan('2026-10-20').daysLeft, 0); // the last day
+    assert.equal(plan('2026-10-21'), null); // past it and still answering: it was upgraded
+    assert.equal(system.renderFreePlan(undefined, '2026-09-24'), null);
+    assert.equal(system.renderFreePlan('2026-09-20', ''), null);
+  });
+
+  test('on a Render database the card counts down the free plan', { skip: process.env.TEST_DATABASE ? false : 'needs PostgreSQL' }, async () => {
+    const created = hotel.db.get("SELECT value FROM app_meta WHERE key = 'created_at'").value;
+    assert.match(created, /^\d{4}-\d{2}-\d{2}$/); // written when the app first set the database up
+    const admin = hotel.client();
+    await admin.login();
+    const label = hotel.db.label;
+    hotel.db.label = 'PostgreSQL on dpg-d3k9abc123def4567890-a:5432/frontdesk'; // as render.yaml connects it
+    try {
+      hotel.db.run("UPDATE app_meta SET value = '2026-09-20' WHERE key = 'created_at'");
+      let page = await admin.get('/admin');
+      assert.match(page.text, /<p class="card__subtitle">Render PostgreSQL · private network<\/p>/);
+      assert.match(page.text, /<dt>Set up<\/dt><dd>20 Sept? 2026<\/dd>/);
+      assert.match(page.text, /<div class="notice"><svg[^]*?<strong>26 days left on Render’s free database, if it is still on the free plan\.<\/strong> It stops on 20 Oct 2026 and is deleted on 3 Nov 2026\./);
+      hotel.db.run("UPDATE app_meta SET value = '2026-08-27' WHERE key = 'created_at'");
+      page = await admin.get('/admin');
+      assert.match(page.text, /<div class="notice notice--error" role="alert"><svg[^]*?<strong>2 days left on Render’s free database/);
+      hotel.db.run("UPDATE app_meta SET value = '2026-08-01' WHERE key = 'created_at'");
+      page = await admin.get('/admin');
+      assert.doesNotMatch(page.text, /free database/); // still answering after the stop date: it was upgraded
+    } finally {
+      hotel.db.label = label;
+      hotel.db.run("UPDATE app_meta SET value = ? WHERE key = 'created_at'", created);
+    }
   });
 });
 

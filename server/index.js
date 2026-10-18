@@ -1,19 +1,20 @@
 'use strict';
 /* Starts the Frontdesk server. */
 const config = require('./config');
-const { open } = require('./db');
+const { openWhenReady } = require('./db');
 const seed = require('./db/seed');
 const auth = require('./lib/auth');
 const { temporaryFile } = require('./services/system');
 const { createApp } = require('./app');
 
 async function main() {
-  const db = open(config.databaseUrl || config.dbPath);
+  // On Render, give a database that is still starting about a minute (see openWhenReady).
+  const db = await openWhenReady(config.databaseUrl || config.dbPath, { attempts: process.env.RENDER ? 7 : 1 });
   console.log(`Database: ${db.label}`);
   if (temporaryFile(db)) {
     console.warn('WARNING: DATABASE_URL is not set, so the data is in a file on this server. Render’s free plan deletes that file '
-      + 'on every restart and redeploy and after 15 minutes without visitors. In Render → Environment, add DATABASE_URL with your '
-      + 'Supabase connection string (Supabase → Connect → Session pooler).');
+      + 'on every restart and redeploy and after 15 minutes without visitors. Connect a PostgreSQL database through DATABASE_URL: '
+      + 'the Blueprint in render.yaml creates one and connects it for you (Render → New → Blueprint).');
   }
   if (seed.isEmpty(db)) console.log(startMessage(await seed.firstRun(db)));
   auth.purgeExpired(db);

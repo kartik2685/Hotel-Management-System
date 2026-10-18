@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { open } = require('../server/db');
+const { open, openWhenReady } = require('../server/db');
 const postgres = require('../server/db/postgres');
 const functions = require('../server/db/functions');
 const TABLES = require('../server/db/tables');
@@ -44,7 +44,29 @@ describe('connecting', () => {
     assert.match(postgres.hintFor({ code: '28P01', message: 'password authentication failed for user "postgres"' }), /Reset database password/);
     assert.match(postgres.hintFor({ code: 'XX000', message: 'Tenant or user not found' }), /postgres\.<project-ref>/);
     assert.match(postgres.hintFor({ code: 'ENOTFOUND' }), /host name was not found/);
+    // Render's private address used from outside Render (e.g. npm run backup on a laptop)
+    assert.match(postgres.hintFor({ code: 'ENOTFOUND', message: 'getaddrinfo ENOTFOUND dpg-d3k9abc123def4567890-a' }), /External Database URL/);
+    assert.match(postgres.hintFor({ code: 'ENOTFOUND', message: 'getaddrinfo ENOTFOUND dpg-d3k9abc123def4567890-a.singapore-postgres.render.com' }), /host name was not found/);
+    assert.match(postgres.hintFor({ code: 'ETIMEDOUT' }), /free Render database stops 30 days/);
     assert.equal(postgres.hintFor({ code: '23505', message: 'duplicate key' }), null);
+  });
+
+  test('Render’s own database: the private address render.yaml connects is encrypted too', () => {
+    const config = postgres.connectionConfig('postgresql://frontdesk:Abc123xyz@dpg-d3k9abc123def4567890-a:5432/frontdesk');
+    assert.deepEqual(config.ssl, { rejectUnauthorized: false }); // Render's private network offers TLS with its own certificate
+    assert.equal(postgres.describe('postgresql://frontdesk:Abc123xyz@dpg-d3k9abc123def4567890-a:5432/frontdesk'), 'PostgreSQL on dpg-d3k9abc123def4567890-a:5432/frontdesk');
+  });
+
+  test('a database that is still starting is tried again; a wrong setting fails at once', async () => {
+    const lines = [];
+    const log = (line) => lines.push(line);
+    await assert.rejects(openWhenReady('postgresql://u:p@127.0.0.1:1/db', { attempts: 3, waitMs: 5, log }),
+      (error) => error.connecting === true && error.code === 'ECONNREFUSED');
+    assert.equal(lines.length, 2);
+    assert.match(lines[0], /^The database is not answering yet \(ECONNREFUSED\); trying again in 0 seconds \(attempt 2 of 3\)\.$/);
+    lines.length = 0;
+    await assert.rejects(openWhenReady('postgresql://u:[YOUR-PASSWORD]@127.0.0.1:1/db', { attempts: 3, waitMs: 5, log }), /placeholder/);
+    assert.equal(lines.length, 0); // nothing to wait for
   });
 });
 
