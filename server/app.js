@@ -69,10 +69,17 @@ function createApp(db) {
   app.use(require('./routes/bookings'));
   app.use(require('./routes/pages'));
 
+  /* Where an error page's button goes: the guest website, the person's start page, or sign-in. */
+  const startFor = (req) => {
+    if (req.path.startsWith('/hotel')) return { href: '/hotel', label: 'Back to the hotel website' };
+    if (req.user) return { href: security.can(req.user, 'frontOffice') ? '/dashboard' : '/housekeeping', label: 'Back to Frontdesk' };
+    return { href: '/login', label: 'Go to sign in' };
+  };
+
   app.use((req, res) => {
     res.status(404);
     if (req.path.startsWith('/api/')) return res.json({ error: 'Not found.' });
-    res.render('pages/error', { title: 'Page not found', message: 'That page doesn’t exist. Check the address or go back to the dashboard.', status: 404 });
+    res.render('pages/error', { title: 'Page not found', message: 'That page doesn’t exist. Check the address or use the button below.', status: 404, start: startFor(req) });
   });
 
   // eslint-disable-next-line no-unused-vars
@@ -82,7 +89,7 @@ function createApp(db) {
     const message = status >= 500 ? 'Something went wrong on our side. The error was logged; please try again.' : error.message;
     res.status(status);
     if (req.path.startsWith('/api/') || (req.get('accept') || '').includes('application/json')) return res.json({ error: message, field: error.field });
-    res.render('pages/error', { title: status === 403 ? 'No access' : 'Something went wrong', message, status });
+    res.render('pages/error', { title: status === 403 ? 'No access' : 'Something went wrong', message, status, start: startFor(req) });
   });
 
   return app;

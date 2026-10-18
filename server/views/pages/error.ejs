@@ -15,14 +15,14 @@
 <body class="auth-page error-page">
 <%- include('../partials/sprite') %>
   <main id="main" class="error-page__card card" tabindex="-1">
-    <a class="logo" href="/" aria-label="Frontdesk, go to the start page">
+    <a class="logo" href="<%= locals.start ? start.href : '/login' %>" aria-label="Frontdesk, go to the start page">
       <span class="logo__mark"><%- icon('cloche') %></span>
       <span class="logo__word">Frontdesk</span>
     </a>
     <p class="kicker">Error <%= status %></p>
     <h1 class="page-header__title"><%= title %></h1>
     <p class="page-header__lead"><%= message %></p>
-    <p class="error-page__actions"><a class="button button--primary" href="/">Go to the start page</a></p>
+    <p class="error-page__actions"><a class="button button--primary" href="<%= locals.start ? start.href : '/login' %>"><%= locals.start ? start.label : 'Go to sign in' %></a></p>
   </main>
 </body>
 </html>

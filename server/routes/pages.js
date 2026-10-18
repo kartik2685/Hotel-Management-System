@@ -17,6 +17,17 @@ const router = express.Router();
 const homeFor = (user) => (can(user, 'frontOffice') ? '/dashboard' : '/housekeeping');
 
 router.get('/', (req, res) => {
+  // Inside our own preview frame "/" means the app, never a second preview bar.
+  const fromOwnPage = (() => {
+    try {
+      return new URL(req.get('referer') || '').host === req.get('host');
+    } catch {
+      return false;
+    }
+  })();
+  if (config.previewBar && req.get('sec-fetch-dest') === 'iframe' && fromOwnPage) {
+    return res.redirect(req.user ? homeFor(req.user) : req.settings.site_enabled ? '/hotel' : '/login');
+  }
   if (config.previewBar) {
     // Development preview bar only: it uses an inline script and frames the app from the same origin.
     res.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-src 'self'");

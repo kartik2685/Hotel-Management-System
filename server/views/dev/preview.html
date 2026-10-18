@@ -47,6 +47,15 @@
  * narrower than that width, the page is scaled down to fit instead of reflowing,
  * so a small preview panel still shows the full desktop layout. */
 (function () {
+  // Opened inside our own preview frame (e.g. a link to "/"): show the app, not a second bar.
+  try {
+    if (window.parent !== window && window.parent.document.getElementById('site')) {
+      window.location.replace('/dashboard');
+      return;
+    }
+  } catch (e) {
+    /* framed by another site, such as a preview panel: keep the bar */
+  }
   var DESKTOP_WIDTH = 1366;   // a common laptop screen
   var stage = document.getElementById('stage');
   var frame = document.getElementById('frame');
