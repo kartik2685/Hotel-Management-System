@@ -60,7 +60,7 @@ function row(r) {
 }
 
 function list(db, bd) {
-  return db.all(`${SELECT} WHERE ${LIST_WHERE.replace(/r\./g, 'r.')} ORDER BY r.arrival, rm.number IS NULL, CAST(rm.number AS INTEGER), r.confirmation`, ...listArgs(bd)).map(row);
+  return db.all(`${SELECT} WHERE ${LIST_WHERE.replace(/r\./g, 'r.')} ORDER BY r.arrival, rm.number IS NULL, leading_int(rm.number), r.confirmation`, ...listArgs(bd)).map(row);
 }
 
 function byConfirmation(db, confirmation) {
@@ -70,9 +70,11 @@ function byConfirmation(db, confirmation) {
 
 /* Stays (completed or in house) for a guest, plus history imported from before the system. */
 function guestStays(db, guestId, excludeId = 0) {
-  const g = db.get('SELECT prior_stays FROM guests WHERE id = ?', guestId);
-  const n = db.get("SELECT COUNT(*) AS n FROM reservations WHERE guest_id = ? AND id <> ? AND status IN ('checked_in', 'checked_out')", guestId, excludeId).n;
-  return (g ? g.prior_stays : 0) + n;
+  return db.get(
+    `SELECT COALESCE((SELECT prior_stays FROM guests WHERE id = ?), 0)
+          + (SELECT COUNT(*) FROM reservations WHERE guest_id = ? AND id <> ? AND status IN ('checked_in', 'checked_out')) AS n`,
+    guestId, guestId, excludeId,
+  ).n;
 }
 
 /* Rooms of a type that are free for every night of [arrival, departure). */
@@ -82,7 +84,7 @@ function freeRooms(db, typeId, arrival, departure, ignoreReservationId = 0) {
       WHERE rm.active = 1 AND rm.room_type_id = ?
         AND NOT EXISTS (SELECT 1 FROM reservations r WHERE r.room_id = rm.id AND r.id <> ? AND r.status IN ${HOLDS_ROOM} AND r.arrival < ? AND r.departure > ?)
         AND NOT EXISTS (SELECT 1 FROM room_blocks b WHERE b.room_id = rm.id AND b.start_date < ? AND b.end_date > ?)
-      ORDER BY CAST(rm.number AS INTEGER), rm.number`,
+      ORDER BY leading_int(rm.number), rm.number`,
     typeId, ignoreReservationId, departure, arrival, departure, arrival,
   );
 }
@@ -106,7 +108,7 @@ function typeAvailable(db, typeId, arrival, departure, ignoreReservationId = 0) 
 function nextConfirmation(db, settings) {
   const prefix = settings.confirmation_prefix || 'HLW';
   const row = db.get(
-    "SELECT MAX(CAST(SUBSTR(confirmation, LENGTH(?) + 2) AS INTEGER)) AS n FROM reservations WHERE confirmation LIKE ? || '-%'", prefix, prefix,
+    "SELECT MAX(leading_int(SUBSTR(confirmation, LENGTH(CAST(? AS TEXT)) + 2))) AS n FROM reservations WHERE confirmation LIKE CAST(? AS TEXT) || '-%'", prefix, prefix,
   );
   return `${prefix}-${Math.max(Number(row.n) || 0, 40000) + 1}`;
 }
@@ -136,14 +138,14 @@ function readBooking(db, input, bd) {
   if (!Number.isInteger(v.children) || v.children < 0 || v.children > 12) throw new BookingError('Check the number of children.', 'children');
   if (v.adults + v.children > type.max_guests) throw new BookingError(`A ${type.name} sleeps up to ${type.max_guests} guests.`, 'type');
   const plan = db.get('SELECT * FROM rate_plans WHERE code = ? AND active = 1 AND bookable = 1', v.plan || 'BAR')
-    || db.get('SELECT * FROM rate_plans WHERE active = 1 AND bookable = 1 ORDER BY sort LIMIT 1');
+    || db.get('SELECT * FROM rate_plans WHERE active = 1 AND bookable = 1 ORDER BY sort, id LIMIT 1');
   if (!plan) throw new BookingError('Choose a rate plan.', 'plan');
   if (!v.first) throw new BookingError('Enter the guest’s first name.', 'first');
   if (!v.last) throw new BookingError('Enter the guest’s last name.', 'last');
   if (!v.email) throw new BookingError('Enter an email for the confirmation.', 'email');
   if (!isEmail(v.email)) throw new BookingError('That email doesn’t look right.', 'email');
   const source = db.get('SELECT * FROM sources WHERE name = ? AND active = 1', v.source)
-    || db.get('SELECT * FROM sources WHERE active = 1 AND form_sort IS NOT NULL ORDER BY form_sort LIMIT 1');
+    || db.get('SELECT * FROM sources WHERE active = 1 AND form_sort IS NOT NULL ORDER BY form_sort, id LIMIT 1');
   const extras = v.extras.length
     ? db.all(`SELECT * FROM extras WHERE active = 1 AND code IN (${v.extras.map(() => '?').join(',')})`, ...v.extras)
     : [];
@@ -166,12 +168,11 @@ function insertBooking(db, req, v, { createdBy = null, actor, online = false } =
       throw new BookingError(`No ${v.type.name} is free for those dates. Try other dates or another room type.`, 'type');
     }
     const room = freeRooms(db, v.type.id, v.arrival, v.departure)[0] || null;
-    let guest = db.get('SELECT * FROM guests WHERE email = ? COLLATE NOCASE ORDER BY id LIMIT 1', v.email);
+    let guest = db.get('SELECT * FROM guests WHERE lower(email) = lower(?) ORDER BY id LIMIT 1', v.email);
     const stamp = clock.stamp(settings.timezone);
     if (!guest) {
-      const r = db.run('INSERT INTO guests (first_name, last_name, email, phone, nationality, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      guest = db.get('INSERT INTO guests (first_name, last_name, email, phone, nationality, created_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING *',
         v.first, v.last, v.email, v.phone || null, v.nationality || null, stamp);
-      guest = db.get('SELECT * FROM guests WHERE id = ?', r.lastInsertRowid);
     } else {
       if (v.phone && !guest.phone) db.run('UPDATE guests SET phone = ?, updated_at = ? WHERE id = ?', v.phone, stamp, guest.id);
       if (v.nationality && !guest.nationality) db.run('UPDATE guests SET nationality = ?, updated_at = ? WHERE id = ?', v.nationality, stamp, guest.id);
@@ -179,16 +180,16 @@ function insertBooking(db, req, v, { createdBy = null, actor, online = false } =
     const tags = guestStays(db, guest.id) === 0 ? ['first-stay'] : [];
     const q = pricing.quote({ settings, baseCents: v.type.base_rate_cents, plan: v.plan, nights: v.nights, extras: v.extras });
     const confirmation = nextConfirmation(db, settings);
-    const result = db.run(
+    const { id: reservationId } = db.get(
       `INSERT INTO reservations (confirmation, guest_id, room_type_id, room_id, arrival, departure, adults, children, rate_plan_id, nightly_rate_cents,
          source_id, status, tags, requests, room_total_cents, tax_cents, extras_cents, total_cents, created_by, created_at, booked_online)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
       confirmation, guest.id, v.type.id, room ? room.id : null, v.arrival, v.departure, v.adults, v.children, v.plan.id, q.rate,
       v.source ? v.source.id : null, JSON.stringify(tags), v.requests, q.roomTotal, q.tax, q.extras, q.total, createdBy, stamp, online ? 1 : 0,
     );
     for (const x of v.extras) {
       db.run('INSERT INTO reservation_extras (reservation_id, extra_id, amount_cents) VALUES (?, ?, ?)',
-        result.lastInsertRowid, x.id, x.per === 'night' ? x.price_cents * v.nights : x.price_cents);
+        reservationId, x.id, x.per === 'night' ? x.price_cents * v.nights : x.price_cents);
     }
     const summary = `${v.first} ${v.last} · ${v.type.name} · ${f.formatDay(v.arrival)} → ${f.formatDay(v.departure)}`;
     activity.log(db, req, 'reservation.create', `Booked ${confirmation}${online ? ' online' : ''}: ${summary}`, actor);
@@ -298,7 +299,7 @@ function bookingForm(db, settings, bd) {
   const quote = pricing.quote({ settings, baseCents: type.base_rate_cents, plan: plans[0], nights: 2 });
   return {
     types, type, plans, quote,
-    sources: db.all('SELECT * FROM sources WHERE active = 1 AND form_sort IS NOT NULL ORDER BY form_sort'),
+    sources: db.all('SELECT * FROM sources WHERE active = 1 AND form_sort IS NOT NULL ORDER BY form_sort, id'),
     extras: db.all('SELECT * FROM extras WHERE active = 1 ORDER BY sort, name'),
     arrival: bd, departure: f.addDays(bd, 2), minDeparture: f.addDays(bd, 1),
     maxGuests: Math.max(1, ...types.map((t) => t.max_guests)),
@@ -379,7 +380,7 @@ function detail(db, confirmation, bd) {
       checkOut: b.status === 'checked_in',
       cancel: ['confirmed', 'tentative'].includes(b.status),
     },
-    log: db.all('SELECT * FROM activity_log WHERE summary LIKE ? ORDER BY id DESC LIMIT 20', `%${b.confirmation}%`),
+    log: db.all('SELECT * FROM activity_log WHERE lower(summary) LIKE lower(?) ORDER BY id DESC LIMIT 20', `%${b.confirmation}%`),
   };
 }
 

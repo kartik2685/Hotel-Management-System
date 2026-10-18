@@ -105,7 +105,7 @@ const validZone = (zone) => {
 };
 
 router.get('/settings', requireAbility('administer'), (req, res) => {
-  render(req, res, 'settings', 'settings', { heading: 'Hotel settings', lead: 'Name, money and tax, times and the business date.', s: req.settings, types: req.db.all('SELECT code, name FROM room_types WHERE active = 1 ORDER BY sort'), timezones: TIMEZONES, countries: registration.COUNTRIES });
+  render(req, res, 'settings', 'settings', { heading: 'Hotel settings', lead: 'Name, money and tax, times and the business date.', s: req.settings, types: req.db.all('SELECT code, name FROM room_types WHERE active = 1 ORDER BY sort, id'), timezones: TIMEZONES, countries: registration.COUNTRIES });
 });
 
 router.post('/settings', requireAbility('administer'), (req, res) => {
@@ -146,7 +146,7 @@ router.post('/settings', requireAbility('administer'), (req, res) => {
   if (!form.ok) {
     return render(req, res, 'settings', 'settings', {
       heading: 'Hotel settings', lead: 'Name, money and tax, times and the business date.', s: { ...req.settings, ...form.values, shifts }, errors: form.errors,
-      types: db.all('SELECT code, name FROM room_types WHERE active = 1 ORDER BY sort'), timezones: TIMEZONES, countries: registration.COUNTRIES,
+      types: db.all('SELECT code, name FROM room_types WHERE active = 1 ORDER BY sort, id'), timezones: TIMEZONES, countries: registration.COUNTRIES,
     }, 422);
   }
   settingsService.save(db, { ...v, shifts, business_date: v.business_date || req.settings.business_date });
@@ -209,10 +209,10 @@ function roomsPage(req, res, extra = {}, status = 200) {
     `SELECT rm.*, rt.name AS type_name, u.name AS attendant_name,
             (SELECT reason || ' until ' || end_date FROM room_blocks b WHERE b.room_id = rm.id AND b.start_date <= ? AND b.end_date > ? LIMIT 1) AS block
        FROM rooms rm JOIN room_types rt ON rt.id = rm.room_type_id LEFT JOIN users u ON u.id = rm.attendant_id
-      ORDER BY rm.floor, CAST(rm.number AS INTEGER), rm.number`, bd, bd,
+      ORDER BY rm.floor, leading_int(rm.number), rm.number`, bd, bd,
   );
   const blocks = db.all(
-    `SELECT b.*, rm.number FROM room_blocks b JOIN rooms rm ON rm.id = b.room_id WHERE b.end_date > ? ORDER BY b.start_date, CAST(rm.number AS INTEGER)`, bd,
+    `SELECT b.*, rm.number FROM room_blocks b JOIN rooms rm ON rm.id = b.room_id WHERE b.end_date > ? ORDER BY b.start_date, leading_int(rm.number), b.id`, bd,
   ).map((b) => ({ ...b, from: f.formatDay(b.start_date), until: f.formatDay(b.end_date), current: b.start_date <= bd }));
   const editing = extra.editing !== undefined ? extra.editing : (req.query.edit ? rooms.find((r) => r.id === toInt(req.query.edit)) : null);
   render(req, res, 'rooms', 'rooms', {
@@ -375,7 +375,7 @@ router.post(['/sources', '/sources/:id'], (req, res) => {
     formSort: form.int('form_sort', { label: 'Form position', min: 1, max: 99, required: false }),
     active: form.bool('active'),
   };
-  if (v.name && db.get('SELECT 1 FROM sources WHERE name = ? COLLATE NOCASE AND id <> ?', v.name, id || 0)) form.fail('name', 'This source already exists.');
+  if (v.name && db.get('SELECT 1 FROM sources WHERE lower(name) = lower(?) AND id <> ?', v.name, id || 0)) form.fail('name', 'This source already exists.');
   if (!form.ok) return sourcesPage(req, res, { errors: form.errors, values: form.values, editing: id ? { id } : null }, 422);
   if (id) db.run('UPDATE sources SET name = ?, kind = ?, sort = ?, form_sort = ?, active = ? WHERE id = ?', v.name, v.kind, v.sort, v.formSort, v.active ? 1 : 0, id);
   else db.run('INSERT INTO sources (name, kind, sort, form_sort, active) VALUES (?, ?, ?, ?, ?)', v.name, v.kind, v.sort, v.formSort, v.active ? 1 : 0);
@@ -420,7 +420,7 @@ router.post(['/staff', '/staff/:id'], requireAbility('administer'), async (req, 
     const password = String(req.body.password || '');
     if (!id && password.length < 8) form.fail('password', 'Set a temporary password of at least 8 characters.');
     if (password && (password.length < 8 || password.length > 200)) form.fail('password', 'Use 8 to 200 characters.');
-    if (v.email && db.get('SELECT 1 FROM users WHERE email = ? AND id <> ?', v.email, id || 0)) form.fail('email', 'Another account already uses this email.');
+    if (v.email && db.get('SELECT 1 FROM users WHERE lower(email) = lower(?) AND id <> ?', v.email, id || 0)) form.fail('email', 'Another account already uses this email.');
     if (existing && existing.id === req.user.id && (!v.active || v.role !== 'admin')) form.fail('role', 'You can’t remove your own admin access or deactivate yourself.');
     const otherAdmins = db.get("SELECT COUNT(*) AS n FROM users WHERE role = 'admin' AND active = 1 AND id <> ?", id || 0).n;
     if (existing && existing.role === 'admin' && (v.role !== 'admin' || !v.active) && otherAdmins === 0) form.fail('role', 'Keep at least one active admin.');
@@ -454,8 +454,8 @@ router.get('/guests', (req, res) => {
   const guests = db.all(
     `SELECT g.*, (SELECT COUNT(*) FROM reservations r WHERE r.guest_id = g.id AND r.status IN ('checked_in', 'checked_out')) + g.prior_stays AS stays,
             (SELECT MAX(arrival) FROM reservations r WHERE r.guest_id = g.id AND r.status <> 'cancelled') AS last_arrival
-       FROM guests g ${q ? "WHERE (g.first_name || ' ' || g.last_name) LIKE ? OR g.email LIKE ? OR g.phone LIKE ?" : ''}
-      ORDER BY g.vip DESC, last_arrival DESC LIMIT 100`, ...(q ? [like, like, like] : []),
+       FROM guests g ${q ? "WHERE lower(g.first_name || ' ' || g.last_name) LIKE lower(?) OR lower(g.email) LIKE lower(?) OR lower(g.phone) LIKE lower(?)" : ''}
+      ORDER BY g.vip DESC, last_arrival DESC NULLS LAST, g.id LIMIT 100`, ...(q ? [like, like, like] : []),
   );
   render(req, res, 'guests', 'guests', { heading: 'Guests', lead: 'Search every guest profile. Open one to change contact details, preferences or notes.', guests, q });
 });
@@ -489,7 +489,7 @@ function invoiceRows(db, q) {
   return db.all(
     `SELECT i.id, i.number, i.status, i.issued_at, i.total_cents, r.confirmation, g.first_name || ' ' || g.last_name AS guest
        FROM invoices i JOIN reservations r ON r.id = i.reservation_id JOIN guests g ON g.id = r.guest_id
-      ${q ? "WHERE i.number LIKE ? OR r.confirmation LIKE ? OR (g.first_name || ' ' || g.last_name) LIKE ?" : ''}
+      ${q ? "WHERE lower(i.number) LIKE lower(?) OR lower(r.confirmation) LIKE lower(?) OR lower(g.first_name || ' ' || g.last_name) LIKE lower(?)" : ''}
       ORDER BY i.id DESC LIMIT 500`, ...(q ? [like, like, like] : []),
   );
 }
@@ -520,9 +520,11 @@ function reportData(db, query) {
   if (from > to) from = to;
   if (f.daysBetween(from, to) > 366) from = f.addDays(to, -366);
   const days = [];
+  const closedDays = stats.days(db, from, to);
+  const liveNights = stats.nights(db, from, to);
   for (let d = from; d <= to; d = f.addDays(d, 1)) {
-    const closed = stats.day(db, d);
-    const n = closed || stats.night(db, d);
+    const closed = closedDays.get(d) || null;
+    const n = closed || liveNights.get(d);
     days.push({ date: d, closed: Boolean(closed), sold: n.sold, rooms: n.rooms, revenue: n.revenue, adr: Math.round(n.adr), revpar: Math.round(n.revpar), occupancy: f.pct1(n.sold, n.rooms) });
   }
   const sum = (k) => days.reduce((a, x) => a + x[k], 0);
@@ -532,9 +534,9 @@ function reportData(db, query) {
   totals.occupancy = f.pct1(totals.sold, totals.rooms);
   const outlets = db.all("SELECT outlet, SUM(amount_cents) AS total FROM revenue WHERE date >= ? AND date <= ? GROUP BY outlet", from, to);
   const sources = db.all(
-    `SELECT COALESCE(s.name, 'Unknown') AS source, COUNT(*) AS bookings, SUM(julianday(r.departure) - julianday(r.arrival)) AS nights, SUM(r.total_cents) AS revenue
+    `SELECT COALESCE(s.name, 'Unknown') AS source, COUNT(*) AS bookings, SUM(days_between(r.arrival, r.departure)) AS nights, SUM(r.total_cents) AS revenue
        FROM reservations r LEFT JOIN sources s ON s.id = r.source_id
-      WHERE r.arrival >= ? AND r.arrival <= ? AND r.status NOT IN ('cancelled', 'no_show') GROUP BY 1 ORDER BY revenue DESC`, from, to,
+      WHERE r.arrival >= ? AND r.arrival <= ? AND r.status NOT IN ('cancelled', 'no_show') GROUP BY 1 ORDER BY revenue DESC, 1`, from, to,
   );
   const cancellations = db.get("SELECT COUNT(*) AS n FROM reservations WHERE arrival >= ? AND arrival <= ? AND status IN ('cancelled', 'no_show')", from, to).n;
   return { from, to, days, totals, outlets, sources, cancellations };

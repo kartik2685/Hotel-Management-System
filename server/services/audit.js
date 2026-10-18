@@ -17,8 +17,8 @@ function summary(db) {
   return {
     bd, day: f.formatDay(bd), next: f.formatDay(f.addDays(bd, 1)), mode: settings.business_date_mode,
     closed: Boolean(db.get('SELECT 1 FROM daily_stats WHERE date = ?', bd)),
-    expected: db.all(`${STAY} WHERE r.status = 'confirmed' AND r.arrival <= ? ORDER BY r.eta`, bd),
-    dueOut: db.all(`${STAY} WHERE r.status = 'checked_in' AND r.departure <= ? ORDER BY rm.number`, bd),
+    expected: db.all(`${STAY} WHERE r.status = 'confirmed' AND r.arrival <= ? ORDER BY r.eta NULLS FIRST, r.id`, bd),
+    dueOut: db.all(`${STAY} WHERE r.status = 'checked_in' AND r.departure <= ? ORDER BY rm.number NULLS FIRST, r.id`, bd),
     night: { ...night, occupancyText: f.pct1(night.sold, night.rooms), adrText: f.money(Math.round(night.adr)), revparText: f.money(Math.round(night.revpar)), revenueText: f.money(night.revenue) },
     fnb: outlet('fnb'), spa: outlet('spa'),
     tasksToday: db.get('SELECT COUNT(*) AS n FROM housekeeping_tasks WHERE task_date = ?', bd).n,

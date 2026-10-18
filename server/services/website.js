@@ -137,7 +137,7 @@ function create(db, req, body) {
   else if (o.left < 1) form.fail('stay', `The last ${o.type.name} for those dates has just gone. Please choose another room.`);
   if (!v.terms) form.fail('terms', 'Please accept the hotel policies to book.');
   if (!form.ok) throw new reservations.FormError(form.errors, form.values);
-  const source = db.get("SELECT * FROM sources WHERE name = 'Website' AND active = 1") || db.get("SELECT * FROM sources WHERE kind = 'direct' AND active = 1 ORDER BY sort LIMIT 1");
+  const source = db.get("SELECT * FROM sources WHERE name = 'Website' AND active = 1") || db.get("SELECT * FROM sources WHERE kind = 'direct' AND active = 1 ORDER BY sort, id LIMIT 1");
   const booking = reservations.insertBooking(db, req, {
     arrival: o.stay.arrival, departure: o.stay.departure, nights: o.stay.nights, type: o.type, plan: o.plan, adults: o.stay.adults, children: o.stay.children,
     first: v.first, last: v.last, email: v.email, phone: v.phone, nationality: v.nationality, requests: v.requests, source, extras,

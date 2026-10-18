@@ -15,7 +15,7 @@ function tasksFor(db, bd) {
   );
   const leaving = new Set(db.all("SELECT room_id FROM reservations WHERE status = 'checked_in' AND departure <= ? AND room_id IS NOT NULL", bd).map((r) => r.room_id));
   const arriving = new Map();
-  for (const r of db.all("SELECT room_id, eta FROM reservations WHERE status = 'confirmed' AND arrival = ? AND room_id IS NOT NULL ORDER BY eta", bd)) {
+  for (const r of db.all("SELECT room_id, eta FROM reservations WHERE status = 'confirmed' AND arrival = ? AND room_id IS NOT NULL ORDER BY eta NULLS FIRST, id", bd)) {
     if (!arriving.has(r.room_id)) arriving.set(r.room_id, r);
   }
   const perRoom = {};

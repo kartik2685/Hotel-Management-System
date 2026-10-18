@@ -2,12 +2,8 @@
 /* What a new database starts with when the server starts, and what a live server never shows. */
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const os = require('node:os');
-const path = require('node:path');
 
-const { startHotel } = require('./helpers');
-const { open } = require('../server/db');
+const { startHotel, freshDatabase } = require('./helpers');
 const seed = require('../server/db/seed');
 const settingsService = require('../server/services/settings');
 const { verifyPassword } = require('../server/lib/auth');
@@ -15,8 +11,7 @@ const config = require('../server/config');
 
 /* A fresh, empty database for one call of firstRun. */
 async function firstRun(env) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hms-first-'));
-  const db = open(path.join(dir, 'first.db'));
+  const { db, drop } = freshDatabase();
   settingsService.reset();
   try {
     const start = await seed.firstRun(db, env);
@@ -24,9 +19,8 @@ async function firstRun(env) {
     const hotel = JSON.parse(db.get("SELECT value FROM settings WHERE key = 'hotel_name'").value);
     return { start, users, hotel };
   } finally {
-    db.close();
+    drop();
     settingsService.reset();
-    fs.rmSync(dir, { recursive: true, force: true });
   }
 }
 

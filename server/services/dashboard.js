@@ -2,7 +2,6 @@
 /* Everything the dashboard shows, computed from the database. */
 const f = require('../lib/format');
 const stats = require('./stats');
-const { guestStays } = require('./reservations');
 
 const CURRENCY_NAMES = { USD: 'US dollars', INR: 'Indian rupees', EUR: 'euros', GBP: 'pounds sterling', AED: 'UAE dirhams', CAD: 'Canadian dollars', AUD: 'Australian dollars' };
 const greeting = (time) => {
@@ -19,16 +18,17 @@ function build(db, shell, user) {
 
   // ---- arrivals
   const arrivals = db.all(
-    `SELECT r.*, g.first_name, g.last_name, g.vip, g.corporate, rt.name AS type_name, rm.number AS room_number, rm.hk_status, rp.name AS plan_name
+    `SELECT r.*, g.first_name, g.last_name, g.vip, g.corporate, rt.name AS type_name, rm.number AS room_number, rm.hk_status, rp.name AS plan_name,
+            g.prior_stays + (SELECT COUNT(*) FROM reservations x WHERE x.guest_id = r.guest_id AND x.id <> r.id AND x.status IN ('checked_in', 'checked_out')) AS guest_stays
        FROM reservations r JOIN guests g ON g.id = r.guest_id JOIN room_types rt ON rt.id = r.room_type_id
        LEFT JOIN rooms rm ON rm.id = r.room_id LEFT JOIN rate_plans rp ON rp.id = r.rate_plan_id
-      WHERE r.arrival = ? AND r.status IN ('confirmed', 'checked_in')`, bd,
+      WHERE r.arrival = ? AND r.status IN ('confirmed', 'checked_in') ORDER BY r.id`, bd,
   ).map((r) => {
     const name = `${r.first_name} ${r.last_name}`;
     const tags = JSON.parse(r.tags || '[]');
     const chips = [];
     if (r.vip) chips.push({ cls: 'chip chip--gold', text: 'VIP' });
-    if (!r.corporate && guestStays(db, r.guest_id, r.id) > 0) chips.push({ cls: 'chip', text: 'Returning' });
+    if (!r.corporate && r.guest_stays > 0) chips.push({ cls: 'chip', text: 'Returning' });
     if (tags.includes('first-stay')) chips.push({ cls: 'chip', text: 'First stay' });
     if (tags.includes('early')) chips.push({ cls: 'chip chip--blue', text: 'Early arrival' });
     if (tags.includes('late')) chips.push({ cls: 'chip chip--blue', text: 'Late arrival' });
@@ -51,7 +51,7 @@ function build(db, shell, user) {
   const departures = db.all(
     `SELECT r.*, g.first_name, g.last_name, rt.name AS type_name, rm.number AS room_number
        FROM reservations r JOIN guests g ON g.id = r.guest_id JOIN room_types rt ON rt.id = r.room_type_id LEFT JOIN rooms rm ON rm.id = r.room_id
-      WHERE r.departure = ? AND r.status IN ('checked_in', 'checked_out')`, bd,
+      WHERE r.departure = ? AND r.status IN ('checked_in', 'checked_out') ORDER BY r.id`, bd,
   ).map((r) => ({
     due: r.status === 'checked_in', room: r.room_number || '—', name: `${r.first_name} ${r.last_name}`,
     sub: `${r.type_name} · ${f.plural(f.daysBetween(r.arrival, r.departure), 'night', 'nights')}`,

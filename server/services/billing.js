@@ -151,10 +151,10 @@ function createInvoice(db, req, confirmation, body) {
       words: amountInWords(r.total_cents, settings),
     };
     db.run("UPDATE invoices SET status = 'cancelled', cancelled_at = ? WHERE reservation_id = ? AND status = 'issued'", stamp, r.id);
-    const result = db.run('INSERT INTO invoices (number, reservation_id, issued_at, issued_by, data, total_cents) VALUES (?, ?, ?, ?, ?, ?)',
+    const { id } = db.get('INSERT INTO invoices (number, reservation_id, issued_at, issued_by, data, total_cents) VALUES (?, ?, ?, ?, ?, ?) RETURNING id',
       number, r.id, stamp, req.user.id, JSON.stringify(data), r.total_cents);
     activity.log(db, req, 'invoice.issue', `Invoice ${number} for ${r.confirmation} (${f.money(r.total_cents)})`);
-    return Number(result.lastInsertRowid);
+    return id;
   });
 }
 

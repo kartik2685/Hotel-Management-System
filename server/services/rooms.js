@@ -10,7 +10,7 @@ function roomStates(db, bd) {
     `SELECT rm.id, rm.number, rm.floor, rm.hk_status, rm.attendant_id, rm.hk_updated_at, rt.name AS type_name, rt.code AS type_code,
             rt.clean_minutes, rt.service_minutes, u.code AS attendant_code, u.name AS attendant_name
        FROM rooms rm JOIN room_types rt ON rt.id = rm.room_type_id LEFT JOIN users u ON u.id = rm.attendant_id
-      WHERE rm.active = 1 ORDER BY rm.floor, CAST(rm.number AS INTEGER), rm.number`,
+      WHERE rm.active = 1 ORDER BY rm.floor, leading_int(rm.number), rm.number`,
   );
   const inHouse = new Map();
   for (const s of db.all(`SELECT ${STAY} FROM reservations r JOIN guests g ON g.id = r.guest_id WHERE r.status = 'checked_in' AND r.room_id IS NOT NULL`)) {
@@ -19,12 +19,12 @@ function roomStates(db, bd) {
   const arriving = new Map();
   for (const s of db.all(
     `SELECT ${STAY} FROM reservations r JOIN guests g ON g.id = r.guest_id
-      WHERE r.arrival = ? AND r.status = 'confirmed' AND r.room_id IS NOT NULL ORDER BY r.eta`, bd,
+      WHERE r.arrival = ? AND r.status = 'confirmed' AND r.room_id IS NOT NULL ORDER BY r.eta NULLS FIRST, r.id`, bd,
   )) {
     if (!arriving.has(s.room_id)) arriving.set(s.room_id, s);
   }
   const blocks = new Map();
-  for (const b of db.all('SELECT * FROM room_blocks WHERE start_date <= ? AND end_date > ? ORDER BY end_date', bd, bd)) {
+  for (const b of db.all('SELECT * FROM room_blocks WHERE start_date <= ? AND end_date > ? ORDER BY end_date, id', bd, bd)) {
     if (!blocks.has(b.room_id)) blocks.set(b.room_id, b);
   }
   const lastOut = new Map();

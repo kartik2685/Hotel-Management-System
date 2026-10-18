@@ -1,8 +1,8 @@
 'use strict';
 /*
- * Database setup.
+ * Database setup (the SQLite file in DB_PATH, or the PostgreSQL database in DATABASE_URL when set).
  *   npm run seed                      -> demo hotel (The Harlow Hotel) with demo staff accounts
- *   npm run seed -- --force           -> wipe the database first
+ *   npm run seed -- --force           -> wipe the database first (on Postgres: drops the app's tables only)
  *   npm run seed -- --empty --admin-email you@hotel.com --admin-name "Your Name"
  *                                     -> empty hotel with one admin account (password printed once)
  */
@@ -10,7 +10,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const config = require('../config');
-const { open } = require('./index');
+const { open, isPostgres } = require('./index');
+const TABLES = require('./tables');
 const { hashPassword } = require('../lib/auth');
 const settingsService = require('../services/settings');
 
@@ -49,36 +50,34 @@ async function loadDemo(db, { password = config.demoPassword } = {}) {
   const created = '2026-01-05 09:00';
 
   db.tx(() => {
+    const insertId = (sql, ...params) => db.get(`${sql} RETURNING id`, ...params).id;
     const settings = { ...data.settings, ...DEMO_SETTINGS, site_secret: crypto.randomBytes(32).toString('base64url') };
     for (const [key, value] of Object.entries(settings)) db.run('INSERT INTO settings (key, value) VALUES (?, ?)', key, JSON.stringify(value));
 
     const userId = {};
     const userByName = {};
     for (const u of data.users) {
-      const r = db.run(
+      userId[u.key] = insertId(
         `INSERT INTO users (name, email, password_hash, role, title, department, shift, code, area, floor, avatar_tone, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         u.name, u.email, hashes[u.key], u.role, u.title, u.department, u.shift, u.key, u.area || null, u.floor ?? null, u.tone || '', created,
       );
-      userId[u.key] = Number(r.lastInsertRowid);
       userByName[u.name] = userId[u.key];
     }
 
     const typeId = {};
     for (const t of data.roomTypes) {
-      const r = db.run(
+      typeId[t.code] = insertId(
         'INSERT INTO room_types (code, name, base_rate_cents, max_guests, clean_minutes, service_minutes, sort) VALUES (?, ?, ?, ?, ?, ?, ?)',
         t.code, t.name, t.baseRate * 100, t.maxGuests, t.cleanMinutes, t.serviceMinutes, t.sort,
       );
-      typeId[t.code] = Number(r.lastInsertRowid);
     }
     const roomId = {};
     for (const room of data.rooms) {
-      const r = db.run(
+      roomId[room.number] = insertId(
         'INSERT INTO rooms (number, floor, room_type_id, hk_status, attendant_id, hk_updated_at) VALUES (?, ?, ?, ?, ?, ?)',
         room.number, room.floor, typeId[room.type], room.hk, room.attendant ? userId[room.attendant] : null, data.hkUpdatedAt,
       );
-      roomId[room.number] = Number(r.lastInsertRowid);
     }
     for (const b of data.blocks) {
       db.run('INSERT INTO room_blocks (room_id, start_date, end_date, reason, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)',
@@ -88,29 +87,26 @@ async function loadDemo(db, { password = config.demoPassword } = {}) {
     const planId = {};
     for (const p of data.ratePlans) {
       const adjust = planAdjust(p.adjust);
-      const r = db.run('INSERT INTO rate_plans (code, name, adjust_type, adjust_value, description, bookable, sort) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      planId[p.code] = insertId('INSERT INTO rate_plans (code, name, adjust_type, adjust_value, description, bookable, sort) VALUES (?, ?, ?, ?, ?, ?, ?)',
         p.code, p.name, adjust.type, adjust.value, p.description, p.bookable ? 1 : 0, p.sort);
-      planId[p.code] = Number(r.lastInsertRowid);
     }
     for (const x of data.extras) {
       db.run('INSERT INTO extras (code, name, price_cents, per, sort) VALUES (?, ?, ?, ?, ?)', x.code, x.name, x.price * 100, x.per, x.sort);
     }
     const sourceId = {};
     for (const s of data.sources) {
-      const r = db.run('INSERT INTO sources (name, kind, sort, form_sort) VALUES (?, ?, ?, ?)', s.name, s.kind, s.sort, s.formSort);
-      sourceId[s.name] = Number(r.lastInsertRowid);
+      sourceId[s.name] = insertId('INSERT INTO sources (name, kind, sort, form_sort) VALUES (?, ?, ?, ?)', s.name, s.kind, s.sort, s.formSort);
     }
 
     const guestId = {};
     for (const g of data.guests) {
       const prior = g.prior || { stays: 0, nights: 0, spend: 0 };
-      const r = db.run(
+      guestId[g.key] = insertId(
         `INSERT INTO guests (first_name, last_name, email, phone, city, company, vip, corporate, preferences, prior_stays, prior_nights, prior_spend_cents, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         g.first, g.last, g.email, g.phone, g.city, g.company, g.vip ? 1 : 0, g.corporate ? 1 : 0, JSON.stringify(g.prefs || {}),
         prior.stays, prior.nights, prior.spend, g.createdAt,
       );
-      guestId[g.key] = Number(r.lastInsertRowid);
     }
     for (const n of data.guestNotes) {
       db.run('INSERT INTO guest_notes (guest_id, author_id, author_name, body, created_at) VALUES (?, ?, ?, ?, ?)',
@@ -180,7 +176,8 @@ async function createEmptyHotel(db, { email, name, hotelName, password: chosen }
     const settings = { ...settingsService.DEFAULTS, hotel_name: hotelName || 'My Hotel', business_date_mode: 'auto', site_secret: crypto.randomBytes(32).toString('base64url') };
     for (const [key, value] of Object.entries(settings)) db.run('INSERT INTO settings (key, value) VALUES (?, ?)', key, JSON.stringify(value));
     db.run(`INSERT INTO users (name, email, password_hash, role, title, department, shift, code, avatar_tone, must_change_password, created_at)
-            VALUES (?, ?, ?, 'admin', 'Administrator', 'Management', 'morning', 'ad', 'gold', ?, datetime('now'))`, name || 'Administrator', email, hash, chosen ? 0 : 1);
+            VALUES (?, ?, ?, 'admin', 'Administrator', 'Management', 'morning', 'ad', 'gold', ?, ?)`, name || 'Administrator', email, hash, chosen ? 0 : 1,
+      new Date().toISOString().slice(0, 19).replace('T', ' '));
     db.run("INSERT INTO sources (name, kind, sort, form_sort) VALUES ('Walk-in', 'walk_in', 1, 1), ('Phone', 'direct', 2, 2), ('Website', 'direct', 3, 3)");
     db.run("INSERT INTO rate_plans (code, name, adjust_type, adjust_value, description, sort) VALUES ('BAR', 'Best available', 'amount', 0, 'Flexible rate', 1)");
   });
@@ -219,13 +216,20 @@ async function main() {
     const at = args.indexOf(name);
     return at >= 0 ? args[at + 1] : undefined;
   };
-  const file = option('--db') || config.dbPath;
+  const target = option('--db') || config.databaseUrl || config.dbPath;
   if (args.includes('--force')) {
-    for (const suffix of ['', '-wal', '-shm']) fs.rmSync(file + suffix, { force: true });
+    if (isPostgres(target)) {
+      const old = open(target);
+      old.exec(`DROP TABLE IF EXISTS ${['app_meta', ...TABLES].join(', ')} CASCADE`);
+      old.close();
+    } else {
+      for (const suffix of ['', '-wal', '-shm']) fs.rmSync(target + suffix, { force: true });
+    }
   }
-  const db = open(file);
+  const db = open(target);
+  const file = db.label;
   if (!isEmpty(db)) {
-    console.error(`The database ${file} already has data. Run with --force to wipe it first.`);
+    console.error(`The database (${file}) already has data. Run with --force to wipe it first.`);
     process.exit(1);
   }
   if (args.includes('--empty')) {

@@ -122,7 +122,7 @@ function pendingForm3(db) {
       WHERE g.nationality IS NOT NULL AND g.nationality NOT IN ('IN', 'NP', 'BT')
         AND (r.status = 'checked_in' OR r.checked_in_at >= ? OR r.checked_out_at >= ?)
         AND ((r.checked_in_at IS NOT NULL AND r.form3_arrival_ref IS NULL) OR (r.checked_out_at IS NOT NULL AND r.form3_departure_ref IS NULL))
-      ORDER BY r.checked_in_at`, since, since,
+      ORDER BY r.checked_in_at NULLS FIRST, r.id`, since, since,
   ).map((r) => {
     const state = form3(settings, r, r, now);
     const open = state.arrival && !state.arrival.done ? { kind: 'arrival', ...state.arrival } : { kind: 'departure', ...state.departure };

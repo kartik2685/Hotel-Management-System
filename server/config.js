@@ -1,10 +1,16 @@
 'use strict';
 /* Runtime settings, read from environment variables (see .env.example). */
+const fs = require('node:fs');
 const path = require('node:path');
+
+const root = path.resolve(__dirname, '..');
+// Local settings can live in a .env file next to package.json. Real environment variables (a hosting
+// dashboard) always win over it. Tests never read it.
+const envFile = path.join(root, '.env');
+if (!process.env.NODE_TEST_CONTEXT && fs.existsSync(envFile)) process.loadEnvFile(envFile);
 
 const env = process.env;
 const flag = (value, fallback = false) => (value === undefined || value === '' ? fallback : /^(1|true|yes|on)$/i.test(value));
-const root = path.resolve(__dirname, '..');
 const production = env.NODE_ENV === 'production';
 const embed = flag(env.EMBED_PREVIEW);
 
@@ -14,6 +20,8 @@ module.exports = {
   port: Number(env.PORT || 3000),
   host: env.HOST || '0.0.0.0',
   dbPath: env.DB_PATH || path.join(root, 'data', 'frontdesk.db'),
+  // PostgreSQL connection string (e.g. Supabase). When set, it is used instead of the SQLite file.
+  databaseUrl: (env.DATABASE_URL || '').trim() || null,
   // Set when the app runs behind a proxy/load balancer that sets X-Forwarded-* headers.
   trustProxy: flag(env.TRUST_PROXY, false),
   // Secure cookies need HTTPS. On by default in production.

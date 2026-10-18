@@ -92,7 +92,7 @@ router.post('/password/forgot', (req, res) => {
   }
   // Same answer whether or not the account exists; quietly limited per email and per network address.
   const allowed = limits.hit(`reset:${email}`, 3, 60 * 60 * 1000) && limits.hit(`reset-ip:${req.ip}`, 10, 60 * 60 * 1000);
-  const user = allowed && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? db.get('SELECT * FROM users WHERE email = ? AND active = 1', email) : null;
+  const user = allowed && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? db.get('SELECT * FROM users WHERE lower(email) = lower(?) AND active = 1', email) : null;
   if (user) {
     const token = auth.randomToken();
     const now = Date.now();
@@ -132,7 +132,7 @@ router.post('/password/reset', async (req, res, next) => {
       db.run('UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?', hash, reset.user_id);
       db.run('UPDATE password_resets SET used_at = ? WHERE user_id = ? AND used_at IS NULL', Date.now(), reset.user_id);
       db.run('DELETE FROM sessions WHERE user_id = ?', reset.user_id); // signed out everywhere
-      db.run('DELETE FROM login_attempts WHERE email = ?', reset.email);
+      db.run('DELETE FROM login_attempts WHERE lower(email) = lower(?)', reset.email);
     });
     activity.log(db, { user: { id: reset.user_id, name: reset.name }, ip: req.ip, settings: req.settings }, 'auth.reset', `${reset.name} set a new password with a reset link`);
     res.redirect(303, '/login?reset=done');
@@ -181,7 +181,7 @@ router.post('/login', async (req, res, next) => {
     if (auth.tooManyFailures(db, email, req.ip)) {
       return renderLogin(req, res, { ...form, status: 429, errors: { password: 'Too many attempts. Wait 15 minutes and try again, or ask a manager to reset your password.' } });
     }
-    const user = db.get('SELECT * FROM users WHERE email = ? AND active = 1', email);
+    const user = db.get('SELECT * FROM users WHERE lower(email) = lower(?) AND active = 1', email);
     const ok = await auth.verifyPassword(password, user ? user.password_hash : await auth.getDummyHash());
     auth.recordAttempt(db, email, req.ip, ok && Boolean(user));
     if (!user || !ok) return renderLogin(req, res, { ...form, status: 401, errors: { password: 'That email and password don’t match.' } });

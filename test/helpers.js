@@ -7,13 +7,43 @@ const path = require('node:path');
 process.env.HMS_NOW = process.env.HMS_NOW || '2026-09-24T10:42';
 
 const { open } = require('../server/db');
+const postgres = require('../server/db/postgres');
 const seed = require('../server/db/seed');
 const settingsService = require('../server/services/settings');
 const { createApp } = require('../server/app');
 
+/* A new, empty database on the engine the tests run on: SQLite by default; TEST_DATABASE=pglite for an
+   embedded PostgreSQL, or TEST_DATABASE=postgres://user:pass@host/postgres for a real server (each call
+   gets its own throwaway database there). */
+function freshDatabase() {
+  const kind = process.env.TEST_DATABASE || 'sqlite';
+  if (kind === 'sqlite') {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hms-test-'));
+    const db = open(path.join(dir, 'test.db'));
+    return { db, drop: () => { db.close(); fs.rmSync(dir, { recursive: true, force: true }); } };
+  }
+  if (kind === 'pglite') {
+    const db = open('pglite:memory');
+    return { db, drop: () => db.close() };
+  }
+  const name = `hms_test_${process.pid}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const admin = postgres.connect(kind);
+  admin.exec(`CREATE DATABASE ${name}`);
+  const url = new URL(kind);
+  url.pathname = `/${name}`;
+  const db = open(url.toString());
+  return {
+    db,
+    drop: () => {
+      db.close();
+      admin.exec(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`);
+      admin.close();
+    },
+  };
+}
+
 async function startHotel() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hms-test-'));
-  const db = open(path.join(dir, 'test.db'));
+  const { db, drop } = freshDatabase();
   settingsService.reset();
   await seed.loadDemo(db, { password: 'harlow-demo' });
   const server = await new Promise((resolve) => {
@@ -25,9 +55,8 @@ async function startHotel() {
     client: () => new Client(base),
     async stop() {
       await new Promise((resolve) => server.close(resolve));
-      db.close();
+      drop();
       settingsService.reset();
-      fs.rmSync(dir, { recursive: true, force: true });
     },
   };
 }
@@ -93,4 +122,4 @@ class Client {
   }
 }
 
-module.exports = { startHotel };
+module.exports = { startHotel, freshDatabase };

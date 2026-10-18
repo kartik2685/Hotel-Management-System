@@ -27,9 +27,8 @@ const configured = () => Boolean(getTransport());
 function send(db, settings, { to, subject, text }) {
   const t = getTransport();
   const stamp = clock.stamp(settings.timezone);
-  const result = db.run('INSERT INTO outbox (to_address, subject, body, status, created_at) VALUES (?, ?, ?, ?, ?)',
+  const { id } = db.get('INSERT INTO outbox (to_address, subject, body, status, created_at) VALUES (?, ?, ?, ?, ?) RETURNING id',
     String(to).slice(0, 200), String(subject).slice(0, 200), String(text), t ? 'queued' : 'logged', stamp);
-  const id = Number(result.lastInsertRowid);
   if (t) {
     const from = process.env.MAIL_FROM || (settings.hotel_email ? `${settings.hotel_name} <${settings.hotel_email}>` : `no-reply@${require('node:os').hostname()}`);
     t.sendMail({ from, to, subject, text })

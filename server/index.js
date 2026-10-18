@@ -7,7 +7,8 @@ const auth = require('./lib/auth');
 const { createApp } = require('./app');
 
 async function main() {
-  const db = open(config.dbPath);
+  const db = open(config.databaseUrl || config.dbPath);
+  console.log(`Database: ${db.label}`);
   if (seed.isEmpty(db)) console.log(startMessage(await seed.firstRun(db)));
   auth.purgeExpired(db);
   setInterval(() => auth.purgeExpired(db), 60 * 60 * 1000).unref();
@@ -33,6 +34,6 @@ function startMessage({ kind, email, password }) {
 }
 
 main().catch((error) => {
-  console.error(error);
+  console.error(error.connecting ? error.message : error); // database connection problems: just the explanation
   process.exit(1);
 });

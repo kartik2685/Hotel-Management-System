@@ -2,7 +2,7 @@
   "name": "frontdesk-hms",
   "version": "1.0.0",
   "private": true,
-  "description": "Frontdesk hotel management system: front office pages, staff logins and an admin panel on Node.js + SQLite.",
+  "description": "Frontdesk hotel management system: front office pages, staff logins and an admin panel on Node.js, with SQLite or PostgreSQL (Supabase).",
   "license": "MIT",
   "type": "commonjs",
   "main": "server/index.js",
@@ -14,11 +14,17 @@
     "dev": "node --disable-warning=ExperimentalWarning --watch server/index.js",
     "seed": "node --disable-warning=ExperimentalWarning server/db/seed.js",
     "backup": "node --disable-warning=ExperimentalWarning server/db/backup.js",
-    "test": "node --disable-warning=ExperimentalWarning --test --test-reporter=spec \"test/**/*.test.js\""
+    "db:copy": "node --disable-warning=ExperimentalWarning server/db/copy.js",
+    "test": "node --disable-warning=ExperimentalWarning --test --test-reporter=spec \"test/**/*.test.js\"",
+    "test:pg": "node --disable-warning=ExperimentalWarning --env-file=test/pglite.env --test --test-reporter=spec \"test/**/*.test.js\""
   },
   "dependencies": {
     "ejs": "^7.0.2",
     "express": "^5.3.0",
-    "nodemailer": "^10.1.6"
+    "nodemailer": "^10.1.6",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10"
   }
 }

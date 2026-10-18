@@ -78,14 +78,14 @@ const purgeExpired = (db) => db.run('DELETE FROM sessions WHERE expires_at <= ?'
 
 function tooManyFailures(db, email, ip) {
   const since = Date.now() - FAILURE_WINDOW_MS;
-  const byEmail = db.get('SELECT COUNT(*) AS n FROM login_attempts WHERE email = ? AND ok = 0 AND created_at > ?', email, since).n;
+  const byEmail = db.get('SELECT COUNT(*) AS n FROM login_attempts WHERE lower(email) = lower(?) AND ok = 0 AND created_at > ?', email, since).n;
   const byIp = ip ? db.get('SELECT COUNT(*) AS n FROM login_attempts WHERE ip = ? AND ok = 0 AND created_at > ?', ip, since).n : 0;
   return byEmail >= MAX_FAILURES || byIp >= MAX_IP_FAILURES;
 }
 
 function recordAttempt(db, email, ip, ok) {
   db.run('INSERT INTO login_attempts (email, ip, ok, created_at) VALUES (?, ?, ?, ?)', email, ip || null, ok ? 1 : 0, Date.now());
-  if (ok) db.run('DELETE FROM login_attempts WHERE email = ? AND ok = 0', email);
+  if (ok) db.run('DELETE FROM login_attempts WHERE lower(email) = lower(?) AND ok = 0', email);
   db.run('DELETE FROM login_attempts WHERE created_at < ?', Date.now() - 864e5);
 }
 

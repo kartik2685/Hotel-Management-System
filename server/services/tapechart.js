@@ -11,14 +11,14 @@ function data(db, settings, bd) {
   for (const t of db.all('SELECT code, name FROM room_types ORDER BY sort, name')) types[t.code] = t.name;
   const rooms = db.all(
     `SELECT rm.number, rt.code FROM rooms rm JOIN room_types rt ON rt.id = rm.room_type_id
-      WHERE rm.active = 1 ORDER BY rm.floor, CAST(rm.number AS INTEGER), rm.number`,
+      WHERE rm.active = 1 ORDER BY rm.floor, leading_int(rm.number), rm.number`,
   ).map((r) => [asNumber(r.number), r.code]);
   const bookings = db.all(
     `SELECT r.confirmation, rm.number, r.arrival, r.departure, g.first_name, g.last_name, r.status, r.adults, r.children,
             r.nightly_rate_cents, src.name AS source, r.notes
        FROM reservations r JOIN guests g ON g.id = r.guest_id JOIN rooms rm ON rm.id = r.room_id LEFT JOIN sources src ON src.id = r.source_id
       WHERE r.status NOT IN ('cancelled', 'no_show') AND r.arrival < ? AND r.departure > ?
-      ORDER BY r.arrival, CAST(rm.number AS INTEGER), r.confirmation`, to, from,
+      ORDER BY r.arrival, leading_int(rm.number), r.confirmation`, to, from,
   ).map((r) => {
     let status = { checked_out: 'out', checked_in: 'in', tentative: 'tent' }[r.status] || 'conf';
     if (r.status === 'confirmed' && r.arrival <= bd) status = 'arr';
@@ -27,7 +27,7 @@ function data(db, settings, bd) {
   });
   const blocks = db.all(
     `SELECT rm.number, b.start_date, b.end_date, b.reason FROM room_blocks b JOIN rooms rm ON rm.id = b.room_id
-      WHERE b.start_date < ? AND b.end_date > ? ORDER BY b.start_date`, to, from,
+      WHERE b.start_date < ? AND b.end_date > ? ORDER BY b.start_date, b.id`, to, from,
   ).map((b) => [asNumber(b.number), f.daysBetween(bd, b.start_date), f.daysBetween(bd, b.end_date), b.reason]);
   return { businessDate: bd, checkInTime: settings.check_in_time, checkOutTime: settings.check_out_time, types, rooms, bookings, blocks };
 }

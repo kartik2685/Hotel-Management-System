@@ -89,7 +89,7 @@ router.post('/tasks/:id', requireAbility('housekeeping'), (req, res, next) => {
 
 /* Notifications: mark all read for the signed-in user. */
 router.post('/notifications/read', (req, res) => {
-  req.db.run('INSERT OR IGNORE INTO notification_reads (notification_id, user_id) SELECT id, ? FROM notifications', req.user.id);
+  req.db.run('INSERT INTO notification_reads (notification_id, user_id) SELECT id, ? FROM notifications WHERE true ON CONFLICT DO NOTHING', req.user.id);
   res.json({ ok: true });
 });
 

@@ -12,7 +12,7 @@ A working hotel management system (PMS) for the front office, housekeeping and m
 It keeps the exact look of the *Frontdesk* template by uiCookies. Every page is now drawn
 by the server from a real database, and every change is saved.
 
-- **Stack:** Node.js (22.13 or newer) · Express · EJS templates · SQLite (built into Node, nothing to install)
+- **Stack:** Node.js (22.13 or newer) · Express · EJS templates · SQLite (built into Node, nothing to install) or PostgreSQL / **Supabase**
 - **Runs anywhere Node runs:** your laptop, a VPS, Render, Railway…
 - **No build step:** plain HTML, CSS and JavaScript in the browser
 
@@ -113,12 +113,13 @@ Open it from the **account menu** (click your name, top right) → **Admin panel
 
 ## Configuration
 
-Settings are environment variables (see `.env.example`):
+Settings are environment variables (see `.env.example`). On your own computer you can also put them in a `.env` file next to `package.json`; real environment variables win over it.
 
 | Variable | Default | Meaning |
 |---|---|---|
 | `PORT` / `HOST` | `3000` / `0.0.0.0` | Where the server listens |
-| `DB_PATH` | `./data/frontdesk.db` | The database file. **Back up this folder** |
+| `DATABASE_URL` | — | A PostgreSQL connection string, e.g. from **Supabase** (see below). When set, it is used instead of the SQLite file and the tables are created automatically |
+| `DB_PATH` | `./data/frontdesk.db` | The SQLite database file, used when there is no `DATABASE_URL`. **Back up this folder** |
 | `NODE_ENV` | — | Set to `production` on a live server (secure cookies, HSTS) |
 | `TRUST_PROXY` | off | Set to `1` behind a proxy or load balancer (Render, Railway, nginx) |
 | `COOKIE_SECURE` | on in production | Cookies only over HTTPS |
@@ -151,7 +152,8 @@ In **New → Web Service**, connect the GitHub repository and fill in:
 | Start Command | `npm start` |
 | Health Check Path (Advanced) | `/login` |
 
-Then add the environment variables `NODE_ENV=production` and `TRUST_PROXY=1`, plus one of:
+Then add the environment variables `NODE_ENV=production`, `TRUST_PROXY=1` and **`DATABASE_URL`** (your
+Supabase database, next section — without it a free instance forgets everything), plus one of:
 
 - **To show the demo:** `DEMO_PASSWORD` = a password of your own (8+ characters). Sign in as
   `elena.marsh@example.com` with it. The sign-in page never shows the password on a live server.
@@ -162,16 +164,46 @@ The site’s address (`https://<name>.onrender.com`) opens the guest website, or
 website is switched off (an empty hotel starts with it off). Staff always sign in at `/login`.
 Render uses Node 24 here (from `engines` in `package.json`).
 
-> **Free instances keep no data.** They lose their files on every restart, redeploy and after
-> 15 minutes without visitors, so the database starts again from the beginning. That is fine for
-> showing the site. For real bookings, pick a paid instance, add a **Disk** with mount path
-> `/var/data`, and set `DB_PATH=/var/data/frontdesk.db`.
+> **Keep the data in Supabase.** Render's free instances lose their files on every restart, redeploy and
+> after 15 minutes without visitors, so a SQLite file there starts again from the beginning. With
+> `DATABASE_URL` the data lives in Supabase and survives all of that. (The other way: a paid instance
+> with a **Disk** at `/var/data` and `DB_PATH=/var/data/frontdesk.db`.)
+
+### Database on Supabase (free)
+
+1. On [supabase.com](https://supabase.com) create a **New project**. Choose a database password (letters
+   and digits are easiest; keep it) and the region **Southeast Asia (Singapore)**. In Render pick
+   **Singapore** too: every page asks the database a few things, so both should be in the same place.
+2. When the project is ready, click **Connect** at the top, choose **Session pooler** and copy the URI:
+   `postgresql://postgres.<project-ref>:[YOUR-PASSWORD]@aws-…-ap-southeast-1.pooler.supabase.com:5432/postgres`.
+   Replace `[YOUR-PASSWORD]` (brackets included) with your database password.
+   Use the **Session pooler**, not *Direct connection*: the direct address only works over IPv6, which Render doesn't have.
+3. In Render → your service → **Environment**, add `DATABASE_URL` with that string and deploy.
+   The log shows `Database: PostgreSQL on aws-…pooler.supabase.com:5432/postgres`, and the app creates its
+   26 tables by itself (see them in Supabase → **Table Editor**). Nothing to run in the SQL Editor.
+4. Restarts, redeploys and sleeping no longer lose anything; staff even stay signed in.
+
+Good to know:
+- **Wrong string?** The deploy log says what to fix (wrong password, placeholder left in, IPv6 direct address, unknown host).
+- **Free projects pause** after a week with no use at all, and are restored with one click in the Supabase dashboard.
+  A hotel that uses the system every day keeps it awake. The free plan has 500 MB, years of bookings for a small hotel.
+- **Backups:** the free plan has no automatic backups. On your computer, with `DATABASE_URL` in `.env`,
+  `npm run backup` saves everything to a file in `backups/`. `npm run db:copy -- --from backups/<file>.db --to "<empty database URL>"`
+  puts it back.
+- **Already have data in SQLite?** Copy it before the first start on Supabase (the database must be empty):
+  `npm run db:copy -- --from data/frontdesk.db --to "<DATABASE_URL>"`.
+- **Security:** the connection string contains the password, so keep it in Render's Environment only.
+  Every table has row level security switched on, so Supabase's public API keys can't read hotel data;
+  the app connects as the database owner.
+- If you ever want the tables before the first deploy, paste `server/db/schema.pg.sql` into the SQL Editor and run it.
 
 ### Going live (any Node host)
 
 - Run `npm ci --omit=dev && npm start` with `NODE_ENV=production`, `TRUST_PROXY=1` and HTTPS in front.
-- Give the app a **persistent disk** for `data/` (on Render or Railway, attach a volume and point `DB_PATH` at it).
-- Back up regularly: `npm run backup` writes a consistent copy to `backups/` (safe while the app runs).
+- Keep the data somewhere that lasts: set `DATABASE_URL` to a PostgreSQL database (Supabase, Neon, your own),
+  or give the app a **persistent disk** for `data/` and point `DB_PATH` at it.
+- Back up regularly: `npm run backup` writes a consistent copy to `backups/` (safe while the app runs; with
+  `DATABASE_URL` it is a SQLite file with the same tables).
 - Shared hosting that only serves PHP or plain HTML files won’t run this app. It needs Node.js.
 
 ## Security
@@ -200,7 +232,9 @@ Render uses Node 24 here (from `engines` in `package.json`).
 npm test
 ```
 
-51 end-to-end tests run against a fresh demo hotel. They cover:
+62 tests run against a fresh demo hotel. `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
+copy, nothing to install), and `TEST_DATABASE=postgres://user:pass@host/postgres npm test` on a real server.
+They cover:
 - sign-in, lockout, CSRF and redirect safety;
 - browsers that block cookies in a preview panel (sign-in note, guest booking, cross-site refusal);
 - roles;
@@ -209,7 +243,8 @@ npm test
 - the GRC and Form III;
 - GST invoice numbering and tax splits;
 - password reset, reports and CSV safety;
-- database upgrades, and what a new database starts with on a live server.
+- database upgrades, and what a new database starts with on a live server;
+- PostgreSQL: the same tables and answers as SQLite, row level security, copying between the two.
 
 ## Project structure
 
@@ -218,7 +253,8 @@ server/
   index.js            start-up (creates and seeds the database on first run)
   app.js              Express app: security headers, sessions, routes, error pages
   config.js           environment settings
-  db/                 schema.sql + migrations/ (applied automatically), seed.js (demo or empty hotel), backup.js, demo-data.json
+  db/                 index.js (SQLite) and postgres.js (PostgreSQL / Supabase) behind one API; schema.sql + migrations/
+                      and schema.pg.sql (applied automatically); seed.js (demo or empty hotel), copy.js, backup.js, demo-data.json
   lib/                auth (passwords, sessions), security (CSP, CSRF, roles), forms, pricing, formatting, clock, activity log
   services/           business logic: reservations, rooms, guests, housekeeping, dashboard, stats, night audit, billing,
                       registration (GRC, Form III), website, emails, settings
