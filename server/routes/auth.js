@@ -42,7 +42,7 @@ function checkLoginForm(req) {
 /* One line in the server log, to tell blocked cookies from old pages when someone cannot sign in. */
 function logFormProblem(req, problem) {
   const why = problem === 'blocked' ? 'the browser sent no cookie (it blocks cookies here)' : 'the form token was old or not ours';
-  console.warn(`[sign-in] refused: ${why} · sec-fetch-site=${req.get('sec-fetch-site') || '-'} · ${String(req.get('user-agent') || '-').slice(0, 160)}`);
+  console.warn(`[sign-in] refused: ${why} · sec-fetch-site=${req.get('sec-fetch-site') || '-'} dest=${req.get('sec-fetch-dest') || '-'} · ${String(req.get('user-agent') || '-').slice(0, 160)}`);
 }
 
 function renderLogin(req, res, { status = 200, email = '', errors = {}, shift = 'morning', remember = false, resetSent = false, cookieBlocked = false } = {}) {

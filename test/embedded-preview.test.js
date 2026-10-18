@@ -46,6 +46,9 @@ describe('sign-in when the browser blocks cookies', () => {
     assert.match(r.text, /data-cookie-help="frame">\s*<p class="success-box__title">Sign in from a new tab/);
     assert.match(r.text, /href="\/login\?next=%2Freservations" target="_blank" rel="noopener" data-cookie-open>Open in a new tab/);
     assert.match(r.text, /<span data-cookie-address>http:\/\/127\.0\.0\.1:\d+\/login\?next=%2Freservations<\/span>/);
+    assert.match(r.text, /data-cookie-copy>Copy address<\/button>/);
+    assert.match(r.text, /data-cookie-popup-blocked role="status" hidden>/); // only when the panel can't open tabs
+    assert.match(r.text, /To sign in inside the panel instead, allow cookies for <span data-cookie-host>127\.0\.0\.1:\d+<\/span>/);
     assert.match(r.text, /data-cookie-help="page" hidden>/);
     assert.match(r.text, /This browser blocked the sign-in cookie/);
     assert.ok(!r.headers.getSetCookie().some((line) => line.startsWith('hms_session=')));

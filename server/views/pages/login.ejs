@@ -58,8 +58,11 @@
             <p class="success-box__text">This browser blocks cookies inside the preview panel, and signing in needs one. Open Frontdesk in its own tab and sign in there.</p>
             <div class="success-box__actions">
               <a class="button button--primary button--sm" href="<%= loginPath %>" target="_blank" rel="noopener" data-cookie-open>Open in a new tab</a>
+              <button class="button button--secondary button--sm js-only" type="button" data-cookie-copy>Copy address</button>
             </div>
             <p class="auth__notice-address">Or copy this address: <span data-cookie-address><%= loginAddress %></span></p>
+            <p class="auth__notice-tip auth__notice-tip--alert" data-cookie-popup-blocked role="status" hidden>This panel can’t open new tabs. Open a new browser tab yourself, paste the address and press Enter.</p>
+            <p class="auth__notice-tip">To sign in inside the panel instead, allow cookies for <span data-cookie-host><%= loginHost %></span> in the browser settings, then reload.</p>
           </div>
           <div data-cookie-help="page"<%- locals.cookieBlocked === 'page' ? '' : ' hidden' %>>
             <p class="success-box__title">Allow cookies to sign in</p>

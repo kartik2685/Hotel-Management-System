@@ -55,9 +55,9 @@
     // The address as this browser sees it (the server may sit behind a proxy).
     const open = $('[data-cookie-open]', notice);
     const address = $('[data-cookie-address]', notice);
-    const host = $('[data-cookie-host]', notice);
     if (open && address) address.textContent = new URL(open.getAttribute('href'), window.location.href).href;
-    if (host) host.textContent = window.location.host;
+    $$('[data-cookie-host]', notice).forEach((host) => { host.textContent = window.location.host; });
+    initOpenAndCopy(notice, open, address);
     if (!window.fetch) return;
     fetch('/login/cookie-check', { credentials: 'same-origin', cache: 'no-store', headers: { accept: 'application/json' } })
       .then((response) => (response.ok ? response.json() : null))
@@ -68,6 +68,44 @@
         notice.hidden = result.cookies;
       })
       .catch(() => { /* unknown: leave the page as it is */ });
+  }
+
+  // "Open in a new tab" and "Copy address". Some preview panels can't open tabs: then say how.
+  function initOpenAndCopy(notice, open, address) {
+    if (!open || !address) return;
+    const selectAddress = () => {
+      const range = document.createRange();
+      range.selectNodeContents(address);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    };
+    open.addEventListener('click', (event) => {
+      event.preventDefault();
+      const tab = window.open(open.href, '_blank');
+      if (tab) {
+        tab.opener = null;
+      } else {
+        $('[data-cookie-popup-blocked]', notice).hidden = false;
+        selectAddress();
+      }
+    });
+    const copy = $('[data-cookie-copy]', notice);
+    if (!copy) return;
+    copy.addEventListener('click', () => {
+      const copied = () => {
+        copy.textContent = 'Copied';
+        window.setTimeout(() => { copy.textContent = 'Copy address'; }, 2000);
+      };
+      const byHand = () => {
+        selectAddress();
+        try {
+          if (document.execCommand('copy')) copied();
+        } catch (e) { /* the address stays selected for Ctrl+C */ }
+      };
+      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(address.textContent.trim()).then(copied, byHand);
+      else byHand();
+    });
   }
 
   function initPasswordReset(loginEmail) {
