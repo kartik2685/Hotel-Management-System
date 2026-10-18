@@ -286,7 +286,8 @@ describe('password reset and reports', () => {
 describe('database upgrades', () => {
   test('a version 1 database is upgraded in place', () => {
     const { DatabaseSync } = require('node:sqlite');
-    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'hms-mig-')), 'old.db');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hms-mig-'));
+    const file = path.join(dir, 'old.db');
     const raw = new DatabaseSync(file);
     raw.exec(fs.readFileSync(path.join(__dirname, '..', 'server', 'db', 'schema.sql'), 'utf8'));
     raw.exec("INSERT INTO guests (first_name, last_name, created_at) VALUES ('Old', 'Guest', '2026-01-01 10:00')");
@@ -296,5 +297,6 @@ describe('database upgrades', () => {
     assert.equal(db.get("SELECT nationality FROM guests WHERE last_name = 'Guest'").nationality, null);
     assert.ok(db.get("SELECT name FROM sqlite_master WHERE name = 'invoices'"));
     db.close();
+    fs.rmSync(dir, { recursive: true, force: true });
   });
 });

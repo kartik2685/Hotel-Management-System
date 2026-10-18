@@ -97,3 +97,7 @@ textarea.input { min-height: 84px; resize: vertical; }
 .error-page__card { max-width: 520px; width: 100%; display: grid; gap: 10px; }
 .error-page__card .logo { margin-bottom: 8px; }
 .error-page__actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 0; }
+
+/* Admin overview: the database card */
+.db-lines dd { min-width: 0; text-align: right; overflow-wrap: anywhere; }
+.db-lines + .form-hint { margin-top: 14px; }

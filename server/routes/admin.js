@@ -13,7 +13,11 @@ const stats = require('../services/stats');
 const audit = require('../services/audit');
 const registration = require('../services/registration');
 const mail = require('../lib/mail');
+const system = require('../services/system');
+const { backupTo } = require('../db/backup');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const config = require('../config');
 
@@ -66,6 +70,7 @@ router.get('/', (req, res) => {
   const db = req.db;
   const bd = settingsService.businessDate(db);
   const count = (sql, ...args) => db.get(sql, ...args).n;
+  const admin = can(req.user, 'administer');
   render(req, res, 'overview', 'overview', {
     heading: 'Admin panel',
     lead: 'Everything the hotel runs on: settings, rooms and rates, staff logins and the end-of-day close.',
@@ -80,7 +85,27 @@ router.get('/', (req, res) => {
     businessDate: f.formatDay(bd),
     demo: req.settings.demo_mode,
     recent: db.all('SELECT * FROM activity_log ORDER BY id DESC LIMIT 8'),
+    // Where the data is kept (admins only): lets the owner check the Supabase connection from the browser.
+    database: admin ? system.databaseInfo(db) : null,
+    lastBackup: admin ? db.get("SELECT created_at, user_name FROM activity_log WHERE action = 'database.backup' ORDER BY id DESC LIMIT 1") || null : null,
   });
+});
+
+/* ------------------------------------------------------------------ backup */
+// The whole database as one SQLite file, straight to the browser. Supabase's free plan keeps no backups,
+// and a free Render instance has no disk to keep them on.
+router.post('/backup', requireAbility('administer'), (req, res, next) => {
+  const db = req.db;
+  const file = path.join(os.tmpdir(), `hms-backup-${process.pid}-${crypto.randomBytes(6).toString('hex')}.db`);
+  try {
+    backupTo(db, file);
+  } catch (error) {
+    fs.rmSync(file, { force: true });
+    return next(error);
+  }
+  activity.log(db, req, 'database.backup', 'Downloaded a backup of the database');
+  const name = `frontdesk-backup-${stamp(req).replace(' ', '-').replace(':', '')}.db`;
+  res.download(file, name, { headers: { 'Content-Type': 'application/vnd.sqlite3', 'Cache-Control': 'no-store' } }, () => fs.rmSync(file, { force: true }));
 });
 
 /* ------------------------------------------------------------------ settings */

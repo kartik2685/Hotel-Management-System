@@ -10,13 +10,23 @@ const TABLES = require('./tables');
 
 const BATCH = 200; // rows per INSERT
 
+/* Reads a PostgreSQL source from one snapshot, so rows the app writes during the copy can't leave, say,
+   a payment without its booking. (A SQLite source is a file nobody else is writing to, or VACUUM INTO.) */
+function snapshot(source, fn) {
+  if (source.dialect !== 'postgres') return fn();
+  return source.tx(() => {
+    source.exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY');
+    return fn();
+  });
+}
+
 /* Copies all tables inside one transaction on the target; returns { table: rows }. */
 function copyAll(source, target) {
   if (target.get('SELECT COUNT(*) AS n FROM users').n > 0) {
     throw new Error(`${target.label} already has data. Copy into an empty database.`);
   }
   const counts = {};
-  target.tx(() => {
+  snapshot(source, () => target.tx(() => {
     for (const table of TABLES) {
       const rows = source.all(`SELECT * FROM ${table}`);
       counts[table] = rows.length;
@@ -41,7 +51,7 @@ function copyAll(source, target) {
         if (identity) target.get(`SELECT setval(pg_get_serial_sequence('${table}', 'id'), (SELECT COALESCE(MAX(id), 0) + 1 FROM ${table}), false)`);
       }
     }
-  });
+  }));
   return counts;
 }
 

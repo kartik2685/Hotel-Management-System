@@ -84,7 +84,7 @@ class Client {
     }
   }
 
-  async request(method, url, { form, json, headers = {}, redirect = 'manual' } = {}) {
+  async request(method, url, { form, json, headers = {}, redirect = 'manual', binary = false } = {}) {
     const init = { method, redirect, headers: { cookie: this.cookieHeader(), ...headers } };
     if (form) {
       init.body = new URLSearchParams(form);
@@ -97,6 +97,7 @@ class Client {
     }
     const response = await fetch(this.base + url, init);
     this.remember(response);
+    if (binary) return { status: response.status, headers: response.headers, body: Buffer.from(await response.arrayBuffer()) };
     const text = await response.text();
     const meta = text.match(/<meta name="csrf-token" content="([^"]+)"/);
     if (meta) this.csrf = meta[1];
