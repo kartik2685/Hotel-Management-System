@@ -124,7 +124,9 @@ Settings are environment variables (see `.env.example`):
 | `COOKIE_SECURE` | on in production | Cookies only over HTTPS |
 | `SESSION_IDLE_MINUTES` | `30` | Sign out after this long idle (unless *Keep me signed in*) |
 | `SESSION_REMEMBER_DAYS` | `30` | Length of *Keep me signed in* |
-| `DEMO_PASSWORD` | `harlow-demo` | Password for the demo accounts |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | — | On a new database: start an **empty hotel** with this admin account instead of the demo. Without `ADMIN_PASSWORD` a one-time password is printed in the log |
+| `ADMIN_NAME`, `HOTEL_NAME` | `Administrator`, `My Hotel` | Names used for that empty hotel |
+| `DEMO_PASSWORD` | `harlow-demo` | Password for the demo accounts. With `NODE_ENV=production` and no `DEMO_PASSWORD`, a random one is printed in the log instead |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_SECURE` | — | Your mail provider (Gmail/Workspace, Zoho, Amazon SES, Brevo…) for sending emails |
 | `MAIL_FROM` | hotel email | Sender, e.g. `The Harlow Hotel <stay@yourhotel.com>` |
 | `HMS_NOW` | — | Freeze the hotel clock, e.g. `2026-09-24T10:42` (demos and tests only) |
@@ -135,6 +137,35 @@ Settings are environment variables (see `.env.example`):
 > blocking cookies there, for example Safari before 26.2 or a browser set to block all cookies.
 > The sign-in page notices this and shows **Sign in from a new tab**, with a button and the
 > address. The guest website still works there, because it doesn’t need cookies.
+
+### Going live on Render
+
+In **New → Web Service**, connect the GitHub repository and fill in:
+
+| Field | Value |
+|---|---|
+| Language | **Node** |
+| Branch | the branch that has this code (`main` once it is merged) |
+| Root Directory | leave empty |
+| Build Command | `npm ci` |
+| Start Command | `npm start` |
+| Health Check Path (Advanced) | `/login` |
+
+Then add the environment variables `NODE_ENV=production` and `TRUST_PROXY=1`, plus one of:
+
+- **To show the demo:** `DEMO_PASSWORD` = a password of your own (8+ characters). Sign in as
+  `elena.marsh@example.com` with it. The sign-in page never shows the password on a live server.
+- **For a real hotel:** `ADMIN_EMAIL`, `ADMIN_PASSWORD` and `HOTEL_NAME`. The app starts as an empty hotel
+  with that admin account. Then follow *Setting it up for a real hotel* above.
+
+The site’s address (`https://<name>.onrender.com`) opens the guest website, or the sign-in page while the
+website is switched off (an empty hotel starts with it off). Staff always sign in at `/login`.
+Render uses Node 24 here (from `engines` in `package.json`).
+
+> **Free instances keep no data.** They lose their files on every restart, redeploy and after
+> 15 minutes without visitors, so the database starts again from the beginning. That is fine for
+> showing the site. For real bookings, pick a paid instance, add a **Disk** with mount path
+> `/var/data`, and set `DB_PATH=/var/data/frontdesk.db`.
 
 ### Going live (any Node host)
 
@@ -169,7 +200,7 @@ Settings are environment variables (see `.env.example`):
 npm test
 ```
 
-44 end-to-end tests run against a fresh demo hotel. They cover:
+51 end-to-end tests run against a fresh demo hotel. They cover:
 - sign-in, lockout, CSRF and redirect safety;
 - browsers that block cookies in a preview panel (sign-in note, guest booking, cross-site refusal);
 - roles;
@@ -178,7 +209,7 @@ npm test
 - the GRC and Form III;
 - GST invoice numbering and tax splits;
 - password reset, reports and CSV safety;
-- database upgrades.
+- database upgrades, and what a new database starts with on a live server.
 
 ## Project structure
 

@@ -8,10 +8,7 @@ const { createApp } = require('./app');
 
 async function main() {
   const db = open(config.dbPath);
-  if (seed.isEmpty(db)) {
-    const result = await seed.loadDemo(db);
-    console.log(`New database: demo hotel loaded. Sign in as ${result.users[0].email} with the password ${result.password}`);
-  }
+  if (seed.isEmpty(db)) console.log(startMessage(await seed.firstRun(db)));
   auth.purgeExpired(db);
   setInterval(() => auth.purgeExpired(db), 60 * 60 * 1000).unref();
 
@@ -25,6 +22,14 @@ async function main() {
   });
   process.on('SIGTERM', stop);
   process.on('SIGINT', stop);
+}
+
+/* Printed once, when a new database is set up. */
+function startMessage({ kind, email, password }) {
+  const what = kind === 'empty' ? 'empty hotel created' : 'demo hotel loaded';
+  const secret = password ? `the password ${password}` : `the password in ${kind === 'empty' ? 'ADMIN_PASSWORD' : 'DEMO_PASSWORD'}`;
+  const change = kind === 'empty' && password ? ' (you will be asked to change it)' : '';
+  return `New database: ${what}. Sign in as ${email} with ${secret}${change}.`;
 }
 
 main().catch((error) => {

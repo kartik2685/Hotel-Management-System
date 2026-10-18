@@ -172,14 +172,15 @@ async function loadDemo(db, { password = config.demoPassword } = {}) {
   return { users: data.users.map((u) => ({ email: u.email, role: u.role })), password };
 }
 
-async function createEmptyHotel(db, { email, name, hotelName }) {
-  const password = crypto.randomBytes(9).toString('base64url');
+async function createEmptyHotel(db, { email, name, hotelName, password: chosen } = {}) {
+  // A password chosen by the owner is kept; a generated one has to be changed at first sign-in.
+  const password = chosen || crypto.randomBytes(9).toString('base64url');
   const hash = await hashPassword(password);
   db.tx(() => {
     const settings = { ...settingsService.DEFAULTS, hotel_name: hotelName || 'My Hotel', business_date_mode: 'auto', site_secret: crypto.randomBytes(32).toString('base64url') };
     for (const [key, value] of Object.entries(settings)) db.run('INSERT INTO settings (key, value) VALUES (?, ?)', key, JSON.stringify(value));
     db.run(`INSERT INTO users (name, email, password_hash, role, title, department, shift, code, avatar_tone, must_change_password, created_at)
-            VALUES (?, ?, ?, 'admin', 'Administrator', 'Management', 'morning', 'ad', 'gold', 1, datetime('now'))`, name || 'Administrator', email, hash);
+            VALUES (?, ?, ?, 'admin', 'Administrator', 'Management', 'morning', 'ad', 'gold', ?, datetime('now'))`, name || 'Administrator', email, hash, chosen ? 0 : 1);
     db.run("INSERT INTO sources (name, kind, sort, form_sort) VALUES ('Walk-in', 'walk_in', 1, 1), ('Phone', 'direct', 2, 2), ('Website', 'direct', 3, 3)");
     db.run("INSERT INTO rate_plans (code, name, adjust_type, adjust_value, description, sort) VALUES ('BAR', 'Best available', 'amount', 0, 'Flexible rate', 1)");
   });
@@ -188,6 +189,29 @@ async function createEmptyHotel(db, { email, name, hotelName }) {
 }
 
 const isEmpty = (db) => db.get('SELECT COUNT(*) AS n FROM users').n === 0;
+
+/* What a new, empty database starts with when the server starts (server/index.js):
+   - ADMIN_EMAIL set: an empty hotel for real use, with that admin account. ADMIN_PASSWORD sets its
+     password; without it a one-time password is printed once and must be changed at first sign-in.
+   - otherwise the demo hotel. On a live server (NODE_ENV=production) its staff password comes from
+     DEMO_PASSWORD, or is random and printed once; never the public default from the README.
+   Returns { kind, email, password }; password is null when it came from the environment. */
+async function firstRun(db, env = process.env) {
+  for (const name of ['ADMIN_PASSWORD', 'DEMO_PASSWORD']) {
+    const value = env[name];
+    if (value && (value.length < 8 || value.length > 200)) throw new Error(`${name} must be 8 to 200 characters long.`);
+  }
+  const email = String(env.ADMIN_EMAIL || '').trim().toLowerCase();
+  if (email) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error(`ADMIN_EMAIL is not an email address: ${email}`);
+    const result = await createEmptyHotel(db, { email, name: env.ADMIN_NAME, hotelName: env.HOTEL_NAME, password: env.ADMIN_PASSWORD });
+    return { kind: 'empty', email, password: env.ADMIN_PASSWORD ? null : result.password };
+  }
+  const live = env.NODE_ENV === 'production';
+  const password = env.DEMO_PASSWORD || (live ? crypto.randomBytes(9).toString('base64url') : 'harlow-demo');
+  const result = await loadDemo(db, { password });
+  return { kind: 'demo', email: result.users[0].email, password: env.DEMO_PASSWORD ? null : password };
+}
 
 async function main() {
   const args = process.argv.slice(2);
@@ -226,4 +250,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { loadDemo, createEmptyHotel, isEmpty };
+module.exports = { loadDemo, createEmptyHotel, isEmpty, firstRun };

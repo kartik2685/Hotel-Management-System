@@ -54,7 +54,8 @@ function renderLogin(req, res, { status = 200, email = '', errors = {}, shift = 
   const next = safeNext(req.query.next || req.body?.next);
   const loginPath = `/login${next ? `?next=${encodeURIComponent(next)}` : ''}`;
   const hours = settings.shifts || {};
-  const demoUser = settings.demo_mode ? db.get("SELECT email FROM users WHERE role = 'admin' AND active = 1 ORDER BY id LIMIT 1") : null;
+  // Never on a live server: the hint would show the staff password to everyone.
+  const demoUser = settings.demo_mode && !config.production ? db.get("SELECT email FROM users WHERE role = 'admin' AND active = 1 ORDER BY id LIMIT 1") : null;
   res.status(status).render('pages/login', {
     hotel: {
       name: settings.hotel_name, short: settings.hotel_name.replace(/ Hotel$/, ''), rooms: tonight.rooms,

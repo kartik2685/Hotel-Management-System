@@ -74,7 +74,7 @@
               <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-prefix">Confirmation number prefix</label><input class="input<%= inv('confirmation_prefix') %>" id="s-prefix" name="confirmation_prefix" value="<%= val('confirmation_prefix') || 'HLW' %>"><p class="field-error"><%= err('confirmation_prefix') %></p></div>
               <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-invprefix">Invoice number prefix <span class="field-label__hint">e.g. HLW/26-27/0001</span></label><input class="input<%= inv('invoice_prefix') %>" id="s-invprefix" name="invoice_prefix" value="<%= val('invoice_prefix') || 'INV' %>"><p class="field-error"><%= err('invoice_prefix') %></p></div>
             </div>
-            <div class="check-row"><label><input type="checkbox" name="demo_mode"<%- s.demo_mode ? ' checked' : '' %>> Demo mode (shows the demo sign-in on the login page)</label></div>
+            <div class="check-row"><label><input type="checkbox" name="demo_mode"<%- s.demo_mode ? ' checked' : '' %>> Demo mode (shows the demo sign-in on the login page, but never on a live server)</label></div>
           </div>
           <div class="form-actions"><button class="button button--primary" type="submit">Save settings</button></div>
         </form>
