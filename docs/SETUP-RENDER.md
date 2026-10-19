@@ -130,6 +130,11 @@ har tax rate ki line), B2C ka total, rate-wise CGST/SGST, HSN/SAC summary aur do
 number, cancel wale) ban jaate hain. Har table ki CSV GST offline tool ke column naamon ke saath download hoti hai,
 seedha accountant ko de do. GSTR-1 agle mahine ki 11 tarikh tak (QRMP me quarter ke baad 13 tarikh tak).
 
+**Subah ka report:** **Admin panel → Daily report**: kal kitne rooms bike, occupancy, ADR, kamai (rooms, khana, spa,
+room par charges), paisa kis tarah aaya (Cash, Card, UPI, Bank), nayi bookings aur cancellations; aur aaj ke arrivals
+(VIP), departures, hotel me guests, guests se kitna lena baaki hai aur agle 7 din ki occupancy. **Send on WhatsApp** se
+yahi sab ek chhote message me apne phone par bhejo; **Print** se ek page.
+
 **Group booking (shaadi, conference):** **Reservations → Groups → New group booking**: group ka naam, contact, dates,
 har room type ke kitne rooms, aur chaho to rooming list (har line me ek guest). Har room ki apni booking banti hai. Group
 page par: aaj aane wale sab ek click me check-in (jo ready nahi, unka kaaran dikhta hai), poore group ka ek payment (rooms

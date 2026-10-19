@@ -23,6 +23,8 @@ const gstReturn = require('../services/gst-return');
 const taxKinds = require('../services/tax-kinds');
 const seasons = require('../services/seasons');
 const calendar = require('../services/calendar');
+const daily = require('../services/daily');
+const whatsapp = require('../services/whatsapp');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -42,6 +44,7 @@ router.use(requireAbility('manage'));
 
 const TABS = [
   { key: 'overview', href: '/admin', label: 'Overview', ability: 'manage' },
+  { key: 'daily', href: '/admin/daily', label: 'Daily report', ability: 'manage' },
   { key: 'settings', href: '/admin/settings', label: 'Hotel settings', ability: 'administer' },
   { key: 'room-types', href: '/admin/room-types', label: 'Room types', ability: 'manage' },
   { key: 'rooms', href: '/admin/rooms', label: 'Rooms', ability: 'manage' },
@@ -425,6 +428,17 @@ router.post(['/extras', '/extras/:id'], (req, res) => {
   else db.run('INSERT INTO extras (code, name, price_cents, per, sort, active, gst_kind) VALUES (?, ?, ?, ?, ?, ?, ?)', v.code, v.name, v.price, v.per, v.sort, v.active ? 1 : 0, v.gstKind || 'none');
   activity.log(db, req, 'extra.save', `${id ? 'Updated' : 'Added'} extra ${v.name}`);
   back(res, '/admin/rates', id ? 'saved' : 'created');
+});
+
+/* ------------------------------------------------------------------ the owner's morning report */
+router.get('/daily', (req, res) => {
+  const day = daily.isDate(req.query.day) ? req.query.day : daily.defaultDay(req.db);
+  const r = daily.build(req.db, day);
+  render(req, res, 'daily', 'daily', {
+    heading: 'Daily report', lead: 'How a day went and what today holds, on one page: for the owner every morning.',
+    r, message: daily.text(req.settings, r), whatsapp: whatsapp.link('', daily.text(req.settings, r)), today: settingsService.businessDate(req.db),
+    scripts: ['pages/print'],
+  });
 });
 
 /* ------------------------------------------------------------------ rate and availability calendar */

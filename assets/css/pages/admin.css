@@ -158,3 +158,19 @@ textarea.input { min-height: 84px; resize: vertical; }
 .rate-cal__cell.is-full { background: var(--ooo-soft); }
 .rate-cal__cell.is-full span { color: var(--ooo-text, var(--rose-text)); font-weight: 700; }
 .rate-cal tfoot td, .rate-cal tfoot th { border-top: 2px solid var(--line); }
+/* Daily report */
+.daily-bar { align-items: center; }
+.daily-bar .cal-jump { margin-left: 0; margin-right: auto; }
+.daily-note { flex-basis: 100%; margin: 0; }
+.daily-title { font-family: var(--font-display); font-weight: 500; font-size: 1.5rem; margin: 24px 0 12px; }
+.week-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.week-bars li { display: grid; grid-template-columns: 92px minmax(0, 1fr) 44px; align-items: center; gap: 10px; font-size: .85rem; }
+.week-bars strong { text-align: right; }
+.week-bars__bar { height: 10px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+.week-bars__bar span { display: block; height: 100%; background: var(--brass, #b08a4f); border-radius: 999px; }
+.daily-list li { grid-template-columns: minmax(0, 1fr); }
+.daily-list .cell-note { color: var(--muted); font-size: .8rem; }
+.daily-message { margin: 0; white-space: pre-wrap; font-family: var(--font-mono); font-size: .78rem; line-height: 1.55; background: var(--surface-2); padding: 12px 14px; border-radius: 10px; }
+@media print {
+  [data-page="admin"] .sidenav, [data-page="admin"] .appbar, [data-page="admin"] .admin-tabs, .daily-bar, [data-page="admin"] .site-footer { display: none !important; }
+}

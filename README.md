@@ -115,6 +115,11 @@ there). It is also in the account menu (click your name, top right), and at `/ad
   by the night's band), keeps those rates when the stay is shortened, prices only the nights added when it is extended,
   and shows them night by night on the booking page, the website and the invoice. A rate typed by staff counts for
   every night.
+- **Daily report** (for the owner every morning): how yesterday went — rooms sold, occupancy, ADR and RevPAR (from the
+  night audit when the day is closed), revenue by outlet and charges to rooms, money in by method and refunds, new
+  bookings, cancellations and no-shows — and what today holds: arrivals (VIPs), departures, guests in house, rooms out
+  of order or to clean, money still to collect, and the occupancy of the next 7 nights. **Send on WhatsApp** sends the
+  same in one short message; it prints on one page.
 - **Rate calendar:** 30 nights at a time, every room type's rate for each night (seasons and weekends included) and the
   rooms still free, with Friday and Saturday nights, a season's rates and sold-out nights marked, and the hotel's
   rooms left and occupancy for each night.
@@ -305,7 +310,7 @@ the service's **Environment** instead.
 npm test
 ```
 
-142 tests run against a fresh demo hotel or the sample hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
+145 tests run against a fresh demo hotel or the sample hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
 copy, nothing to install), and `TEST_DATABASE=postgres://user:pass@host/postgres npm test` on a real server.
 They cover:
 - sign-in, lockout, CSRF and redirect safety;
@@ -324,6 +329,7 @@ They cover:
 - seasons and weekends (one rule a night, GST by the night, edits keep the nights' rates, website and invoice night by night);
 - the rate calendar (rates by night, rooms left counted like bookings, out-of-order rooms);
 - group bookings (all rooms or none, a guest per room, check-in for everyone arriving, a shared payment, one invoice and no second one per room);
+- the daily report (its figures against the night audit, payments and bookings; the WhatsApp message);
 - the installable app (manifest, icons, service worker and offline page, also for an account that must change its password);
 - database upgrades, and what a new database starts with on a live server;
 - the sample hotel: made through the services, in rupees everywhere, admins only, and removed without a trace;
