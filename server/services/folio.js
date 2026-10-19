@@ -9,22 +9,7 @@ const activity = require('../lib/activity');
 const { Form } = require('../lib/forms');
 const settingsService = require('./settings');
 const reservations = require('./reservations');
-
-/* GST rates that apply to restaurant food in a hotel with a room above ₹7,500 a night ("specified premises"):
-   18%; otherwise 5%. Laundry, spa and other services 18%; a taxi 5%. Staff can pick another rate. */
-const KINDS = [
-  { value: 'fnb', label: 'Food & beverage', hint: 'Room service, restaurant, bar', sac: '996331', gst: (premium) => (premium ? 18 : 5) },
-  { value: 'minibar', label: 'Minibar', hint: 'Drinks and snacks from the room', sac: '996331', gst: (premium) => (premium ? 18 : 5) },
-  { value: 'laundry', label: 'Laundry', hint: 'Washing, pressing, dry cleaning', sac: '999719', gst: () => 18 },
-  { value: 'spa', label: 'Spa & wellness', hint: 'Massage, salon, gym', sac: '999723', gst: () => 18 },
-  { value: 'transport', label: 'Transport', hint: 'Taxi, airport transfer', sac: '996601', gst: () => 5 },
-  { value: 'other', label: 'Other', hint: 'Anything else', sac: '999799', gst: () => 18 },
-];
-const GST_RATES = [0, 5, 12, 18, 28];
-
-const isGst = (settings) => settings.tax_mode === 'gst_india';
-/* "Specified premises": any room sold above ₹7,500 a night (GST rules for hotel restaurants). */
-const premium = (db) => Boolean(db.get('SELECT 1 FROM room_types WHERE active = 1 AND base_rate_cents > 750000'));
+const { KINDS, GST_RATES, isGst, premium } = require('./tax-kinds');
 
 /* Rates staff may choose, in percent. */
 const rates = (settings) => (isGst(settings) ? GST_RATES : [...new Set([0, Number(settings.tax_rate) || 0])]);

@@ -29,8 +29,11 @@
     const extrasOut = $('[data-sum-extras]');
     const totalOut = $('[data-sum-total]');
     const update = () => {
-      const extras = $$('input[name="extra"]:checked', form)
-        .reduce((sum, box) => sum + Number(box.dataset.price) * (box.dataset.per === 'night' ? nights : 1), 0);
+      // with GST where the hotel charges it on the extra (data-tax, a percentage)
+      const extras = $$('input[name="extra"]:checked', form).reduce((sum, box) => {
+        const amount = Number(box.dataset.price) * (box.dataset.per === 'night' ? nights : 1);
+        return sum + amount + Math.round((amount * Number(box.dataset.tax || 0)) / 100);
+      }, 0);
       if (extrasOut) extrasOut.textContent = money(extras / 100);
       if (totalOut) totalOut.textContent = money((base + extras) / 100);
     };

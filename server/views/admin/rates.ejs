@@ -24,10 +24,10 @@
               <div class="card__head" style="padding:20px 24px 0"><div><h2 class="card__title" id="extras-title">Extras</h2></div></div>
               <div class="table-scroll">
                 <table class="table admin-table">
-                  <thead><tr><th scope="col">Code</th><th scope="col">Name</th><th scope="col" class="numeric">Price</th><th scope="col">Charged</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+                  <thead><tr><th scope="col">Code</th><th scope="col">Name</th><th scope="col" class="numeric">Price</th><th scope="col">Charged</th><% if (gst) { %><th scope="col">GST</th><% } %><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
                   <tbody>
 <% for (const x of extras) { -%>
-                    <tr<%- x.active ? '' : ' class="is-inactive"' %>><td class="mono"><%= x.code %></td><td><strong><%= x.name %></strong></td><td class="numeric"><%= fmt.money(x.price_cents) %></td><td><%= x.per === 'night' ? 'Per night' : 'Per stay' %><%= x.active ? '' : ' · inactive' %></td><td class="actions"><a class="button button--secondary button--sm" href="/admin/rates?extra=<%= x.id %>">Edit</a></td></tr>
+                    <tr<%- x.active ? '' : ' class="is-inactive"' %>><td class="mono"><%= x.code %></td><td><strong><%= x.name %></strong></td><td class="numeric"><%= fmt.money(x.price_cents) %></td><td><%= x.per === 'night' ? 'Per night' : 'Per stay' %><%= x.active ? '' : ' · inactive' %></td><% if (gst) { const k = gstKinds.find((g) => g.value === x.gst_kind) || gstKinds[gstKinds.length - 1]; %><td><%= k.label %><%= k.rate !== null ? ' · ' + k.rate + '%' : '' %></td><% } %><td class="actions"><a class="button button--secondary button--sm" href="/admin/rates?extra=<%= x.id %>">Edit</a></td></tr>
 <% } -%>
                   </tbody>
                 </table>
@@ -62,6 +62,9 @@
                 <div class="form-grid__col form-grid__col--half"><label class="field-label" for="x-price">Price (<%= fmt.symbol() %>)</label><input class="input<%= xe.price ? ' is-invalid' : '' %>" id="x-price" name="price" inputmode="decimal" value="<%= xv.price !== undefined ? xv.price : xrec.price_cents !== undefined ? xrec.price_cents / 100 : '' %>"><p class="field-error"><%= xe.price || '' %></p></div>
                 <div class="form-grid__col form-grid__col--half"><label class="field-label" for="x-per">Charged</label><select class="select" id="x-per" name="per"><option value="stay"<%- xval('per') !== 'night' ? ' selected' : '' %>>Once per stay</option><option value="night"<%- xval('per') === 'night' ? ' selected' : '' %>>Every night</option></select></div>
                 <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="x-sort">Order</label><input class="input" id="x-sort" name="sort" type="number" value="<%= xval('sort', 0) %>"></div>
+<% if (gst) { const kind = xval('gst_kind', 'other'); -%>
+                <div class="form-grid__col"><label class="field-label" for="x-gst">GST <span class="field-label__hint">rate and SAC code on the invoice</span></label><select class="select<%= xe.gst_kind ? ' is-invalid' : '' %>" id="x-gst" name="gst_kind"><% for (const k of gstKinds) { %><option value="<%= k.value %>"<%- kind === k.value ? ' selected' : '' %>><%= k.label %><%= k.rate !== null ? ' · ' + k.rate + '%' : '' %> (<%= k.hint %>)</option><% } %></select><p class="field-error"><%= xe.gst_kind || '' %></p></div>
+<% } -%>
               </div>
               <div class="check-row"><label><input type="checkbox" name="active"<%- (xv.active !== undefined ? xv.active : xrec.active !== 0) ? ' checked' : '' %>> Active</label></div>
               <div class="form-actions"><button class="button button--primary" type="submit"><%= editExtra ? 'Save changes' : 'Add extra' %></button><% if (editExtra) { %><a class="button button--secondary" href="/admin/rates">Cancel</a><% } %></div>

@@ -157,7 +157,7 @@
                 <div><dt><%= fmt.plural(b.nights, 'night', 'nights') %> × <%= fmt.money(b.nightly_rate_cents) %></dt><dd><%= fmt.money(b.room_total_cents) %></dd></div>
                 <div><dt>Tax</dt><dd><%= fmt.money(b.tax_cents) %></dd></div>
 <% for (const x of d.extras) { -%>
-                <div><dt><%= x.name %></dt><dd><%= fmt.money(x.amount_cents) %></dd></div>
+                <div><dt><%= x.name %><% if (x.tax_bp > 0) { %> <small class="cell-note">+ GST <%= Number((x.tax_bp / 100).toFixed(2)) %>%</small><% } %></dt><dd><%= fmt.money(x.amount_cents) %></dd></div>
 <% } -%>
 <% if (b.charges_cents) { -%>
                 <div><dt>Charges during the stay</dt><dd><%= fmt.money(b.charges_cents) %></dd></div>

@@ -107,7 +107,8 @@ Apna hotel set karne ke liye **Admin panel** me is order me:
 1. **Hotel settings:** naam, city, address, phone, GSTIN, **State** (GST invoice par chhapta hai), check-in/out time,
    aur **Confirmation / Invoice number prefix** me `HTL` / `INV` ki jagah apne hotel ke letters (jaise `GVH`).
    *Website address* khali chhod sakte ho: email ke links Render ka address khud le lete hain. Apna domain lo, tab bharna.
-2. **Room types** → **Rooms** → **Rates & extras** → **Booking sources**.
+2. **Room types** → **Rooms** → **Rates & extras** → **Booking sources**. Har extra ke saath **GST** chuno: extra bed / late
+   check-out = *Same as the room*, airport pickup = *Transport 5%*, decoration / parking = *Other 18%*, ya *No GST*.
 3. **Staff accounts** (sidebar me **ADMIN → Staff accounts**): har staff ka naam, email aur role daalo, password
    **khali chhod do** → **Add account**. Ek **invite link** banta hai (7 din, sirf ek baar chalta hai): **Copy link**
    ya **Send on WhatsApp** dabake staff ko bhej do (email set ho to email bhi chala jaata hai). Staff link kholke apna

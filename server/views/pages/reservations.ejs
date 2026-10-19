@@ -176,7 +176,7 @@
                   <legend>Extras and requests</legend>
                   <div class="extras">
 <% for (const x of r.form.extras) { -%>
-                    <label class="check-chip"><input type="checkbox" name="extra" value="<%= x.code %>" data-price="<%= x.price_cents / 100 %>" data-per="<%= x.per %>"><span><%= x.name %> <small><%= fmt.moneyWhole(x.price_cents) %><%= x.per === 'night' ? ' / night' : '' %></small></span></label>
+                    <label class="check-chip"><input type="checkbox" name="extra" value="<%= x.code %>" data-price="<%= x.price_cents / 100 %>" data-per="<%= x.per %>" data-tax="<%= x.tax %>"><span><%= x.name %> <small><%= fmt.moneyWhole(x.price_cents) %><%= x.per === 'night' ? ' / night' : '' %></small></span></label>
 <% } -%>
                   </div>
                   <label class="field-label field-label--spaced" for="nb-requests">Special requests <span class="field-label__hint">optional</span></label>

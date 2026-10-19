@@ -20,6 +20,7 @@ const website = require('../services/website');
 const links = require('../services/signin-links');
 const emails = require('../services/emails');
 const gstReturn = require('../services/gst-return');
+const taxKinds = require('../services/tax-kinds');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -356,9 +357,11 @@ function ratesPage(req, res, extra = {}, status = 200) {
   const db = req.db;
   const plans = db.all('SELECT * FROM rate_plans ORDER BY sort, name');
   const extras = db.all('SELECT * FROM extras ORDER BY sort, name');
+  const gst = taxKinds.isGst(req.settings);
+  const gstKinds = gst ? taxKinds.extraKinds(db, req.settings) : [];
   render(req, res, 'rates', 'rates', {
     heading: 'Rates & extras', lead: 'Rate plans change the room type’s base rate. Extras are added to a booking per stay or per night.',
-    plans, extras,
+    plans, extras, gst, gstKinds,
     editPlan: extra.editPlan !== undefined ? extra.editPlan : (req.query.plan ? plans.find((p) => p.id === toInt(req.query.plan)) : null),
     editExtra: extra.editExtra !== undefined ? extra.editExtra : (req.query.extra ? extras.find((x) => x.id === toInt(req.query.extra)) : null),
     ...extra,
@@ -406,11 +409,13 @@ router.post(['/extras', '/extras/:id'], (req, res) => {
     per: form.oneOf('per', ['stay', 'night'], { label: 'Charged' }),
     sort: form.int('sort', { label: 'Order', min: 0, max: 999, required: false }) ?? 0,
     active: form.bool('active'),
+    // GST on the extra (GST hotels only): elsewhere the field is not shown and the kind stays as it is
+    gstKind: taxKinds.isGst(req.settings) ? form.oneOf('gst_kind', taxKinds.EXTRA_KINDS.map((k) => k.value), { label: 'GST' }) : null,
   };
   if (v.code && db.get('SELECT 1 FROM extras WHERE code = ? AND id <> ?', v.code, id || 0)) form.fail('code', 'Another extra already uses this code.');
   if (!form.ok) return ratesPage(req, res, { extraErrors: form.errors, extraValues: form.values, editExtra: id ? { id } : null }, 422);
-  if (id) db.run('UPDATE extras SET code = ?, name = ?, price_cents = ?, per = ?, sort = ?, active = ? WHERE id = ?', v.code, v.name, v.price, v.per, v.sort, v.active ? 1 : 0, id);
-  else db.run('INSERT INTO extras (code, name, price_cents, per, sort, active) VALUES (?, ?, ?, ?, ?, ?)', v.code, v.name, v.price, v.per, v.sort, v.active ? 1 : 0);
+  if (id) db.run('UPDATE extras SET code = ?, name = ?, price_cents = ?, per = ?, sort = ?, active = ?, gst_kind = COALESCE(?, gst_kind) WHERE id = ?', v.code, v.name, v.price, v.per, v.sort, v.active ? 1 : 0, v.gstKind, id);
+  else db.run('INSERT INTO extras (code, name, price_cents, per, sort, active, gst_kind) VALUES (?, ?, ?, ?, ?, ?, ?)', v.code, v.name, v.price, v.per, v.sort, v.active ? 1 : 0, v.gstKind || 'none');
   activity.log(db, req, 'extra.save', `${id ? 'Updated' : 'Added'} extra ${v.name}`);
   back(res, '/admin/rates', id ? 'saved' : 'created');
 });

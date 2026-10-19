@@ -159,11 +159,14 @@
       let rate = adjust.endsWith('%') ? baseRate * (1 + parseFloat(adjust) / 100) : baseRate + parseFloat(adjust);
       rate = Math.round(rate * 100) / 100;
       const roomTotal = rate * nights;
-      const tax = Math.round(roomTotal * taxPercent(rate)) / 100;
-      const extras = $$('input[name="extra"]:checked', form).reduce(
-        (sum, box) => sum + Number(box.dataset.price) * (box.dataset.per === 'night' ? nights : 1),
-        0
-      );
+      let tax = Math.round(roomTotal * taxPercent(rate)) / 100;
+      // GST on extras (India): a percentage, or "room" for extras that are part of the stay
+      const extras = $$('input[name="extra"]:checked', form).reduce((sum, box) => {
+        const amount = Number(box.dataset.price) * (box.dataset.per === 'night' ? nights : 1);
+        const percent = box.dataset.tax === 'room' ? taxPercent(rate) : Number(box.dataset.tax || 0);
+        tax += Math.round(amount * percent) / 100;
+        return sum + amount;
+      }, 0);
       return {
         nights,
         rate,

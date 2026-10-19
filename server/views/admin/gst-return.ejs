@@ -42,7 +42,7 @@
 <% } -%>
               </tbody></table></div>
 <% if (r.nil.b2b + r.nil.b2c) { -%>
-              <p class="form-hint">Billed without GST (extras such as an airport pickup): <%= fmt.money(r.nil.b2b + r.nil.b2c) %>. It is in the Nil rated file; your accountant decides how to report it.</p>
+              <p class="form-hint">Billed without GST (extras set to “No GST” in Rates &amp; extras, or booked before they had GST): <%= fmt.money(r.nil.b2b + r.nil.b2c) %>. It is in the Nil rated file; your accountant decides how to report it.</p>
 <% } -%>
             </section>
             <section class="card" aria-labelledby="gst-files">

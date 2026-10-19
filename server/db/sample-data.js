@@ -68,12 +68,13 @@ const PLANS = [
 /* The empty hotel's own "Best available" plan (room only) is kept; it only gets free cancellation. */
 const BAR = { code: 'BAR', name: 'Best available', description: 'Room only (EP), free cancellation until 48 hours before arrival', cancel: 2 };
 
+/* gst: how each extra is taxed (services/tax-kinds.js): 'room' is part of the stay, at the room's rate. */
 const EXTRAS = [
-  { code: 'airport', name: 'Airport pickup', price: 1500, per: 'stay' },
-  { code: 'extra-bed', name: 'Extra bed', price: 1000, per: 'night' },
-  { code: 'parking', name: 'Car parking', price: 300, per: 'night' },
-  { code: 'late-checkout', name: 'Late checkout till 15:00', price: 1500, per: 'stay' },
-  { code: 'decor', name: 'Room decoration (flowers & cake)', price: 2500, per: 'stay' },
+  { code: 'airport', name: 'Airport pickup', price: 1500, per: 'stay', gst: 'transport' },
+  { code: 'extra-bed', name: 'Extra bed', price: 1000, per: 'night', gst: 'room' },
+  { code: 'parking', name: 'Car parking', price: 300, per: 'night', gst: 'other' },
+  { code: 'late-checkout', name: 'Late checkout till 15:00', price: 1500, per: 'stay', gst: 'room' },
+  { code: 'decor', name: 'Room decoration (flowers & cake)', price: 2500, per: 'stay', gst: 'other' },
 ];
 
 /* Booking sources. The empty hotel's Walk-in, Phone and Website are kept and put in this order. */

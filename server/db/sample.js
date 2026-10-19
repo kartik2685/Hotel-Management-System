@@ -348,7 +348,7 @@ class Sample {
   }
 
   addExtra(key, x, i) {
-    this.db.run('INSERT INTO extras (code, name, price_cents, per, sort, active) VALUES (?, ?, ?, ?, ?, 1)', x.code, x.name, x.price * 100, x.per, i + 1);
+    this.db.run('INSERT INTO extras (code, name, price_cents, per, sort, active, gst_kind) VALUES (?, ?, ?, ?, ?, 1, ?)', x.code, x.name, x.price * 100, x.per, i + 1, x.gst || 'none');
     activity.log(this.db, this.req(key), 'extra.save', `Added extra ${x.name}`);
   }
 

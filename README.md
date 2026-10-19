@@ -105,6 +105,9 @@ there). It is also in the account menu (click your name, top right), and at `/ad
 - **Room types:** name, base rate, how many guests it sleeps, cleaning times.
 - **Rooms:** add or change rooms; take a room **out of order** for a period and put it back in service.
 - **Rates & extras:** rate plans (e.g. Bed & breakfast +₹500/night, Advance purchase −12%) and extras (airport transfer, parking…).
+  On GST, each extra says how it is taxed: *Same as the room* (extra bed, late check-out: the room's rate, SAC 996311),
+  transport 5%, food, spa or other services, or *No GST*. Bookings keep the GST they were made with; the booking form,
+  the website and the invoice show it.
 - **Booking sources:** walk-in, phone, website, OTAs; choose which appear on the booking form.
 - **Staff accounts** (admins): add people with a role, then either
   - leave the password blank to get an **invite link** (works once, for 7 days): copy it or press **Send on WhatsApp**,
@@ -292,7 +295,7 @@ the service's **Environment** instead.
 npm test
 ```
 
-117 tests run against a fresh demo hotel or the sample hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
+123 tests run against a fresh demo hotel or the sample hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
 copy, nothing to install), and `TEST_DATABASE=postgres://user:pass@host/postgres npm test` on a real server.
 They cover:
 - sign-in, lockout, CSRF and redirect safety;
@@ -307,6 +310,7 @@ They cover:
 - WhatsApp messages to guests (numbers with country codes, the guest's signed invoice link);
 - charges during the stay (tax rate per charge, SAC codes and GST per rate on the invoice, managers take charges off);
 - GST returns (GSTR-1 tables that add up to the invoices, the offline tool's CSV columns and dates, managers only);
+- GST on extras (the room's rate or the extra's own, kept by each booking; quotes on the form and the website match the saved total);
 - the installable app (manifest, icons, service worker and offline page, also for an account that must change its password);
 - database upgrades, and what a new database starts with on a live server;
 - the sample hotel: made through the services, in rupees everywhere, admins only, and removed without a trace;

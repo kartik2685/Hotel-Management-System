@@ -29,7 +29,7 @@
               <div class="form-grid__col"><span class="field-label">Add to your stay</span>
                 <div class="extras-list">
 <% for (const x of o.extras) { -%>
-                  <label><input type="checkbox" name="extra" value="<%= x.code %>" data-price="<%= x.price_cents %>" data-per="<%= x.per %>"<%- chosen.includes(x.code) ? ' checked' : '' %>><span><%= x.name %></span><small><%= fmt.money(x.price_cents) %><%= x.per === 'night' ? ' / night' : '' %></small></label>
+                  <label><input type="checkbox" name="extra" value="<%= x.code %>" data-price="<%= x.price_cents %>" data-per="<%= x.per %>" data-tax="<%= x.taxPercent %>"<%- chosen.includes(x.code) ? ' checked' : '' %>><span><%= x.name %></span><small><%= fmt.money(x.price_cents) %><%= x.per === 'night' ? ' / night' : '' %><%= x.taxPercent ? ' + ' + x.taxPercent + '% GST' : '' %></small></label>
 <% } -%>
                 </div></div>
 <% } -%>
@@ -48,7 +48,7 @@
               <dl class="summary__lines">
                 <div><dt><%= fmt.plural(stay.nights, 'night', 'nights') %> × <%= fmt.money(o.quote.rate) %></dt><dd><%= fmt.money(o.quote.roomTotal) %></dd></div>
                 <div><dt><%= s.tax_mode === 'gst_india' ? 'GST ' + o.taxPercent + '%' : (s.tax_label || 'Tax') + ' ' + o.taxPercent + '%' %></dt><dd><%= fmt.money(o.quote.tax) %></dd></div>
-                <div><dt>Extras</dt><dd data-sum-extras><%= fmt.money(0) %></dd></div>
+                <div><dt><%= o.extras.some((x) => x.taxPercent) ? 'Extras (incl. GST)' : 'Extras' %></dt><dd data-sum-extras><%= fmt.money(0) %></dd></div>
               </dl>
               <p class="summary__total"><span>Total</span><span data-sum-total><%= fmt.money(o.quote.total) %></span></p>
               <p class="summary__note"><%= o.policy %> You pay at the hotel.</p>

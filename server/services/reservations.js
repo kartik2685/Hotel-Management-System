@@ -5,6 +5,7 @@ const clock = require('../lib/clock');
 const pricing = require('../lib/pricing');
 const activity = require('../lib/activity');
 const settingsService = require('./settings');
+const taxKinds = require('./tax-kinds');
 
 const STATUS = {
   tentative: { css: 'tentative', label: 'Tentative' },
@@ -179,17 +180,25 @@ function insertBooking(db, req, v, { createdBy = null, actor, online = false } =
     }
     const tags = guestStays(db, guest.id) === 0 ? ['first-stay'] : [];
     const q = pricing.quote({ settings, baseCents: v.type.base_rate_cents, plan: v.plan, nights: v.nights, extras: v.extras });
+    // GST on each extra (none outside GST): its kind, rate and tax are kept with the booking
+    const high = taxKinds.premium(db);
+    const extraLines = v.extras.map((x) => {
+      const amount = x.per === 'night' ? x.price_cents * v.nights : x.price_cents;
+      const bp = Math.round(taxKinds.extraTax(settings, x.gst_kind, q.rate, high).rate * 100);
+      return { x, amount, kind: taxKinds.isGst(settings) ? x.gst_kind || 'none' : 'none', bp, tax: Math.round((amount * bp) / 10000) };
+    });
+    const extrasTax = extraLines.reduce((n, l) => n + l.tax, 0);
     const confirmation = nextConfirmation(db, settings);
     const { id: reservationId } = db.get(
       `INSERT INTO reservations (confirmation, guest_id, room_type_id, room_id, arrival, departure, adults, children, rate_plan_id, nightly_rate_cents,
          source_id, status, tags, requests, room_total_cents, tax_cents, extras_cents, total_cents, created_by, created_at, booked_online)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
       confirmation, guest.id, v.type.id, room ? room.id : null, v.arrival, v.departure, v.adults, v.children, v.plan.id, q.rate,
-      v.source ? v.source.id : null, JSON.stringify(tags), v.requests, q.roomTotal, q.tax, q.extras, q.total, createdBy, stamp, online ? 1 : 0,
+      v.source ? v.source.id : null, JSON.stringify(tags), v.requests, q.roomTotal, q.tax + extrasTax, q.extras, q.total + extrasTax, createdBy, stamp, online ? 1 : 0,
     );
-    for (const x of v.extras) {
-      db.run('INSERT INTO reservation_extras (reservation_id, extra_id, amount_cents) VALUES (?, ?, ?)',
-        reservationId, x.id, x.per === 'night' ? x.price_cents * v.nights : x.price_cents);
+    for (const l of extraLines) {
+      db.run('INSERT INTO reservation_extras (reservation_id, extra_id, amount_cents, gst_kind, tax_bp, tax_cents) VALUES (?, ?, ?, ?, ?, ?)',
+        reservationId, l.x.id, l.amount, l.kind, l.bp, l.tax);
     }
     const summary = `${v.first} ${v.last} · ${v.type.name} · ${f.formatDay(v.arrival)} → ${f.formatDay(v.departure)}`;
     activity.log(db, req, 'reservation.create', `Booked ${confirmation}${online ? ' online' : ''}: ${summary}`, actor);
@@ -238,19 +247,25 @@ function checkIn(db, req, confirmation) {
 }
 
 /* Room, tax and extras for a stay of `nights` nights at `rate`: per-night extras follow the number of nights
-   (their stored amounts are updated); posted charges are kept. Runs inside the caller's transaction. */
+   (their stored amounts and GST are updated); posted charges are kept. tax is the room's and the extras'.
+   Runs inside the caller's transaction. */
 function reprice(db, settings, r, { rate = r.nightly_rate_cents, nights }) {
   const oldNights = f.daysBetween(r.arrival, r.departure);
   let extras = 0;
+  let extrasTax = 0;
   for (const x of db.all('SELECT re.*, ex.per FROM reservation_extras re JOIN extras ex ON ex.id = re.extra_id WHERE re.reservation_id = ?', r.id)) {
     const amount = x.per === 'night' ? Math.round((x.amount_cents / oldNights) * nights) : x.amount_cents;
-    db.run('UPDATE reservation_extras SET amount_cents = ? WHERE reservation_id = ? AND extra_id = ?', amount, r.id, x.extra_id);
+    // an extra keeps the GST it was booked with; one that is part of the stay follows the room's rate
+    const bp = x.gst_kind === 'room' ? Math.round(taxKinds.extraTax(settings, 'room', rate).rate * 100) : x.tax_bp;
+    const tax = Math.round((amount * bp) / 10000);
+    db.run('UPDATE reservation_extras SET amount_cents = ?, tax_bp = ?, tax_cents = ? WHERE reservation_id = ? AND extra_id = ?', amount, bp, tax, r.id, x.extra_id);
     extras += amount;
+    extrasTax += tax;
   }
   const roomTotal = rate * nights;
-  const tax = Math.round((roomTotal * pricing.taxPercent(settings, rate)) / 100);
+  const roomTax = Math.round((roomTotal * pricing.taxPercent(settings, rate)) / 100);
   // charges posted during the stay (services/folio.js) stay on the bill
-  return { roomTotal, tax, extras, total: roomTotal + tax + extras + (r.charges_cents || 0) };
+  return { roomTotal, tax: roomTax + extrasTax, extras, total: roomTotal + roomTax + extras + extrasTax + (r.charges_cents || 0) };
 }
 
 function checkOut(db, req, confirmation, { settle = false, method = 'Card' } = {}) {
@@ -323,7 +338,9 @@ function bookingForm(db, settings, bd) {
   return {
     types, type, plans, quote,
     sources: db.all('SELECT * FROM sources WHERE active = 1 AND form_sort IS NOT NULL ORDER BY form_sort, id'),
-    extras: db.all('SELECT * FROM extras WHERE active = 1 ORDER BY sort, name'),
+    extras: db.all('SELECT * FROM extras WHERE active = 1 ORDER BY sort, name').map((x) => ({
+      ...x, tax: x.gst_kind === 'room' && taxKinds.isGst(settings) ? 'room' : taxKinds.extraTax(settings, x.gst_kind, 0, taxKinds.premium(db)).rate,
+    })),
     arrival: bd, departure: f.addDays(bd, 2), minDeparture: f.addDays(bd, 1),
     maxGuests: Math.max(1, ...types.map((t) => t.max_guests)),
     deposit: Math.round(quote.rate * (1 + pricing.taxPercent(settings, quote.rate) / 100)),
@@ -383,7 +400,7 @@ class FormError extends Error {
 function detail(db, confirmation, bd) {
   const b = byConfirmation(db, confirmation);
   if (!b) return null;
-  const extras = db.all('SELECT x.name, x.per, re.amount_cents FROM reservation_extras re JOIN extras x ON x.id = re.extra_id WHERE re.reservation_id = ?', b.id);
+  const extras = db.all('SELECT x.name, x.per, re.amount_cents, re.tax_bp FROM reservation_extras re JOIN extras x ON x.id = re.extra_id WHERE re.reservation_id = ?', b.id);
   const rooms = freeRooms(db, b.room_type_id, b.arrival, b.departure, b.id);
   if (b.room_id && !rooms.some((r) => r.id === b.room_id)) rooms.unshift({ id: b.room_id, number: b.room_number });
   const owing = b.total_cents - b.paid_cents;

@@ -8,6 +8,7 @@ const pricing = require('../lib/pricing');
 const { Form } = require('../lib/forms');
 const settingsService = require('./settings');
 const reservations = require('./reservations');
+const taxKinds = require('./tax-kinds');
 
 const METHODS = ['Card', 'Cash', 'UPI', 'Bank transfer'];
 const actor = (req) => (req.user ? { id: req.user.id, name: req.user.name } : { id: null, name: 'Website' });
@@ -125,7 +126,7 @@ function createInvoice(db, req, confirmation, body) {
   if (!form.ok) throw new reservations.FormError(form.errors, form.values);
 
   const guest = db.get('SELECT * FROM guests WHERE id = ?', r.guest_id);
-  const extras = db.all('SELECT x.name, x.per, re.amount_cents FROM reservation_extras re JOIN extras x ON x.id = re.extra_id WHERE re.reservation_id = ?', r.id);
+  const extras = db.all('SELECT x.name, x.per, re.amount_cents, re.gst_kind, re.tax_bp, re.tax_cents FROM reservation_extras re JOIN extras x ON x.id = re.extra_id WHERE re.reservation_id = ?', r.id);
   const charges = db.all('SELECT * FROM folio_charges WHERE reservation_id = ? AND voided_at IS NULL ORDER BY posted_at, id', r.id);
   const gst = isGst(settings);
   const percent = pricing.taxPercent(settings, r.nightly_rate_cents);
@@ -137,7 +138,9 @@ function createInvoice(db, req, confirmation, body) {
     t.tax += amount;
     byRate.set(bp, t);
   };
-  addTax(Math.round(percent * 100), r.room_total_cents, r.tax_cents);
+  const roomTax = r.tax_cents - extras.reduce((n, x) => n + x.tax_cents, 0); // tax_cents holds the extras' GST too
+  addTax(Math.round(percent * 100), r.room_total_cents, roomTax);
+  for (const x of extras) if (x.tax_bp > 0) addTax(x.tax_bp, x.amount_cents, x.tax_cents);
   for (const c of charges) if (c.tax_bp > 0) addTax(c.tax_bp, c.amount_cents, c.tax_cents);
   const taxes = [...byRate.values()].map((t) => {
     const half = gst && !interstate ? Math.floor(t.tax / 2) : 0;
@@ -157,8 +160,11 @@ function createInvoice(db, req, confirmation, body) {
       guest: { name: r.name, email: r.email || '', phone: r.phone || '' },
       stay: { confirmation: r.confirmation, room: r.room_number || '', type: r.type_name, arrival: r.arrival, departure: r.departure, nights: r.nights, guests: f.guestCount(r.adults, r.children, ', '), plan: r.plan_name || '' },
       lines: [
-        { text: `Room ${r.room_number || ''} · ${r.type_name} · ${f.plural(r.nights, 'night', 'nights')} × ${f.money(r.nightly_rate_cents)}`.replace('Room  · ', 'Room · '), sac: gst ? '996311' : '', amount: r.room_total_cents, taxed: true, rate: percent, tax: r.tax_cents },
-        ...extras.map((x) => ({ text: x.name + (x.per === 'night' ? ` · ${f.plural(r.nights, 'night', 'nights')}` : ''), sac: '', amount: x.amount_cents, taxed: false })),
+        { text: `Room ${r.room_number || ''} · ${r.type_name} · ${f.plural(r.nights, 'night', 'nights')} × ${f.money(r.nightly_rate_cents)}`.replace('Room  · ', 'Room · '), sac: gst ? '996311' : '', amount: r.room_total_cents, taxed: true, rate: percent, tax: roomTax },
+        ...extras.map((x) => ({
+          text: x.name + (x.per === 'night' ? ` · ${f.plural(r.nights, 'night', 'nights')}` : '') + (x.tax_bp > 0 ? ` · ${Number((x.tax_bp / 100).toFixed(2))}%` : ''),
+          sac: gst && x.tax_bp > 0 ? taxKinds.sacOf(x.gst_kind) : '', amount: x.amount_cents, taxed: x.tax_bp > 0, rate: x.tax_bp / 100, tax: x.tax_cents,
+        })),
         ...charges.map((c) => ({
           text: `${c.description} · ${f.formatDay(c.posted_at)}${c.tax_bp > 0 ? ` · ${Number((c.tax_bp / 100).toFixed(2))}%` : ''}`,
           sac: gst ? c.sac || '' : '', amount: c.amount_cents, taxed: c.tax_bp > 0, rate: c.tax_bp / 100, tax: c.tax_cents,

@@ -8,6 +8,7 @@ const activity = require('../lib/activity');
 const mail = require('../lib/mail');
 const { Form } = require('../lib/forms');
 const settingsService = require('./settings');
+const taxKinds = require('./tax-kinds');
 const reservations = require('./reservations');
 const registration = require('./registration');
 const emails = require('./emails');
@@ -103,7 +104,9 @@ function offer(db, query) {
   return {
     stay, type: { ...type, photoUrl: photoUrl(type) }, plan, quote, policy: policyText(plan, stay.arrival),
     fits: stay.adults + stay.children <= type.max_guests, left: roomsLeft(db, type.id, stay.arrival, stay.departure),
-    extras: db.all('SELECT * FROM extras WHERE active = 1 ORDER BY sort, name'), bd,
+    extras: db.all('SELECT * FROM extras WHERE active = 1 ORDER BY sort, name').map((x) => ({
+      ...x, taxPercent: taxKinds.extraTax(settings, x.gst_kind, quote.rate, taxKinds.premium(db)).rate,
+    })), bd,
     taxPercent: pricing.taxPercent(settings, quote.rate),
   };
 }
