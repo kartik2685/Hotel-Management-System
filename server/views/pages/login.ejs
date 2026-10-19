@@ -50,7 +50,7 @@
       <main id="main" class="auth__card" tabindex="-1">
         <p class="kicker"><%= hotel.name %> · Front office</p>
         <h1 class="auth__title">Sign in to Frontdesk</h1>
-        <p class="auth__lead">Use your staff email. Shared workstations sign out after <%= idleMinutes %> minutes idle.</p>
+        <p class="auth__lead">Owner, admin or staff: everyone signs in here with their own email. Shared workstations sign out after <%= idleMinutes %> minutes idle.</p>
         <div class="success-box auth__notice" data-cookie-notice role="alert"<%- locals.cookieBlocked ? '' : ' hidden' %>>
           <span class="success-box__icon"><%- icon('info') %></span>
           <div data-cookie-help="frame"<%- locals.cookieBlocked === 'page' ? ' hidden' : '' %>>
@@ -73,7 +73,7 @@
           <input type="hidden" name="_csrf" value="<%= loginToken %>">
           <input type="hidden" name="next" value="<%= next %>">
           <div class="form-group">
-            <label class="field-label" for="login-email">Staff email</label>
+            <label class="field-label" for="login-email">Email</label>
             <div class="icon-input"><%- icon('mail') %><input class="input<%= errors.email ? ' is-invalid' : '' %>" id="login-email" name="email" type="email" autocomplete="username" placeholder="elena.marsh@example.com" required aria-describedby="login-email-err" value="<%= email %>"<%- errors.email ? ' aria-invalid="true"' : '' %>></div>
             <p class="field-error" id="login-email-err"><%= errors.email || '' %></p>
           </div>
@@ -106,10 +106,10 @@
         </form>
         <div class="reset-box" id="reset-panel" data-reset-panel<%- locals.resetSent ? '' : ' hidden' %>>
           <h2 class="reset-box__title">Reset your password</h2>
-          <p>Enter your staff email and we will show you the next step.</p>
+          <p>Enter the email of your account and we will show you the next step.</p>
           <form class="reset-box__form" method="post" action="/password/forgot" data-reset-form novalidate>
             <input type="hidden" name="_csrf" value="<%= loginToken %>">
-            <label class="sr-only" for="reset-email">Staff email</label>
+            <label class="sr-only" for="reset-email">Email</label>
             <input class="input" id="reset-email" name="email" type="email" placeholder="elena.marsh@example.com" required aria-describedby="reset-email-err">
             <button class="button button--secondary" type="submit">Continue</button>
           </form>

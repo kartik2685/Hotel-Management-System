@@ -152,7 +152,14 @@ body.site { background: var(--bg); color: var(--text); }
 
 /* Small phones: keep the header on one line */
 .site-header .button { white-space: nowrap; }
+.site-login .icon { width: 16px; height: 16px; }
 @media (max-width: 480px) {
   .site-brand__name { font-size: 1.15rem; }
   .site-header__inner { gap: 10px; }
+  /* the staff login shrinks to its icon; the words stay for screen readers */
+  .site-login { padding-left: 10px; padding-right: 10px; }
+  .site-login__text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+@media (max-width: 400px) {
+  .site-header .theme-switch { display: none; } /* room for the hotel's name; the theme still follows the phone */
 }

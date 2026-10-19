@@ -36,6 +36,15 @@ describe('guest website', () => {
     assert.match(r.text, /From<strong>\$193<\/strong>/); // Advance purchase: $219 − 12%
   });
 
+  test('the header leads staff and the owner to the sign-in page', async () => {
+    const guest = hotel.client();
+    const home = await guest.get('/hotel');
+    assert.match(home.text, /<a class="button button--secondary button--sm site-login" href="\/login" title="Staff and admin sign-in"><svg[^>]*>.*?<\/svg><span class="site-login__text">Staff login<\/span><\/a>/);
+    const login = await guest.get('/login');
+    assert.equal(login.status, 200);
+    assert.match(login.text, /Owner, admin or staff: everyone signs in here with their own email\./);
+  });
+
   test('search shows real availability', async () => {
     const r = await hotel.client().get('/hotel/book?arrival=2026-09-24&departure=2026-09-26&adults=2');
     assert.equal(r.status, 200);

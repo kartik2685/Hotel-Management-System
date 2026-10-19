@@ -78,7 +78,9 @@ Admin panel me 30 din ki ginti dikhti hai (Part 2), aur Render bhi email bhejta 
 ## Part 2: Check karo, 2 minute
 
 1. Render page ke upar wala link kholo, jaise `https://hotel-management-system-xxxx.onrender.com`.
-   Wahan `/login` par jao aur `ADMIN_EMAIL` + `ADMIN_PASSWORD` se sign in karo.
+   Sign-in page khulega (na khule to address ke aakhir me `/login` likho, ya hotel website ke upar right me
+   **Staff login** dabao). Owner, admin aur staff sab isi page se login karte hain: `ADMIN_EMAIL` + `ADMIN_PASSWORD`
+   se sign in karo.
 2. Left sidebar me neeche **ADMIN → Admin panel** dabao (mobile/tablet par pehle upar-left ☰ menu kholo).
    **Overview** page par **Database** card me dikhega:
    - **Render PostgreSQL · private network**
