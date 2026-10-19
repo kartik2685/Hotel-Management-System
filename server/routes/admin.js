@@ -19,6 +19,7 @@ const sample = require('../db/sample');
 const website = require('../services/website');
 const links = require('../services/signin-links');
 const emails = require('../services/emails');
+const gstReturn = require('../services/gst-return');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -48,6 +49,7 @@ const TABS = [
   { key: 'guests', href: '/admin/guests', label: 'Guests', ability: 'manage' },
   { key: 'invoices', href: '/admin/invoices', label: 'Invoices', ability: 'manage' },
   { key: 'reports', href: '/admin/reports', label: 'Reports', ability: 'manage' },
+  { key: 'gst-return', href: '/admin/gst-return', label: 'GST returns', ability: 'manage', gst: true },
   { key: 'activity', href: '/admin/activity', label: 'Activity log', ability: 'manage' },
   { key: 'emails', href: '/admin/emails', label: 'Emails', ability: 'administer' },
   { key: 'night-audit', href: '/admin/night-audit', label: 'Night audit', ability: 'manage' },
@@ -63,7 +65,7 @@ function render(req, res, view, tab, data, status = 200) {
   const shell = shellService.build(req.db, req, tab === 'staff' ? 'admin-staff' : 'admin'); // which sidebar link is lit
   res.status(status).render(`admin/${view}`, {
     title: `${data.heading} · Admin panel · Frontdesk Hotel Management`, description: 'Frontdesk admin panel.', page: 'admin',
-    css: ['pages/admin'], scripts: [], shell, tab, tabs: TABS.filter((t) => can(req.user, t.ability)),
+    css: ['pages/admin'], scripts: [], shell, tab, tabs: TABS.filter((t) => can(req.user, t.ability) && (!t.gst || req.settings.tax_mode === 'gst_india')),
     flash: FLASH[req.query.ok] || '', errors: {}, values: {}, ...data,
   });
 }
@@ -654,6 +656,26 @@ router.get('/reports.csv', (req, res) => {
   }
   sendCsv(res, `daily-${r.from}-to-${r.to}.csv`, ['Date', 'Rooms sold', 'Rooms', 'Occupancy %', 'Room revenue', 'ADR', 'RevPAR', 'Closed'],
     r.days.map((d) => [d.date, d.sold, d.rooms, d.occupancy, (d.revenue / 100).toFixed(2), (d.adr / 100).toFixed(2), (d.revpar / 100).toFixed(2), d.closed ? 'yes' : 'no']));
+});
+
+/* ------------------------------------------------------------------ GST returns (GSTR-1) */
+const gstMonth = (req) => (gstReturn.isMonth(req.query.month) ? req.query.month : gstReturn.defaultMonth(req.db));
+router.get('/gst-return', (req, res, next) => {
+  if (req.settings.tax_mode !== 'gst_india') return next();
+  const r = gstReturn.build(req.db, gstMonth(req));
+  const csvRows = Object.fromEntries(gstReturn.PARTS.map((part) => [part, gstReturn.csv(r, part)[2].length]));
+  render(req, res, 'gst-return', 'gst-return', {
+    heading: 'GST returns', lead: 'GSTR-1 for a month, from the invoices you issued: B2B, B2C, SAC summary and documents issued, ready for the GST offline tool or your accountant.',
+    r, csvRows, parts: gstReturn.PARTS,
+  });
+});
+router.get('/gst-return.csv', (req, res, next) => {
+  if (req.settings.tax_mode !== 'gst_india') return next();
+  const r = gstReturn.build(req.db, gstMonth(req));
+  const file = gstReturn.csv(r, String(req.query.part || ''));
+  if (!file) return next();
+  const [name, header, rows] = file;
+  sendCsv(res, `gstr1-${r.month}-${name}.csv`, header, rows);
 });
 
 /* ------------------------------------------------------------------ emails (outbox) */

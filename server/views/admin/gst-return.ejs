@@ -1,0 +1,74 @@
+<%- include('_top') %>
+<% const PART = { b2b: ['B2B invoices', 'Table 4A'], b2cl: ['B2C large, inter-state', 'Table 5'], b2cs: ['B2C others', 'Table 7'], exemp: ['Nil rated', 'Table 8'], hsn: ['HSN / SAC summary', 'Table 12'], docs: ['Documents issued', 'Table 13'] };
+   const t = r.totals; const cancelled = r.docs.reduce((n, d) => n + d.cancelled, 0); -%>
+        <form class="card filter-bar" method="get" action="/admin/gst-return" style="margin-bottom:20px">
+          <div class="field"><label class="field-label" for="gst-month">Month</label><input class="input" id="gst-month" name="month" type="month" value="<%= r.month %>"></div>
+          <div class="field field--reset"><button class="button button--primary" type="submit">Show</button></div>
+          <p class="form-hint gst-who">Your GSTIN <strong class="mono"><%= r.hotelGstin || 'not set: Hotel settings → Tax number' %></strong> · place of supply <strong><%= r.pos || '—' %></strong></p>
+        </form>
+        <div class="admin-cards">
+          <div class="card admin-card"><span class="admin-card__num"><%= t.b2b.invoices %></span><span class="admin-card__label">B2B invoices · <%= fmt.moneyWhole(t.b2b.taxable) %> taxable</span></div>
+          <div class="card admin-card"><span class="admin-card__num"><%= t.b2c.invoices %></span><span class="admin-card__label">B2C invoices · <%= fmt.moneyWhole(t.b2c.taxable) %> taxable</span></div>
+          <div class="card admin-card"><span class="admin-card__num"><%= fmt.money(t.b2b.tax + t.b2c.tax) %></span><span class="admin-card__label">GST on the invoices of <%= r.label %></span></div>
+          <div class="card admin-card"><span class="admin-card__num"><%= r.invoices %></span><span class="admin-card__label">invoice numbers used · <%= cancelled %> cancelled</span></div>
+        </div>
+        <div class="admin-grid" style="margin-top:20px">
+          <section class="card card--flush" aria-labelledby="gst-b2b">
+            <div class="card__head" style="padding:20px 24px 0"><div><h2 class="card__title" id="gst-b2b">B2B invoices</h2><p class="card__subtitle">Billed to a GSTIN · one line for each tax rate on the invoice</p></div></div>
+            <div class="table-scroll">
+              <table class="table admin-table">
+                <thead><tr><th scope="col">Invoice</th><th scope="col">Billed to</th><th scope="col" class="numeric">Rate</th><th scope="col" class="numeric">Taxable</th><th scope="col" class="numeric">GST</th></tr></thead>
+                <tbody>
+<% for (const x of r.b2b) { -%>
+                  <tr><td class="mono"><%= x.number %><br><small class="cell-note"><%= fmt.formatDay(x.date) %></small></td><td><%= x.name %><br><small class="cell-note mono"><%= x.gstin %></small></td><td class="numeric"><%= x.rate %>%</td><td class="numeric"><%= fmt.money(x.taxable) %></td><td class="numeric"><%= fmt.money(x.tax) %></td></tr>
+<% } -%>
+<% if (!r.b2b.length) { -%>
+                  <tr><td colspan="5" class="cell-note">No invoice was billed to a GSTIN in <%= r.label %>.</td></tr>
+<% } -%>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <div class="admin-stack">
+            <section class="card" aria-labelledby="gst-rates">
+              <div class="card__head"><div><h2 class="card__title" id="gst-rates">Tax by rate</h2><p class="card__subtitle">Every issued invoice of <%= r.label %></p></div></div>
+              <% const igst = r.byRate.some((x) => x.igst); /* only inter-state invoices have IGST */ -%>
+              <div class="table-scroll"><table class="table admin-table"><thead><tr><th scope="col">Rate</th><th scope="col" class="numeric">Taxable</th><th scope="col" class="numeric">CGST</th><th scope="col" class="numeric">SGST</th><% if (igst) { %><th scope="col" class="numeric">IGST</th><% } %></tr></thead><tbody>
+<% for (const x of r.byRate) { -%>
+                <tr><td><%= x.rate %>%</td><td class="numeric"><%= fmt.money(x.taxable) %></td><td class="numeric"><%= fmt.money(x.cgst) %></td><td class="numeric"><%= fmt.money(x.sgst) %></td><% if (igst) { %><td class="numeric"><%= fmt.money(x.igst) %></td><% } %></tr>
+<% } -%>
+<% if (!r.byRate.length) { -%>
+                <tr><td colspan="4" class="cell-note">No GST invoice was issued in <%= r.label %>.</td></tr>
+<% } -%>
+              </tbody></table></div>
+<% if (r.nil.b2b + r.nil.b2c) { -%>
+              <p class="form-hint">Billed without GST (extras such as an airport pickup): <%= fmt.money(r.nil.b2b + r.nil.b2c) %>. It is in the Nil rated file; your accountant decides how to report it.</p>
+<% } -%>
+            </section>
+            <section class="card" aria-labelledby="gst-files">
+              <div class="card__head"><div><h2 class="card__title" id="gst-files">Files for the GST offline tool</h2><p class="card__subtitle">CSV files with the tool’s column names, for you or your accountant. GSTR-1 is due by the 11th of the next month (under QRMP, the 13th after the quarter).</p></div></div>
+              <ul class="gst-files">
+<% for (const part of parts) { -%>
+                <li><a class="button button--secondary button--sm" href="/admin/gst-return.csv?month=<%= r.month %>&amp;part=<%= part %>"><%- icon('download') %><%= PART[part][0] %></a><span class="cell-note"><%= PART[part][1] %> · <%= fmt.plural(csvRows[part], 'line', 'lines') %></span></li>
+<% } -%>
+              </ul>
+            </section>
+          </div>
+        </div>
+        <section class="card card--flush" aria-labelledby="gst-hsn" style="margin-top:20px">
+          <div class="card__head" style="padding:20px 24px 0"><div><h2 class="card__title" id="gst-hsn">HSN / SAC summary</h2><p class="card__subtitle">What was sold, by SAC code and rate, B2B and B2C apart · documents issued: <%= r.docs.map((d) => `${d.first} to ${d.last} (${d.total}, ${d.cancelled} cancelled)`).join('; ') || 'none' %></p></div></div>
+          <div class="table-scroll">
+            <table class="table admin-table">
+              <thead><tr><th scope="col">Section</th><th scope="col">SAC</th><th scope="col">Description</th><th scope="col" class="numeric">Rate</th><th scope="col" class="numeric">Taxable</th><th scope="col" class="numeric">CGST</th><th scope="col" class="numeric">SGST</th><th scope="col" class="numeric">IGST</th></tr></thead>
+              <tbody>
+<% for (const x of r.hsn) { -%>
+                <tr><td><%= x.section %></td><td class="mono"><%= x.sac %></td><td><%= x.description %></td><td class="numeric"><%= x.rate %>%</td><td class="numeric"><%= fmt.money(x.taxable) %></td><td class="numeric"><%= fmt.money(x.cgst) %></td><td class="numeric"><%= fmt.money(x.sgst) %></td><td class="numeric"><%= fmt.money(x.igst) %></td></tr>
+<% } -%>
+<% if (!r.hsn.length) { -%>
+                <tr><td colspan="8" class="cell-note">Nothing to report for <%= r.label %>.</td></tr>
+<% } -%>
+              </tbody>
+            </table>
+          </div>
+        </section>
+<%- include('_bottom') %>

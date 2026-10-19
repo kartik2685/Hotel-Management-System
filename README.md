@@ -118,6 +118,10 @@ there). It is also in the account menu (click your name, top right), and at `/ad
 - **Website:** turn the guest website on or off; tagline, introduction, amenities and policies.
 - **Invoices:** every invoice issued, with CSV export.
 - **Reports:** occupancy, ADR, RevPAR and room revenue for any period, revenue by outlet and bookings by source, with CSV export.
+- **GST returns** (hotels on GST): GSTR-1 for a month from the invoices issued — B2B invoices with the guest companies'
+  GSTINs (a line per tax rate), the B2C summary by place of supply and rate, tax by rate, the HSN/SAC summary (B2B and
+  B2C apart), amounts billed without GST and the documents issued (first and last invoice number, cancelled ones).
+  Each table downloads as a CSV with the GST offline tool's column names, for you or your accountant.
 - **Emails** (admins): every email the system wrote (confirmations, cancellations, password resets) and whether it was sent.
 - **Activity log:** who did what and when.
 - **Night audit:** at the end of the day, check that no one is left to check in or out, enter restaurant and spa
@@ -288,7 +292,7 @@ the service's **Environment** instead.
 npm test
 ```
 
-111 tests run against a fresh demo hotel or the sample hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
+117 tests run against a fresh demo hotel or the sample hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
 copy, nothing to install), and `TEST_DATABASE=postgres://user:pass@host/postgres npm test` on a real server.
 They cover:
 - sign-in, lockout, CSRF and redirect safety;
@@ -302,6 +306,7 @@ They cover:
 - staff invite and password links (shown once, emailed, work once, expire, a newer link replaces the older);
 - WhatsApp messages to guests (numbers with country codes, the guest's signed invoice link);
 - charges during the stay (tax rate per charge, SAC codes and GST per rate on the invoice, managers take charges off);
+- GST returns (GSTR-1 tables that add up to the invoices, the offline tool's CSV columns and dates, managers only);
 - the installable app (manifest, icons, service worker and offline page, also for an account that must change its password);
 - database upgrades, and what a new database starts with on a live server;
 - the sample hotel: made through the services, in rupees everywhere, admins only, and removed without a trace;

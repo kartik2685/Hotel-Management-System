@@ -109,6 +109,16 @@ textarea.input { min-height: 84px; resize: vertical; }
 .charge-list .is-voided { opacity: .6; }
 .charge-list .is-voided strong { text-decoration: line-through; }
 .charge-add { margin-top: 12px; }
+/* Period filters on admin pages (Reports, GST returns): fields in a row with their buttons beside them.
+   (.filter-bar's own styles belong to the staff Reservations page and are not loaded here.) */
+[data-page="admin"] .filter-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 14px; padding: 18px 20px; }
+[data-page="admin"] .filter-bar .field { display: grid; gap: 6px; flex: 0 1 220px; min-width: 0; }
+[data-page="admin"] .filter-bar .field--reset { flex: 0 0 auto; }
+[data-page="admin"] .filter-bar .field-label { margin: 0; }
+/* GST returns */
+.gst-who { align-self: center; margin: 0; }
+.gst-files { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.gst-files li { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 
 /* Error page */
 .error-page { display: grid; place-items: center; min-height: 100vh; padding: 24px; }

@@ -120,6 +120,11 @@ laundry, spa, taxi wagairah, apne GST rate ke saath (khana 18% agar koi room ₹
 laundry/spa 18%; taxi 5%; chaho to rate badal sakte ho). Charge total, balance aur check-out me judta hai, aur GST invoice par
 SAC code ke saath har rate ka CGST/SGST alag dikhta hai. Galat charge manager **Take off the bill** se hata sakta hai.
 
+**GST return (GSTR-1):** **Admin panel → GST returns** me mahina chuno. Us mahine ki invoices se B2B (company ka GSTIN,
+har tax rate ki line), B2C ka total, rate-wise CGST/SGST, HSN/SAC summary aur documents issued (pehla-aakhri invoice
+number, cancel wale) ban jaate hain. Har table ki CSV GST offline tool ke column naamon ke saath download hoti hai,
+seedha accountant ko de do. GSTR-1 agle mahine ki 11 tarikh tak (QRMP me quarter ke baad 13 tarikh tak).
+
 **Guest ko WhatsApp:** har booking page par **WhatsApp the guest** button hai. Dabate hi WhatsApp (app ya WhatsApp Web)
 guest ke number aur taiyaar message ke saath khulta hai: booking confirm hone par details + booking dekhne/cancel karne
 ka link, hotel me ho to welcome + room number, check-out ke baad thank-you + invoice ka link. Invoice page par

@@ -157,11 +157,11 @@ function createInvoice(db, req, confirmation, body) {
       guest: { name: r.name, email: r.email || '', phone: r.phone || '' },
       stay: { confirmation: r.confirmation, room: r.room_number || '', type: r.type_name, arrival: r.arrival, departure: r.departure, nights: r.nights, guests: f.guestCount(r.adults, r.children, ', '), plan: r.plan_name || '' },
       lines: [
-        { text: `Room ${r.room_number || ''} · ${r.type_name} · ${f.plural(r.nights, 'night', 'nights')} × ${f.money(r.nightly_rate_cents)}`.replace('Room  · ', 'Room · '), sac: gst ? '996311' : '', amount: r.room_total_cents, taxed: true },
+        { text: `Room ${r.room_number || ''} · ${r.type_name} · ${f.plural(r.nights, 'night', 'nights')} × ${f.money(r.nightly_rate_cents)}`.replace('Room  · ', 'Room · '), sac: gst ? '996311' : '', amount: r.room_total_cents, taxed: true, rate: percent, tax: r.tax_cents },
         ...extras.map((x) => ({ text: x.name + (x.per === 'night' ? ` · ${f.plural(r.nights, 'night', 'nights')}` : ''), sac: '', amount: x.amount_cents, taxed: false })),
         ...charges.map((c) => ({
           text: `${c.description} · ${f.formatDay(c.posted_at)}${c.tax_bp > 0 ? ` · ${Number((c.tax_bp / 100).toFixed(2))}%` : ''}`,
-          sac: gst ? c.sac || '' : '', amount: c.amount_cents, taxed: c.tax_bp > 0,
+          sac: gst ? c.sac || '' : '', amount: c.amount_cents, taxed: c.tax_bp > 0, rate: c.tax_bp / 100, tax: c.tax_cents,
         })),
       ],
       taxable: sum('taxable'), tax: sum('tax'), cgst: sum('cgst'), sgst: sum('sgst'), igst: sum('igst'), taxes,
