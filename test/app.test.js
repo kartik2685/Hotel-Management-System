@@ -130,6 +130,33 @@ describe('roles', () => {
     assert.equal((await c.get('/admin/settings')).status, 403);
     assert.equal((await c.get('/admin/staff')).status, 403);
   });
+
+  test('the sidebar shows the admin panel to managers and admins, and staff accounts to admins only', async () => {
+    const link = (href, label) => new RegExp(`<a class="sidenav__link" href="${href}"( aria-current="page")?><svg[^>]*>.*?</svg><span>${label}</span>`);
+    const admin = hotel.client();
+    await admin.login();
+    let page = await admin.get('/dashboard');
+    assert.match(page.text, /<p class="sidenav__label">Admin<\/p>/);
+    assert.match(page.text, link('/admin', 'Admin panel'));
+    assert.match(page.text, link('/admin/staff', 'Staff accounts'));
+    page = await admin.get('/admin/staff');
+    assert.match(page.text, /<a class="sidenav__link" href="\/admin\/staff" aria-current="page">/); // lit where you are
+    assert.doesNotMatch(page.text, /<a class="sidenav__link" href="\/admin" aria-current="page">/);
+    page = await admin.get('/admin/rooms');
+    assert.match(page.text, /<a class="sidenav__link" href="\/admin" aria-current="page">/);
+
+    const manager = hotel.client();
+    await manager.login('gus.palmer@example.com');
+    page = await manager.get('/dashboard');
+    assert.match(page.text, link('/admin', 'Admin panel'));
+    assert.doesNotMatch(page.text, /href="\/admin\/staff"/);
+
+    const desk = hotel.client();
+    await desk.login('rosa.soto@example.com');
+    page = await desk.get('/dashboard');
+    assert.doesNotMatch(page.text, /sidenav__label">Admin</);
+    assert.doesNotMatch(page.text, /href="\/admin"/);
+  });
 });
 
 describe('bookings', () => {

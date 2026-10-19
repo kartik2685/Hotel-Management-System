@@ -79,7 +79,8 @@ Admin panel me 30 din ki ginti dikhti hai (Part 2), aur Render bhi email bhejta 
 
 1. Render page ke upar wala link kholo, jaise `https://hotel-management-system-xxxx.onrender.com`.
    Wahan `/login` par jao aur `ADMIN_EMAIL` + `ADMIN_PASSWORD` se sign in karo.
-2. Upar right me apne naam par click → **Admin panel** → **Overview**. Neeche **Database** card me dikhega:
+2. Left sidebar me neeche **ADMIN → Admin panel** dabao (mobile/tablet par pehle upar-left ☰ menu kholo).
+   **Overview** page par **Database** card me dikhega:
    - **Render PostgreSQL · private network**
    - **Tables:** 26 · version 2, **Round trip:** kuch milliseconds, **Set up:** aaj ki date
    - Ek box: **"30 days left on Render’s free database…"**, yaani free database kab band hoga. Ye ginti roz kam hogi;
@@ -97,7 +98,9 @@ Admin panel me 30 din ki ginti dikhti hai (Part 2), aur Render bhi email bhejta 
    aur **Confirmation / Invoice number prefix** me `HTL` / `INV` ki jagah apne hotel ke letters (jaise `GVH`).
    *Website address* khali chhod sakte ho: email ke links Render ka address khud le lete hain. Apna domain lo, tab bharna.
 2. **Room types** → **Rooms** → **Rates & extras** → **Booking sources**.
-3. **Staff accounts:** har staff ko role ke saath add karo (admin, manager, frontdesk, housekeeping).
+3. **Staff accounts** (sidebar me **ADMIN → Staff accounts**): har staff ka naam, email, role aur ek temporary
+   password daalo → **Add account**. Staff ko email + temporary password bata do; pehli baar login par wo apna
+   password khud banayega.
 4. **Website:** guest website shuru me **off** hoti hai. Texts likho aur **on** karo. Guests `https://…onrender.com/hotel` par booking karenge.
 
 ---

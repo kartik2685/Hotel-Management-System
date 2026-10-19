@@ -47,6 +47,12 @@ function build(db, req, active) {
       { key: 'housekeeping', href: '/housekeeping', icon: 'sparkles', label: 'Housekeeping', badge: tasks.total ? `${Math.round((tasks.done / tasks.total) * 100)}%` : '' },
     ],
   });
+  // Managers and admins: the admin panel in plain sight, not only in the account menu.
+  if (can(user, 'manage')) {
+    const items = [{ key: 'admin', href: '/admin', icon: 'wrench', label: 'Admin panel' }];
+    if (can(user, 'administer')) items.push({ key: 'admin-staff', href: '/admin/staff', icon: 'key', label: 'Staff accounts' });
+    nav.push({ label: 'Admin', items });
+  }
 
   const notifications = db.all(
     `SELECT n.*, (SELECT 1 FROM notification_reads nr WHERE nr.notification_id = n.id AND nr.user_id = ?) AS seen

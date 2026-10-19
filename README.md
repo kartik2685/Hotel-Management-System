@@ -69,7 +69,8 @@ All demo accounts share the password `harlow-demo` (change it with `DEMO_PASSWOR
 
 ### Admin panel
 
-Open it from the **account menu** (click your name, top right) → **Admin panel**, or go to `/admin`.
+Managers and admins open it from the sidebar: **Admin → Admin panel** (admins also get **Staff accounts**
+there). It is also in the account menu (click your name, top right), and at `/admin`.
 
 - **Overview → Database** (admins): which database the hotel runs on (*Render PostgreSQL*, *Supabase (PostgreSQL)*
   or the SQLite file), its tables, size and round-trip time, and **Download a backup**: every table in one file.
@@ -258,7 +259,7 @@ the service's **Environment** instead.
 npm test
 ```
 
-71 tests run against a fresh demo hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
+72 tests run against a fresh demo hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
 copy, nothing to install), and `TEST_DATABASE=postgres://user:pass@host/postgres npm test` on a real server.
 They cover:
 - sign-in, lockout, CSRF and redirect safety;

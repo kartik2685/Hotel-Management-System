@@ -54,7 +54,7 @@ const FLASH = {
 };
 
 function render(req, res, view, tab, data, status = 200) {
-  const shell = shellService.build(req.db, req, 'admin');
+  const shell = shellService.build(req.db, req, tab === 'staff' ? 'admin-staff' : 'admin'); // which sidebar link is lit
   res.status(status).render(`admin/${view}`, {
     title: `${data.heading} · Admin panel · Frontdesk Hotel Management`, description: 'Frontdesk admin panel.', page: 'admin',
     css: ['pages/admin'], scripts: [], shell, tab, tabs: TABS.filter((t) => can(req.user, t.ability)),
