@@ -43,7 +43,7 @@ describe('sample data', () => {
     assert.equal(count('SELECT COUNT(*) AS n FROM room_types rt WHERE NOT EXISTS (SELECT 1 FROM rooms r WHERE r.room_type_id = rt.id)'), 0);
     const roles = hotel.db.all('SELECT role, COUNT(*) AS n FROM users GROUP BY role').map((r) => r.role).sort();
     assert.deepEqual(roles, ['admin', 'frontdesk', 'housekeeping', 'manager']);
-    assert.equal(count('SELECT COUNT(*) AS n FROM users'), 19); // 18 sample staff and the owner
+    assert.equal(count('SELECT COUNT(*) AS n FROM users'), 20); // 18 sample staff, a new hire still invited, and the owner
     assert.equal(count('SELECT COUNT(*) AS n FROM users WHERE active = 0'), 1); // one has left the hotel
     assert.equal(count('SELECT COUNT(*) AS n FROM users WHERE must_change_password = 1'), 0);
   });
@@ -113,6 +113,17 @@ describe('sample data', () => {
     assert.doesNotMatch(page, /harlow|elena|marsh\b/i);
   });
 
+  test('a new hire’s invite is still open: Staff accounts shows it and the emailed link works', async () => {
+    const list = (await owner.get('/admin/staff')).text;
+    assert.match(list.match(/<tr[^>]*><td><strong>Nisha Roy<\/strong>[\s\S]*?<\/tr>/)[0], /Invite sent/);
+    const mail = hotel.db.get("SELECT subject, body FROM outbox WHERE to_address = 'nisha.roy@hooghlyresidency.example.com'");
+    assert.equal(mail.subject, 'Your Frontdesk account at The Hooghly Residency');
+    assert.match(mail.body, /Arjun Mehta has made you a Frontdesk account/);
+    const page = await hotel.client().get(mail.body.match(/\/welcome\?token=[\w-]+/)[0]);
+    assert.equal(page.status, 200);
+    assert.match(page.text, /Welcome to The Hooghly Residency/);
+  });
+
   test('sample staff sign in with the password shown once', async () => {
     const email = hotel.db.get("SELECT email FROM users WHERE title = 'Reservations executive'").email;
     const c = hotel.client();
@@ -148,7 +159,7 @@ describe('sample data', () => {
     assert.equal(refused.status, 422);
     const r = await owner.post('/admin/sample-data/remove', { sure: 'on' });
     assert.equal(r.status, 303);
-    for (const table of ['guests', 'reservations', 'payments', 'invoices', 'rooms', 'room_types', 'extras', 'housekeeping_tasks', 'handover_notes', 'daily_stats', 'revenue', 'outbox']) {
+    for (const table of ['guests', 'reservations', 'payments', 'invoices', 'rooms', 'room_types', 'extras', 'housekeeping_tasks', 'handover_notes', 'daily_stats', 'revenue', 'outbox', 'password_resets']) {
       assert.equal(count(`SELECT COUNT(*) AS n FROM ${table}`), 0, table);
     }
     assert.equal(count('SELECT COUNT(*) AS n FROM users'), 1);

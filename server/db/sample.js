@@ -21,7 +21,7 @@ const path = require('node:path');
 const f = require('../lib/format');
 const clock = require('../lib/clock');
 const activity = require('../lib/activity');
-const { hashPassword } = require('../lib/auth');
+const { hashPassword, randomToken } = require('../lib/auth');
 const settingsService = require('../services/settings');
 const reservations = require('../services/reservations');
 const billing = require('../services/billing');
@@ -31,6 +31,7 @@ const audit = require('../services/audit');
 const stats = require('../services/stats');
 const emails = require('../services/emails');
 const website = require('../services/website');
+const links = require('../services/signin-links');
 const DATA = require('./sample-data');
 
 const ZONE = 'Asia/Kolkata';
@@ -88,23 +89,25 @@ async function add(db, { by = null, siteUrl = '', password = makePassword() } = 
   if (problem) throw fail(problem);
   const hashes = {};
   await Promise.all(DATA.STAFF.map(async (s) => { hashes[s.key] = await hashPassword(password); }));
+  const unknown = await hashPassword(randomToken()); // invited accounts: nobody knows it
   const result = db.tx(() => {
     const again = blocker(db);
     if (again) throw fail(again);
-    return new Sample(db, { siteUrl, hashes }).build(by);
+    return new Sample(db, { siteUrl, hashes, unknown }).build(by);
   });
   settingsService.reset();
   return { ...result, password };
 }
 
 class Sample {
-  constructor(db, { siteUrl, hashes }) {
+  constructor(db, { siteUrl, hashes, unknown }) {
     const now = clock.hotelNow(ZONE);
     this.db = db;
     this.today = now.date;
     this.now = `${now.date} ${now.time}`;
     this.siteUrl = String(siteUrl || '').replace(/\/+$/, '');
     this.hashes = hashes;
+    this.unknown = unknown;
     this.events = [];
     this.seq = 0;
     this.needed = new Map();
@@ -274,11 +277,17 @@ class Sample {
     this.act(this.at(-34, '16:30'), 'sb', (k) => this.saveWebsite(k), 'website');
   }
 
-  createStaff(key, byKey) {
-    const s = this.staff[key];
-    const initials = f.initials(s.name).toLowerCase() || 'st';
+  /* Short code shown on the staff avatar, unique like the admin panel makes it. */
+  codeFor(name) {
+    const initials = f.initials(name).toLowerCase() || 'st';
     let code = initials;
     for (let n = 2; this.db.get('SELECT 1 FROM users WHERE code = ?', code); n++) code = `${initials}${n}`;
+    return code;
+  }
+
+  createStaff(key, byKey) {
+    const s = this.staff[key];
+    const code = this.codeFor(s.name);
     this.ids.staff[key] = this.db.get(
       `INSERT INTO users (name, email, password_hash, role, title, department, shift, code, area, floor, active, must_change_password, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?) RETURNING id`,
@@ -646,9 +655,32 @@ class Sample {
         } else if (c.kind === 'source-off') {
           this.db.run('UPDATE sources SET active = 0 WHERE name = ?', c.source);
           activity.log(this.db, req, 'source.save', `Updated booking source ${c.source}`);
+        } else if (c.kind === 'invite') {
+          this.invite(k, c.person);
         }
       }, `change ${c.kind}`);
     }
+  }
+
+  /* A new account with an invite link, as Admin panel → Staff accounts makes it: no password until the person
+     opens the link, which is only in the email (logged, like every sample email). Links expire on the real
+     clock, so the link is given as many real hours as the invite is old in the sample. */
+  invite(key, person) {
+    const req = this.req(key);
+    const email = this.emailOf(person);
+    const id = this.db.get(
+      `INSERT INTO users (name, email, password_hash, role, title, department, shift, code, active, must_change_password, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?) RETURNING id`,
+      person.name, email, this.unknown, person.role, person.title, person.department, person.shift, this.codeFor(person.name), clock.stamp(ZONE),
+    ).id;
+    activity.log(this.db, req, 'staff.save', `Added staff account ${person.name} (${person.role})`);
+    const age = Date.parse(`${this.now.replace(' ', 'T')}:00Z`) - Date.parse(`${clock.stamp(ZONE).replace(' ', 'T')}:00Z`);
+    const created = Date.now() - age;
+    const token = randomToken();
+    this.db.run('INSERT INTO password_resets (user_id, token_hash, kind, expires_at, created_at) VALUES (?, ?, ?, ?, ?)',
+      id, links.hashOf(token), 'invite', created + links.LIFETIME.invite, created);
+    this.mail(req.settings, emails.staffLink(req.settings, { name: person.name, email }, this.siteUrl + links.pathOf('invite', token), req.user, 'invite', links.LASTS.invite));
+    activity.log(this.db, req, 'staff.link', `Invite link made for ${person.name}`);
   }
 
   /* ---------------------------------------------------------------- housekeeping */

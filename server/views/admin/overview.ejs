@@ -46,7 +46,7 @@
                 <div class="form-actions"><button class="button button--secondary" type="submit"><%- icon('close') %>Remove sample data</button></div>
               </form>
 <% } else if (!sample.blocker) { -%>
-              <p class="form-hint">Fill this hotel with a realistic sample, all in rupees: 25 rooms in 7 types, 18 staff in every role, 50 guests (business travellers, families, VIPs, walk-ins, foreign guests with Form III) and four weeks of bookings, check-ins, payments, GST invoices, housekeeping and night audits. It is made through the same screens your team uses, so you can open and change any of it, and remove it again with one click.</p>
+              <p class="form-hint">Fill this hotel with a realistic sample, all in rupees: 25 rooms in 7 types, 18 staff in every role (and a new hire whose invite is still open), 50 guests (business travellers, families, VIPs, walk-ins, foreign guests with Form III) and four weeks of bookings, check-ins, payments, GST invoices, housekeeping and night audits. It is made through the same screens your team uses, so you can open and change any of it, and remove it again with one click.</p>
               <form class="form-actions" method="post" action="/admin/sample-data">
                 <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
                 <button class="button button--primary" type="submit"><%- icon('plus') %>Add sample data</button>

@@ -10,11 +10,11 @@ const settingsService = require('../services/settings');
 const stats = require('../services/stats');
 const shellService = require('../services/shell');
 const { requireUser, can } = require('../lib/security');
-const crypto = require('node:crypto');
 const mail = require('../lib/mail');
 const emails = require('../services/emails');
 const limits = require('../lib/limits');
 const formtoken = require('../lib/formtoken');
+const links = require('../services/signin-links');
 
 const router = express.Router();
 const SHIFTS = [
@@ -25,7 +25,10 @@ const homeFor = (user) => (can(user, 'frontOffice') ? '/dashboard' : '/housekeep
 /* Only same-site paths are allowed as a redirect target after signing in. */
 const safeNext = (value) => (typeof value === 'string' && /^\/(?![/\\])[\w\-./?=&%#]*$/.test(value) && !value.startsWith('/login') ? value : '');
 
-const NOTICES = { done: { title: 'Password changed', text: 'Sign in with your new password.' } };
+const NOTICES = {
+  done: { title: 'Password changed', text: 'Sign in with your new password.' },
+  welcome: { title: 'You’re all set', text: 'Sign in with your email and the password you just chose.' },
+};
 
 /* What an email box shows before anyone types. The demo hotel keeps the original's sample address; any other
    hotel gets a made-up name at its own email domain when that fits in `fits` characters, else plain words.
@@ -106,35 +109,27 @@ router.post('/password/forgot', (req, res) => {
   const allowed = limits.hit(`reset:${email}`, 3, 60 * 60 * 1000) && limits.hit(`reset-ip:${req.ip}`, 10, 60 * 60 * 1000);
   const user = allowed && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? db.get('SELECT * FROM users WHERE lower(email) = lower(?) AND active = 1', email) : null;
   if (user) {
-    const token = auth.randomToken();
-    const now = Date.now();
-    db.run('INSERT INTO password_resets (user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?)',
-      user.id, crypto.createHash('sha256').update(token).digest('hex'), now + 60 * 60 * 1000, now);
-    mail.send(db, req.settings, emails.passwordReset(req.settings, user, `${siteUrl(req)}/password/reset?token=${token}`));
+    const token = links.create(db, user.id, 'reset');
+    mail.send(db, req.settings, emails.passwordReset(req.settings, user, siteUrl(req) + links.pathOf('reset', token)));
     activity.log(db, { user, ip: req.ip, settings: req.settings }, 'auth.reset-request', `Password reset link sent to ${user.email}`);
   }
   renderLogin(req, res, { email, resetSent: true });
 });
 
-function findReset(db, token) {
-  if (!token || String(token).length < 30) return null;
-  const hash = crypto.createHash('sha256').update(String(token)).digest('hex');
-  const row = db.get('SELECT pr.*, u.name, u.email, u.active FROM password_resets pr JOIN users u ON u.id = pr.user_id WHERE pr.token_hash = ?', hash);
-  return row && !row.used_at && row.expires_at > Date.now() && row.active ? row : null;
-}
-
+/* The page behind a link: a welcome for an invite, else a new password. */
 function renderReset(req, res, { status = 200, errors = {}, token = '' } = {}) {
-  const reset = findReset(req.db, token);
-  res.status(reset ? status : 410).render('pages/password-reset', { hotel: { name: req.settings.hotel_name }, reset, token, errors });
+  const reset = links.find(req.db, token);
+  const welcome = reset ? reset.kind === 'invite' : req.path === '/welcome';
+  res.status(reset ? status : 410).render('pages/password-reset', { hotel: { name: req.settings.hotel_name }, reset, token, errors, welcome });
 }
 
-router.get('/password/reset', (req, res) => renderReset(req, res, { token: req.query.token }));
+router.get(['/password/reset', '/welcome'], (req, res) => renderReset(req, res, { token: req.query.token }));
 
 router.post('/password/reset', async (req, res, next) => {
   try {
     const db = req.db;
     const token = String(req.body.token || '');
-    const reset = findReset(db, token);
+    const reset = links.find(db, token);
     if (!reset) return renderReset(req, res, { token });
     const password = String(req.body.password || '');
     if (password.length < 8 || password.length > 200) return renderReset(req, res, { status: 422, token, errors: { password: 'Use 8 to 200 characters.' } });
@@ -146,8 +141,10 @@ router.post('/password/reset', async (req, res, next) => {
       db.run('DELETE FROM sessions WHERE user_id = ?', reset.user_id); // signed out everywhere
       db.run('DELETE FROM login_attempts WHERE lower(email) = lower(?)', reset.email);
     });
-    activity.log(db, { user: { id: reset.user_id, name: reset.name }, ip: req.ip, settings: req.settings }, 'auth.reset', `${reset.name} set a new password with a reset link`);
-    res.redirect(303, '/login?reset=done');
+    const joined = reset.kind === 'invite';
+    activity.log(db, { user: { id: reset.user_id, name: reset.name }, ip: req.ip, settings: req.settings }, joined ? 'auth.invite' : 'auth.reset',
+      joined ? `${reset.name} opened the invite link and chose a password` : `${reset.name} set a new password with a reset link`);
+    res.redirect(303, `/login?reset=${joined ? 'welcome' : 'done'}`);
   } catch (error) {
     next(error);
   }

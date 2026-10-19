@@ -3,7 +3,7 @@
 const express = require('express');
 const { requireAbility, can } = require('../lib/security');
 const { Form } = require('../lib/forms');
-const { hashPassword } = require('../lib/auth');
+const { hashPassword, randomToken } = require('../lib/auth');
 const activity = require('../lib/activity');
 const clock = require('../lib/clock');
 const f = require('../lib/format');
@@ -17,6 +17,8 @@ const system = require('../services/system');
 const { backupTo } = require('../db/backup');
 const sample = require('../db/sample');
 const website = require('../services/website');
+const links = require('../services/signin-links');
+const emails = require('../services/emails');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -446,10 +448,21 @@ const ROLES = [
   { value: 'frontdesk', label: 'Front desk — bookings, check-in and check-out' },
   { value: 'housekeeping', label: 'Housekeeping — room board and task sheets' },
 ];
+/* "Mon 26 Oct, 12:20" in hotel time, for when a link stops working. */
+const untilText = (ms, timeZone) => new Intl.DateTimeFormat('en-GB', {
+  timeZone: timeZone || 'UTC', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+}).format(new Date(ms));
+
 function staffPage(req, res, extra = {}, status = 200) {
-  const staff = req.db.all('SELECT id, name, email, role, title, department, shift, area, floor, active, last_login_at, must_change_password FROM users ORDER BY active DESC, role, name');
+  const now = Date.now();
+  const staff = req.db.all(`SELECT id, name, email, role, title, department, shift, area, floor, ${links.PERSON_COLUMNS} FROM users ORDER BY active DESC, role, name`)
+    .map((person) => {
+      const invite = links.inviteState(person, now);
+      return { ...person, invite, inviteUntil: invite === 'sent' ? untilText(person.invite_until, req.settings.timezone) : '' };
+    });
   render(req, res, 'staff', 'staff', {
-    heading: 'Staff accounts', lead: 'Who can sign in, and what each person may do.', staff, roles: ROLES,
+    heading: 'Staff accounts', lead: 'Who can sign in, and what each person may do.', staff, roles: ROLES, me: req.user.id,
+    scripts: extra.linkMade ? ['pages/staff'] : [],
     editing: extra.editing !== undefined ? extra.editing : (req.query.edit ? staff.find((s) => s.id === toInt(req.query.edit)) : null), ...extra,
   }, status);
 }
@@ -473,8 +486,8 @@ router.post(['/staff', '/staff/:id'], requireAbility('administer'), async (req, 
       floor: form.int('floor', { label: 'Home floor', min: -5, max: 200, required: false }),
       active: form.bool('active'),
     };
+    // A new account without a password gets an invite link instead: the person chooses their own.
     const password = String(req.body.password || '');
-    if (!id && password.length < 8) form.fail('password', 'Set a temporary password of at least 8 characters.');
     if (password && (password.length < 8 || password.length > 200)) form.fail('password', 'Use 8 to 200 characters.');
     if (v.email && db.get('SELECT 1 FROM users WHERE lower(email) = lower(?) AND id <> ?', v.email, id || 0)) form.fail('email', 'Another account already uses this email.');
     if (existing && existing.id === req.user.id && (!v.active || v.role !== 'admin')) form.fail('role', 'You can’t remove your own admin access or deactivate yourself.');
@@ -482,7 +495,10 @@ router.post(['/staff', '/staff/:id'], requireAbility('administer'), async (req, 
     if (existing && existing.role === 'admin' && (v.role !== 'admin' || !v.active) && otherAdmins === 0) form.fail('role', 'Keep at least one active admin.');
     if (!form.ok) return staffPage(req, res, { errors: form.errors, values: form.values, editing: id ? { id } : null }, 422);
 
-    const hash = password ? await hashPassword(password) : null;
+    const invite = !id && !password;
+    // An invited account gets a password nobody knows until the person opens the link.
+    const hash = password ? await hashPassword(password) : invite ? await hashPassword(randomToken()) : null;
+    let newId = null;
     if (id) {
       db.run('UPDATE users SET name = ?, email = ?, role = ?, title = ?, department = ?, shift = ?, area = ?, floor = ?, active = ? WHERE id = ?',
         v.name, v.email, v.role, v.title, v.department, v.shift, v.area || null, v.floor, v.active ? 1 : 0, id);
@@ -491,15 +507,44 @@ router.post(['/staff', '/staff/:id'], requireAbility('administer'), async (req, 
     } else {
       let code = f.initials(v.name).toLowerCase() || 'st';
       for (let n = 2; db.get('SELECT 1 FROM users WHERE code = ?', code); n++) code = `${f.initials(v.name).toLowerCase()}${n}`;
-      db.run(`INSERT INTO users (name, email, password_hash, role, title, department, shift, code, area, floor, active, must_change_password, created_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
-      v.name, v.email, hash, v.role, v.title, v.department, v.shift, code, v.area || null, v.floor, v.active ? 1 : 0, stamp(req));
+      newId = db.get(`INSERT INTO users (name, email, password_hash, role, title, department, shift, code, area, floor, active, must_change_password, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+      v.name, v.email, hash, v.role, v.title, v.department, v.shift, code, v.area || null, v.floor, v.active ? 1 : 0, invite ? 0 : 1, stamp(req)).id;
     }
-    activity.log(db, req, 'staff.save', `${id ? 'Updated' : 'Added'} staff account ${v.name} (${v.role})${hash ? ', password set' : ''}`);
+    activity.log(db, req, 'staff.save', `${id ? 'Updated' : 'Added'} staff account ${v.name} (${v.role})${hash && !invite ? ', password set' : ''}`);
+    if (invite) {
+      if (v.active) return sendLink(req, res, { id: newId, name: v.name, email: v.email }, 'invite');
+      links.create(db, newId, 'invite'); // marks the account as invited: send a link once it may sign in
+    }
     back(res, '/admin/staff', hash && id ? 'password' : id ? 'saved' : 'created');
   } catch (error) {
     next(error);
   }
+});
+
+/* A one-time link for someone to choose their own password, shown once to the admin (to send on WhatsApp or
+   copy) and emailed to the person when email is set up. Earlier open links for them stop working. */
+function sendLink(req, res, person, kind) {
+  const db = req.db;
+  const token = links.create(db, person.id, kind, { replace: true });
+  const link = website.siteUrl(req, req.settings) + links.pathOf(kind, token);
+  mail.send(db, req.settings, emails.staffLink(req.settings, person, link, req.user, kind, links.LASTS[kind]));
+  activity.log(db, req, 'staff.link', `${kind === 'invite' ? 'Invite link' : 'Password link'} made for ${person.name}`);
+  const first = person.name.split(' ')[0];
+  const message = kind === 'invite'
+    ? `Hello ${first}, here is your link to set up your Frontdesk account at ${req.settings.hotel_name}. It works once, for ${links.LASTS[kind]}: ${link}`
+    : `Hello ${first}, here is a link to choose a new Frontdesk password. It works once, for ${links.LASTS[kind]}: ${link}`;
+  staffPage(req, res, {
+    linkMade: { kind, name: person.name, email: person.email, link, lasts: links.LASTS[kind], emailed: mail.configured(), whatsapp: `https://wa.me/?text=${encodeURIComponent(message)}` },
+  });
+}
+
+router.post('/staff/:id/link', requireAbility('administer'), (req, res, next) => {
+  const person = req.db.get(`SELECT id, name, email, ${links.PERSON_COLUMNS} FROM users WHERE id = ?`, toInt(req.params.id));
+  if (!person) return next();
+  if (!person.active) return staffPage(req, res, { linkError: `${person.name} can’t sign in at the moment: tick “Can sign in” and save first.` }, 422);
+  if (person.id === req.user.id) return staffPage(req, res, { linkError: 'Change your own password in My account.' }, 422);
+  sendLink(req, res, person, links.kindFor(person));
 });
 
 /* ------------------------------------------------------------------ guests */

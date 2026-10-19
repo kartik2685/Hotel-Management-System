@@ -50,7 +50,7 @@ Add sample data** (admins only), or `npm run sample` on the command line.
 
 - *The Hooghly Residency*, Kolkata: 25 rooms in 7 types (Standard to Presidential Suite), INR, GST, `Asia/Kolkata`.
 - 18 staff in every role: general manager, managers, front desk, reservations, night auditors, housekeeping,
-  engineering, and one who has left.
+  engineering, and one who has left; plus a new hire invited yesterday whose invite link is still open.
 - 50 guests of every kind: business travellers billed to companies with GSTINs, families, VIPs, walk-ins, a wedding
   group, medical stays, foreign guests (Form III; Nepal and Bhutan exempt), a no-show and cancellations.
 - Four weeks of hotel life up to the minute it is added: bookings by phone, email, walk-in, travel sites and the
@@ -103,8 +103,14 @@ there). It is also in the account menu (click your name, top right), and at `/ad
 - **Rooms:** add or change rooms; take a room **out of order** for a period and put it back in service.
 - **Rates & extras:** rate plans (e.g. Bed & breakfast +₹500/night, Advance purchase −12%) and extras (airport transfer, parking…).
 - **Booking sources:** walk-in, phone, website, OTAs; choose which appear on the booking form.
-- **Staff accounts** (admins): add people with a role and a temporary password (they must choose their own at
-  first sign-in), reset passwords, or deactivate accounts. You can’t remove the last admin or lock yourself out.
+- **Staff accounts** (admins): add people with a role, then either
+  - leave the password blank to get an **invite link** (works once, for 7 days): copy it or press **Send on WhatsApp**,
+    and it is emailed too when email is set up. The person opens it and chooses their own password;
+  - or set a temporary password they must change at first sign-in.
+
+  The list shows *Invite sent* / *Invite expired*; **Edit** → **Send a new invite link** replaces an old link, and
+  **Send a password link** (24 hours) helps someone who forgot theirs. You can also reset passwords or deactivate
+  accounts. You can’t remove the last admin or lock yourself out.
 - **Guests:** search and edit every profile.
 - **Website:** turn the guest website on or off; tagline, introduction, amenities and policies.
 - **Invoices:** every invoice issued, with CSV export.
@@ -129,7 +135,7 @@ there). It is also in the account menu (click your name, top right), and at `/ad
    - invoice prefix, website address;
    - whether the **GRC is required before check-in**.
 3. Add **room types**, then **rooms**, then **rate plans**, **extras** and **booking sources**.
-4. Add a **staff account** for each person, with the right role.
+4. Add a **staff account** for each person, with the right role. Leave the password blank and send them the invite link (WhatsApp or email).
 5. Put your own room photos in `assets/img/rooms/`, choose them in **Room types**, write the texts in **Website** and switch the website on.
 6. To send emails, set the SMTP variables below. Until then emails are kept in *Admin → Emails*, and password-reset links can be copied from there.
 
@@ -279,7 +285,7 @@ the service's **Environment** instead.
 npm test
 ```
 
-87 tests run against a fresh demo hotel or the sample hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
+94 tests run against a fresh demo hotel or the sample hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
 copy, nothing to install), and `TEST_DATABASE=postgres://user:pass@host/postgres npm test` on a real server.
 They cover:
 - sign-in, lockout, CSRF and redirect safety;
@@ -290,6 +296,7 @@ They cover:
 - the GRC and Form III;
 - GST invoice numbering and tax splits;
 - password reset, reports and CSV safety;
+- staff invite and password links (shown once, emailed, work once, expire, a newer link replaces the older);
 - database upgrades, and what a new database starts with on a live server;
 - the sample hotel: made through the services, in rupees everywhere, admins only, and removed without a trace;
 - PostgreSQL: the same tables and answers as SQLite, row level security, copying between the two;
@@ -304,11 +311,12 @@ server/
   app.js              Express app: security headers, sessions, routes, error pages
   config.js           environment settings
   db/                 index.js (SQLite) and postgres.js (PostgreSQL: Render, Supabase…) behind one API; schema.sql + migrations/
-                      and schema.pg.sql (applied automatically); seed.js (demo or empty hotel), sample.js + sample-data.js
+                      and schema.pg.sql + migrations/pg/ (applied automatically); seed.js (demo or empty hotel), sample.js + sample-data.js
                       (the sample hotel in rupees), copy.js, backup.js, demo-data.json
   lib/                auth (passwords, sessions), security (CSP, CSRF, roles), forms, pricing, formatting, clock, activity log
   services/           business logic: reservations, rooms, guests, housekeeping, dashboard, stats, night audit, billing,
-                      registration (GRC, Form III), website, emails, settings, system (the admin's database card)
+                      registration (GRC, Form III), website, emails, settings, signin-links (reset and invite links),
+                      system (the admin's database card)
   routes/             pages, bookings, admin panel, guest website, JSON API, sign-in
   views/              EJS templates: staff pages (same markup as the original design), admin panel, guest website, printables
 assets/               CSS, browser JavaScript, fonts and images

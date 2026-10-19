@@ -45,4 +45,25 @@ function passwordReset(s, user, link) {
   };
 }
 
-module.exports = { bookingConfirmed, bookingCancelled, passwordReset };
+/* A link an admin made in Staff accounts: an invite for a new account, or a new password for someone who forgot it. */
+function staffLink(s, user, link, by, kind, lasts) {
+  const hello = `Hello ${user.name.split(' ')[0]},`;
+  if (kind === 'invite') {
+    return {
+      to: user.email,
+      subject: `Your Frontdesk account at ${s.hotel_name}`,
+      text: [hello, '', `${by.name} has made you a Frontdesk account at ${s.hotel_name}.`, '',
+        `Choose your password here (the link works once, for ${lasts}):`, link, '',
+        `After that, sign in with this email address: ${user.email}`, '', signature(s)].join('\n'),
+    };
+  }
+  return {
+    to: user.email,
+    subject: 'Choose a new Frontdesk password',
+    text: [hello, '', `${by.name} sent you a link to choose a new Frontdesk password.`, '',
+      `Choose it here (the link works once, for ${lasts}):`, link, '',
+      'Your current password keeps working until you do.', '', signature(s)].join('\n'),
+  };
+}
+
+module.exports = { bookingConfirmed, bookingCancelled, passwordReset, staffLink };

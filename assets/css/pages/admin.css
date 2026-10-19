@@ -75,6 +75,13 @@ textarea.input { min-height: 84px; resize: vertical; }
 .notice--ok { background: var(--clean-soft); border-color: color-mix(in srgb, var(--clean) 35%, transparent); }
 .notice--error { background: var(--ooo-soft); border-color: color-mix(in srgb, var(--ooo) 35%, transparent); }
 .notice p { margin: 0; }
+/* A sign-in link shown once in Staff accounts, with Copy and WhatsApp beside it */
+.link-made { flex: 1; min-width: 0; display: grid; gap: 10px; }
+.link-made__row { display: flex; flex-wrap: wrap; gap: 8px; }
+.link-made__row .input { flex: 1 1 260px; min-width: 0; }
+.link-made .form-hint { margin: 0; }
+/* Long emails in admin tables wrap (after the @ first) instead of pushing the Edit buttons out of view */
+.admin-table .cell-note { overflow-wrap: anywhere; }
 
 /* Booking page */
 .booking-facts { display: grid; gap: 12px 24px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); margin: 0; }

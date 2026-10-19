@@ -97,7 +97,7 @@ Admin panel me 30 din ki ginti dikhti hai (Part 2), aur Render bhi email bhejta 
 
 **Pehle sab kuch chala ke dekhna hai?** Naye (khali) hotel me **Admin panel → Overview → Sample data → Add sample data**
 dabao. Kuch second me poora sample hotel ban jaata hai, sab rupee me: Kolkata ka *The Hooghly Residency*, 7 type ke
-25 rooms, har role ke 18 staff, alag-alag type ke 50 guests (company wale GSTIN ke saath, family, VIP, walk-in, videshi
+25 rooms, har role ke 18 staff (aur ek nayi trainee jiska invite link abhi khula hai), alag-alag type ke 50 guests (company wale GSTIN ke saath, family, VIP, walk-in, videshi
 guest Form III ke saath, no-show, cancellation) aur 4 hafte ki bookings, check-in/out, payment, refund, GST invoice,
 housekeeping aur night audit. Sab kuch normal screens ke code se bana hai, isliye har cheez khol ke edit kar sakte ho.
 Staff ka ek hi password **sirf ek baar** dikhta hai, likh lo (bhool gaye to **Staff accounts** me naya password set
@@ -108,9 +108,11 @@ Apna hotel set karne ke liye **Admin panel** me is order me:
    aur **Confirmation / Invoice number prefix** me `HTL` / `INV` ki jagah apne hotel ke letters (jaise `GVH`).
    *Website address* khali chhod sakte ho: email ke links Render ka address khud le lete hain. Apna domain lo, tab bharna.
 2. **Room types** → **Rooms** → **Rates & extras** → **Booking sources**.
-3. **Staff accounts** (sidebar me **ADMIN → Staff accounts**): har staff ka naam, email, role aur ek temporary
-   password daalo → **Add account**. Staff ko email + temporary password bata do; pehli baar login par wo apna
-   password khud banayega.
+3. **Staff accounts** (sidebar me **ADMIN → Staff accounts**): har staff ka naam, email aur role daalo, password
+   **khali chhod do** → **Add account**. Ek **invite link** banta hai (7 din, sirf ek baar chalta hai): **Copy link**
+   ya **Send on WhatsApp** dabake staff ko bhej do (email set ho to email bhi chala jaata hai). Staff link kholke apna
+   password khud banata hai. Link expire ho gaya ya koi password bhool gaya: **Edit → Send a new invite link /
+   Send a password link**. Chaho to purane tareeke se temporary password bhi daal sakte ho.
 4. **Website:** guest website shuru me **off** hoti hai. Texts likho aur **on** karo. Guests `https://…onrender.com/hotel` par booking karenge.
 
 ---

@@ -454,6 +454,8 @@ const CHANGES = [
   { at: [-12, '11:00', 'am'], kind: 'rate' },
   { at: [-10, '18:30', 'am'], kind: 'staff-left', staff: 'dj' },
   { at: [-5, '12:00', 'sb'], kind: 'source-off', source: 'Expedia' },
+  // a new hire the general manager invited yesterday evening: the invite link is still open
+  { at: [-1, '17:40', 'am'], kind: 'invite', person: { name: 'Nisha Roy', role: 'frontdesk', title: 'Guest service associate (trainee)', department: 'Front office', shift: 'morning' } },
 ];
 
 /* Maintenance jobs on today’s housekeeping sheet: [room, job, minutes, done at]. */
