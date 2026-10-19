@@ -33,6 +33,17 @@
 .sheet__stamp { display: inline-block; margin-left: 8px; padding: 2px 8px; border: 2px solid #a83232; color: #a83232; font-weight: 800; font-size: 9pt; letter-spacing: .1em; text-transform: uppercase; border-radius: 4px; }
 .sheet__foot { margin-top: 24px; font-size: 8.5pt; color: #6d6558; }
 
+/* On a phone the sheet stacks into one column; printing still gives the A4 layout */
+@media screen and (max-width: 600px) {
+  .print-page { padding: 12px 8px 32px; }
+  .sheet { padding: 20px 16px; font-size: 10pt; }
+  .sheet__head { flex-direction: column; gap: 10px; }
+  .sheet__meta { text-align: left; }
+  .sheet__cols, .sheet__grid, .sheet__sign { grid-template-columns: 1fr; }
+  .sheet__field dt { min-width: 96px; }
+  .sheet__field dd { min-width: 0; overflow-wrap: anywhere; }
+}
+
 @media print {
   @page { size: A4; margin: 12mm; }
   .print-page { padding: 0; background: #fff; }

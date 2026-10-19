@@ -15,6 +15,7 @@ const guests = require('../services/guests');
 const router = express.Router();
 const FLASH = {
   saved: 'Booking saved.', created: 'Booking created and saved.', 'check-in': 'Checked in. The room now shows as occupied.', 'check-out': 'Checked out. The room is marked dirty for housekeeping.',
+  'check-out-early': 'Checked out early: the bill now covers the nights stayed. The room is marked dirty for housekeeping.',
   cancel: 'Booking cancelled. The room is free again.', confirm: 'Booking confirmed.', payment: 'Payment recorded.', refund: 'Refund recorded.',
   grc: 'Registration card saved and complete.', 'grc-partial': 'Registration card saved. Some details are still missing.', form3: 'Form III acknowledgement saved.',
 };
@@ -61,14 +62,15 @@ router.post('/reservations/:confirmation/action', requireAbility('bookings'), (r
   const conf = req.params.confirmation;
   const action = String(req.body.action || '');
   try {
+    let done = action;
     if (action === 'check-in') reservations.checkIn(req.db, req, conf);
-    else if (action === 'check-out') reservations.checkOut(req.db, req, conf, { settle: req.body.settle === 'on', method: req.body.method });
+    else if (action === 'check-out') done = reservations.checkOut(req.db, req, conf, { settle: req.body.settle === 'on', method: req.body.method }).early ? 'check-out-early' : action;
     else if (action === 'confirm') reservations.confirm(req.db, req, conf);
     else if (action === 'cancel') {
       if (req.body.sure !== 'on') throw Object.assign(new Error('Tick “Yes, cancel this booking” to cancel it.'), { status: 422 });
       reservations.cancel(req.db, req, conf);
     } else throw Object.assign(new Error('Unknown action.'), { status: 422 });
-    res.redirect(303, `/reservations/${encodeURIComponent(conf)}?ok=${action}`);
+    res.redirect(303, `/reservations/${encodeURIComponent(conf)}?ok=${done}`);
   } catch (error) {
     if (error.status === 422) return renderBooking(req, res, next, { actionError: error.message }, 422);
     next(error);
@@ -173,7 +175,7 @@ router.post('/guests/:id/edit', requireAbility('frontOffice'), (req, res, next) 
   const result = guests.saveProfile(req.db, req, id, req.body);
   if (!result) return next();
   if (result.errors) return renderGuest(req, res, next, { errors: result.errors, values: result.values }, 422);
-  res.redirect(303, `/guests?guest=${id}`);
+  res.redirect(303, `/guests?guest=${id}&saved=1`);
 });
 
 module.exports = router;

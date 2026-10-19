@@ -45,7 +45,7 @@
             </form>
             <form class="card" method="post" action="/admin/night-audit" novalidate>
               <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
-              <div class="card__head"><div><h2 class="card__title">Close the day</h2><p class="card__subtitle">Records the figures, moves the date on and creates the next day’s housekeeping tasks.</p></div></div>
+              <div class="card__head"><div><h2 class="card__title">Close the day</h2><p class="card__subtitle"><%= a.mode === 'fixed' ? 'Records the figures, moves the date on and creates the next day’s housekeeping tasks.' : 'Records today’s figures and creates tomorrow’s housekeeping tasks. The date moves on by itself at midnight.' %></p></div></div>
               <div class="check-row"><label><input type="checkbox" name="no_shows"> Mark arrivals that never came as no-shows</label></div>
               <div class="form-actions"><button class="button button--primary" type="submit"><%- icon('calendar-check') %>Close <%= a.day %></button></div>
             </form>

@@ -254,6 +254,7 @@ describe('payments and invoices', () => {
     assert.match(r.text, /A GSTIN has 15 characters/);
     r = await c.post(`/guests/${g.id}/edit`, { ...form, gstin: '19abcde1234f1z5' });
     assert.equal(r.status, 303);
+    assert.equal(r.headers.get('location'), `/guests?guest=${g.id}&saved=1`); // the guest list then says “Profile saved.”
     assert.equal(hotel.db.get('SELECT gstin FROM guests WHERE id = ?', g.id).gstin, '19ABCDE1234F1Z5');
     setSetting('tax_mode', 'gst_india'); // the GSTIN field is on GST invoices
     const page = await c.get('/reservations/HLW-41671');

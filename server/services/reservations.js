@@ -237,28 +237,50 @@ function checkIn(db, req, confirmation) {
   });
 }
 
+/* Room, tax and extras for a stay of `nights` nights at `rate`: per-night extras follow the number of nights
+   (their stored amounts are updated). Runs inside the caller's transaction. */
+function reprice(db, settings, r, { rate = r.nightly_rate_cents, nights }) {
+  const oldNights = f.daysBetween(r.arrival, r.departure);
+  let extras = 0;
+  for (const x of db.all('SELECT re.*, ex.per FROM reservation_extras re JOIN extras ex ON ex.id = re.extra_id WHERE re.reservation_id = ?', r.id)) {
+    const amount = x.per === 'night' ? Math.round((x.amount_cents / oldNights) * nights) : x.amount_cents;
+    db.run('UPDATE reservation_extras SET amount_cents = ? WHERE reservation_id = ? AND extra_id = ?', amount, r.id, x.extra_id);
+    extras += amount;
+  }
+  const roomTotal = rate * nights;
+  const tax = Math.round((roomTotal * pricing.taxPercent(settings, rate)) / 100);
+  return { roomTotal, tax, extras, total: roomTotal + tax + extras };
+}
+
 function checkOut(db, req, confirmation, { settle = false, method = 'Card' } = {}) {
   const settings = settingsService.all(db);
   const bd = settingsService.businessDate(db);
   return db.tx(() => {
     const r = requireBooking(db, confirmation);
     if (r.status !== 'checked_in') throw new BookingError(`${r.name} is not checked in.`);
-    const owing = r.total_cents - r.paid_cents;
-    if (owing > 0 && !settle) throw new BookingError(`${f.money(owing)} is still open on the folio. Take the payment first.`);
     const stamp = clock.stamp(settings.timezone);
-    // Leaving early: the stay now ends today (at least one night is kept).
+    // Leaving early: the stay now ends today (at least one night is kept) and is billed for the nights stayed.
     const departure = r.departure > bd ? (bd > r.arrival ? bd : f.addDays(r.arrival, 1)) : r.departure;
-    if (owing > 0 && settle) {
+    let total = r.total_cents;
+    if (departure !== r.departure) {
+      const bill = reprice(db, settings, r, { nights: f.daysBetween(r.arrival, departure) });
+      db.run('UPDATE reservations SET room_total_cents = ?, tax_cents = ?, extras_cents = ?, total_cents = ? WHERE id = ?', bill.roomTotal, bill.tax, bill.extras, bill.total, r.id);
+      total = bill.total;
+    }
+    const owing = total - r.paid_cents;
+    if (owing > 0 && !settle) throw new BookingError(`${f.money(owing)} is still open on the folio. Take the payment first.`);
+    const settled = owing > 0 ? owing : 0;
+    if (settled) {
       db.run('INSERT INTO payments (reservation_id, amount_cents, method, reference, taken_by, taken_by_name, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        r.id, owing, ['Card', 'Cash', 'UPI', 'Bank transfer'].includes(method) ? method : 'Card', 'Settled at check-out', req.user ? req.user.id : null, req.user ? req.user.name : 'System', stamp);
+        r.id, settled, ['Card', 'Cash', 'UPI', 'Bank transfer'].includes(method) ? method : 'Card', 'Settled at check-out', req.user ? req.user.id : null, req.user ? req.user.name : 'System', stamp);
     }
     db.run(
-      "UPDATE reservations SET status = 'checked_out', checked_out_at = ?, departure = ?, paid_cents = CASE WHEN ? THEN total_cents ELSE paid_cents END, updated_at = ? WHERE id = ?",
-      stamp, departure, settle ? 1 : 0, stamp, r.id,
+      "UPDATE reservations SET status = 'checked_out', checked_out_at = ?, departure = ?, paid_cents = paid_cents + ?, updated_at = ? WHERE id = ?",
+      stamp, departure, settled, stamp, r.id,
     );
     if (r.room_id) db.run("UPDATE rooms SET hk_status = 'dirty', hk_updated_at = ? WHERE id = ?", stamp, r.room_id);
-    activity.log(db, req, 'reservation.check-out', `Checked out ${r.name} (${r.confirmation}) from room ${r.room_number || '—'}`);
-    return byConfirmation(db, confirmation);
+    activity.log(db, req, 'reservation.check-out', `Checked out ${r.name} (${r.confirmation}) from room ${r.room_number || '—'}${departure !== r.departure ? `, leaving early (${f.plural(f.daysBetween(r.arrival, departure), 'night', 'nights')} billed)` : ''}`);
+    return { ...byConfirmation(db, confirmation), early: departure !== r.departure };
   });
 }
 
@@ -447,23 +469,14 @@ function update(db, req, confirmation, body) {
   if (!form.ok) throw new FormError(form.errors, form.values);
 
   return db.tx(() => {
-    const nights = f.daysBetween(v.arrival, v.departure);
-    const oldNights = f.daysBetween(r.arrival, r.departure);
-    let extras = 0;
-    for (const x of db.all('SELECT re.*, ex.per FROM reservation_extras re JOIN extras ex ON ex.id = re.extra_id WHERE re.reservation_id = ?', r.id)) {
-      const amount = x.per === 'night' ? Math.round((x.amount_cents / oldNights) * nights) : x.amount_cents;
-      db.run('UPDATE reservation_extras SET amount_cents = ? WHERE reservation_id = ? AND extra_id = ?', amount, r.id, x.extra_id);
-      extras += amount;
-    }
-    const roomTotal = v.rate * nights;
-    const tax = Math.round((roomTotal * pricing.taxPercent(settings, v.rate)) / 100);
+    const { roomTotal, tax, extras, total } = reprice(db, settings, r, { rate: v.rate, nights: f.daysBetween(v.arrival, v.departure) });
     const keep = JSON.parse(r.tags || '[]').filter((t) => t === 'first-stay');
     db.run(
       `UPDATE reservations SET arrival = ?, departure = ?, room_type_id = ?, room_id = ?, adults = ?, children = ?, rate_plan_id = ?, nightly_rate_cents = ?,
          source_id = ?, eta = ?, tags = ?, notes = ?, requests = ?, room_total_cents = ?, tax_cents = ?, extras_cents = ?, total_cents = ?, updated_at = ?
        WHERE id = ?`,
       v.arrival, v.departure, type.id, room ? room.id : null, v.adults, v.children, v.planId, v.rate, v.sourceId, v.eta || null,
-      JSON.stringify([...keep, ...tags]), v.notes, v.requests, roomTotal, tax, extras, roomTotal + tax + extras, stamp, r.id,
+      JSON.stringify([...keep, ...tags]), v.notes, v.requests, roomTotal, tax, extras, total, stamp, r.id,
     );
     db.run('UPDATE guests SET first_name = ?, last_name = ?, email = ?, phone = ?, updated_at = ? WHERE id = ?', v.first, v.last, v.email || null, v.phone || null, stamp, r.guest_id);
     if (r.status === 'checked_in' && room && room.id !== r.room_id && r.room_id) db.run("UPDATE rooms SET hk_status = 'dirty', hk_updated_at = ? WHERE id = ?", stamp, r.room_id);

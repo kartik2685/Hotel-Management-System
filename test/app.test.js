@@ -260,6 +260,32 @@ describe('bookings', () => {
     assert.equal(row.room_total_cents, 60000);
     assert.equal(row.tax_cents, Math.round(60000 * 0.1749));
   });
+
+  test('leaving early bills the nights stayed, on the folio and on the invoice', async () => {
+    const c = hotel.client();
+    await c.login();
+    // a prepaid guest due to leave after tomorrow checks out today (Thu 24 Sep)
+    const before = hotel.db.get("SELECT * FROM reservations WHERE status = 'checked_in' AND arrival < '2026-09-24' AND departure > '2026-09-25' ORDER BY id LIMIT 1");
+    const nights = (Date.parse('2026-09-24') - Date.parse(before.arrival)) / 864e5;
+    await c.get(`/reservations/${before.confirmation}`);
+    const out = await c.post(`/reservations/${before.confirmation}/action`, { action: 'check-out' });
+    assert.equal(out.headers.get('location'), `/reservations/${before.confirmation}?ok=check-out-early`);
+    const after = hotel.db.get('SELECT * FROM reservations WHERE id = ?', before.id);
+    assert.equal(after.departure, '2026-09-24');
+    assert.equal(after.room_total_cents, before.nightly_rate_cents * nights);
+    assert.equal(after.total_cents, after.room_total_cents + after.tax_cents + after.extras_cents);
+    assert.ok(after.total_cents < before.total_cents);
+    assert.equal(after.paid_cents, hotel.db.get('SELECT SUM(amount_cents) AS n FROM payments WHERE reservation_id = ?', before.id).n); // still the ledger's sum
+    const page = (await c.get(out.headers.get('location'))).text;
+    assert.match(page, /Checked out early: the bill now covers the nights stayed/);
+    assert.match(page, new RegExp(`${nights} nights × `));
+    assert.match(page, /Overpaid, to refund<\/dt><dd>\$[\d,]+\.\d\d/);
+    await c.post(`/reservations/${before.confirmation}/invoice`, { bill_to: 'Guest', gstin: '' });
+    const invoice = JSON.parse(hotel.db.get('SELECT data FROM invoices WHERE reservation_id = ? ORDER BY id DESC', before.id).data);
+    assert.match(invoice.lines[0].text, new RegExp(`${nights} nights × `));
+    assert.equal(invoice.taxable, after.room_total_cents);
+    assert.equal(invoice.total, after.total_cents);
+  });
 });
 
 describe('rooms and housekeeping', () => {
@@ -371,5 +397,24 @@ describe('admin panel', () => {
     assert.ok(hotel.db.get("SELECT COUNT(*) AS n FROM housekeeping_tasks WHERE task_date = '2026-09-25'").n > 0);
     const page = await admin.get('/dashboard');
     assert.match(page.text, /Fri 25 Sep/);
+  });
+
+  test('when the date follows the calendar, closing says it moves on at midnight', async () => {
+    const setSetting = (key, value) => {
+      hotel.db.run('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', key, JSON.stringify(value));
+      require('../server/services/settings').reset();
+    };
+    setSetting('business_date_mode', 'auto'); // the test clock reads Thu 24 Sep
+    const admin = hotel.client();
+    await admin.login();
+    let page = await admin.get('/admin/night-audit');
+    assert.match(page.text, /Records today’s figures and creates tomorrow’s housekeeping tasks\. The date moves on by itself at midnight\./);
+    const r = await admin.post('/admin/night-audit', { no_shows: 'on' });
+    assert.equal(r.headers.get('location'), '/admin/night-audit?ok=closed-auto');
+    page = await admin.get(r.headers.get('location'));
+    assert.match(page.text, /The business date moves on by itself at midnight\./);
+    assert.doesNotMatch(page.text, /The business date has moved on/);
+    assert.match((await admin.get('/dashboard')).text, /Thu 24 Sep/);
+    setSetting('business_date_mode', 'fixed');
   });
 });

@@ -82,6 +82,8 @@ textarea.input { min-height: 84px; resize: vertical; }
 .link-made .form-hint { margin: 0; }
 /* Long emails in admin tables wrap (after the @ first) instead of pushing the Edit buttons out of view */
 .admin-table .cell-note { overflow-wrap: anywhere; }
+/* Keeps hidden header text (the "Actions" column) inside the scrolling table, so phones don't scroll sideways */
+.table-scroll { position: relative; }
 
 /* Booking page */
 .booking-facts { display: grid; gap: 12px 24px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); margin: 0; }

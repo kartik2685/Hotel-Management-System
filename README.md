@@ -285,7 +285,7 @@ the service's **Environment** instead.
 npm test
 ```
 
-94 tests run against a fresh demo hotel or the sample hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
+96 tests run against a fresh demo hotel or the sample hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
 copy, nothing to install), and `TEST_DATABASE=postgres://user:pass@host/postgres npm test` on a real server.
 They cover:
 - sign-in, lockout, CSRF and redirect safety;

@@ -114,6 +114,15 @@
     });
     const current = links.find((link) => link.classList.contains('is-active'));
     if (links.length) select(idFromHash() || (current || links[0]).dataset.guest, false);
+
+    // Back from editing a profile: say it was saved, once (a reload does not repeat it).
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('saved') === '1') {
+      toast('Profile saved.');
+      params.delete('saved');
+      const query = params.toString();
+      window.history.replaceState(window.history.state, '', window.location.pathname + (query ? '?' + query : '') + window.location.hash);
+    }
   }
 
   HMS.ready(initGuests);

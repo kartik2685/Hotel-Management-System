@@ -56,6 +56,7 @@ const FLASH = {
   saved: 'Changes saved.', created: 'Added.', removed: 'Removed.', closed: 'The day is closed. The business date has moved on and today’s housekeeping tasks were created.',
   password: 'Password set. The person must choose a new one when they next sign in.', 'back-in-service': 'The room is back in service.', revenue: 'Outlet revenue saved.',
   'sample-removed': 'The sample data has been removed.',
+  'closed-auto': 'The day is closed: its figures are saved and tomorrow’s housekeeping tasks are ready. The business date moves on by itself at midnight.',
 };
 
 function render(req, res, view, tab, data, status = 200) {
@@ -701,7 +702,7 @@ router.post('/night-audit', (req, res) => {
     if (error.status !== 422) throw error;
     return render(req, res, 'night-audit', 'night-audit', { heading: 'Night audit', lead: 'Close the business day: check what is still open, record outlet revenue and move the date on.', a: audit.summary(db), form3: registration.pendingForm3(db), closeError: error.message }, 422);
   }
-  back(res, '/admin/night-audit', 'closed');
+  back(res, '/admin/night-audit', settingsService.all(db).business_date_mode === 'fixed' ? 'closed' : 'closed-auto');
 });
 
 module.exports = router;

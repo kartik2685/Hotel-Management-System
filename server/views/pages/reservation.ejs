@@ -159,6 +159,9 @@
                 <div class="is-total"><dt><strong>Total</strong></dt><dd><%= fmt.money(b.total_cents) %></dd></div>
                 <div><dt>Paid</dt><dd><%= fmt.money(b.paid_cents) %></dd></div>
                 <div><dt>Still open</dt><dd><%= fmt.money(Math.max(0, d.owing)) %></dd></div>
+<% if (d.owing < 0) { -%>
+                <div><dt>Overpaid, to refund</dt><dd><%= fmt.money(-d.owing) %></dd></div>
+<% } -%>
               </dl>
 <% if (payments.length) { -%>
               <h3 class="form-section__title" style="margin-top:18px">Payments</h3>
