@@ -484,6 +484,18 @@
     });
   }
 
+  /* -------------------------------------------------------------------
+   * Installable app: staff pages link the manifest; they also register the
+   * small service worker that shows a page when there is no connection.
+   * Not on the guest website.
+   * ------------------------------------------------------------------- */
+  function initAppInstall() {
+    if (!('serviceWorker' in navigator) || !$('link[rel="manifest"]')) return;
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => { /* e.g. blocked inside a preview frame: the site works as before */ });
+    });
+  }
+
   HMS.ready(() => {
     initThemeSwitch();
     initDrawer();
@@ -491,5 +503,6 @@
     initHotelSwitch();
     initAlerts();
     initQuickSearch();
+    initAppInstall();
   });
 })();

@@ -118,6 +118,54 @@ describe('security', () => {
   });
 });
 
+describe('installable app', () => {
+  test('the manifest names the hotel, opens on the sign-in page and its icons are the sizes it says', async () => {
+    const c = hotel.client();
+    const r = await c.get('/manifest.webmanifest');
+    assert.equal(r.status, 200);
+    assert.match(r.headers.get('content-type'), /^application\/manifest\+json/);
+    const m = JSON.parse(r.text);
+    assert.equal(m.name, 'Frontdesk · The Harlow Hotel');
+    assert.equal(m.short_name, 'Frontdesk');
+    assert.equal(m.start_url, '/login');
+    assert.equal(m.display, 'standalone');
+    assert.ok(m.icons.some((icon) => icon.purpose === 'maskable'));
+    for (const icon of [...m.icons, { src: '/assets/img/apple-touch-icon.png', sizes: '180x180' }]) {
+      const img = await c.request('GET', icon.src, { binary: true });
+      assert.equal(img.status, 200, icon.src);
+      assert.equal(`${img.body.readUInt32BE(16)}x${img.body.readUInt32BE(20)}`, icon.sizes, icon.src); // PNG header
+    }
+  });
+
+  test('staff pages link it, the service worker and its offline page are served; the guest website stays out', async () => {
+    const c = hotel.client();
+    assert.match((await c.get('/login')).text, /<link rel="manifest" href="\/manifest\.webmanifest">/);
+    await c.login();
+    assert.match((await c.get('/dashboard')).text, /<link rel="apple-touch-icon" href="\/assets\/img\/apple-touch-icon\.png">/);
+    assert.doesNotMatch((await c.get('/hotel')).text, /rel="manifest"/);
+    const sw = await c.get('/sw.js');
+    assert.equal(sw.status, 200);
+    assert.match(sw.headers.get('content-type'), /javascript/);
+    assert.equal(sw.headers.get('cache-control'), 'no-cache');
+    assert.match(sw.text, /'\/offline\.html'/);
+    const offline = await c.get('/offline.html');
+    assert.equal(offline.status, 200);
+    assert.match(offline.text, /No connection/);
+    const account = (await c.get('/account')).text;
+    assert.match(account, /Frontdesk as an app/);
+    assert.match(account, /<script src="\/assets\/js\/pages\/account\.js"><\/script>/);
+  });
+
+  test('someone who must still change their password gets the app files too, never a redirect', async () => {
+    hotel.db.run("UPDATE users SET must_change_password = 1 WHERE email = 'rosa.soto@example.com'");
+    const c = hotel.client();
+    await c.login('rosa.soto@example.com', 'harlow-demo');
+    assert.equal((await c.get('/dashboard')).headers.get('location'), '/account');
+    for (const path of ['/manifest.webmanifest', '/sw.js', '/offline.html']) assert.equal((await c.get(path)).status, 200, path);
+    hotel.db.run("UPDATE users SET must_change_password = 0 WHERE email = 'rosa.soto@example.com'");
+  });
+});
+
 describe('roles', () => {
   test('housekeeping sees rooms and tasks only', async () => {
     const c = hotel.client();

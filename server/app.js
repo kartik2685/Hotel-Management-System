@@ -10,6 +10,24 @@ const settingsService = require('./services/settings');
 
 const ICON = (name) => `<svg class="icon" aria-hidden="true"><use href="#icon-${String(name).replace(/[^a-z0-9-]/gi, '')}"></use></svg>`;
 
+/* The web app manifest: staff can install Frontdesk on a phone or computer (home screen icon, own window).
+   It opens on the sign-in page, which sends a signed-in person straight to their start page. */
+const appManifest = (settings) => ({
+  name: `Frontdesk · ${settings.hotel_name}`,
+  short_name: 'Frontdesk',
+  description: `${settings.hotel_name}: bookings, rooms and housekeeping.`,
+  start_url: '/login',
+  scope: '/',
+  display: 'standalone',
+  background_color: '#1c1b19',
+  theme_color: '#1c1b19',
+  icons: [
+    { src: '/assets/img/app-icon-192.png', sizes: '192x192', type: 'image/png' },
+    { src: '/assets/img/app-icon-512.png', sizes: '512x512', type: 'image/png' },
+    { src: '/assets/img/app-icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+  ],
+});
+
 const LEGACY = {
   '/index.html': '/dashboard', '/reservations.html': '/reservations', '/calendar.html': '/tape-chart', '/rooms.html': '/rooms',
   '/guests.html': '/guests', '/housekeeping.html': '/housekeeping', '/login.html': '/login',
@@ -55,6 +73,14 @@ function createApp(db) {
     next();
   });
   app.use(security.csrf);
+
+  // Installable app: its manifest, the service worker (at the top level, so it covers every page) and the page
+  // it shows offline. Before the password-change redirect: a browser fetching these must never be redirected.
+  app.get('/manifest.webmanifest', (req, res) => {
+    res.set('Cache-Control', 'no-cache').type('application/manifest+json').send(JSON.stringify(appManifest(req.settings)));
+  });
+  app.get('/sw.js', (req, res) => res.set('Cache-Control', 'no-cache').sendFile(path.join(config.root, 'assets', 'js', 'sw.js')));
+  app.get('/offline.html', (req, res) => res.set('Cache-Control', 'no-cache').sendFile(path.join(config.root, 'assets', 'offline.html')));
 
   app.use((req, res, next) => {
     const target = LEGACY[req.path];

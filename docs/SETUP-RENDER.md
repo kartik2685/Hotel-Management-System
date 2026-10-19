@@ -140,6 +140,10 @@ Koi WhatsApp Business account nahi chahiye; message bhejne se pehle aap use bada
 - **Backup:** free database ka koi backup nahi hota. Hafte me ek baar **Admin → Overview → Download a backup** dabao.
   Ek `.db` file download hogi jisme har table hai. Use safe jagah rakho: usme guests ka data hai.
 - **Naya code:** jab is branch par update push hoga, Render khud naya version deploy kar dega. Data nahi jayega.
+- **Phone / computer par app ki tarah:** staff Frontdesk ko install kar sakte hain, home screen par hotel ke icon ke saath,
+  apni alag window me khulta hai. Android (Chrome): menu ⋮ → **Install app**. iPhone (Safari): Share → **Add to Home Screen**.
+  Computer (Edge/Chrome): address bar ke right me install icon. **My account** page par steps aur Install button bhi hai.
+  Internet na ho to "No connection" page dikhta hai. Guests ka data phone me save nahi hota.
 
 ---
 

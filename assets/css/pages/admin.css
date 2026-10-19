@@ -84,6 +84,9 @@ textarea.input { min-height: 84px; resize: vertical; }
 .admin-table .cell-note { overflow-wrap: anywhere; }
 /* Keeps hidden header text (the "Actions" column) inside the scrolling table, so phones don't scroll sideways */
 .table-scroll { position: relative; }
+/* Account page: how to install Frontdesk as an app */
+.install-steps { margin: 4px 0 0; padding-left: 18px; color: var(--muted); font-size: .875rem; display: grid; gap: 6px; }
+.install-steps strong { color: var(--text); }
 
 /* Booking page */
 .booking-facts { display: grid; gap: 12px 24px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); margin: 0; }

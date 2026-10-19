@@ -226,7 +226,7 @@ function renderAccount(req, res, { status = 200, errors = {}, done = false } = {
   const shell = shellService.build(req.db, req, 'account');
   res.status(status).render('pages/account', {
     title: 'Your account · Frontdesk Hotel Management', description: 'Change your Frontdesk password.', page: 'account',
-    css: ['pages/admin'], scripts: [], shell, errors, done, mustChange: Boolean(req.user.must_change_password),
+    css: ['pages/admin'], scripts: ['pages/account'], shell, errors, done, mustChange: Boolean(req.user.must_change_password),
   });
 }
 
