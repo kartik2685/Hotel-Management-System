@@ -63,6 +63,15 @@ describe('sample data', () => {
         AND a.arrival < b.departure AND b.arrival < a.departure`), 0);
   });
 
+  test('charges during the stay: room service, laundry, minibar, spa and a taxi, posted by the desk on duty', () => {
+    const kinds = hotel.db.all('SELECT DISTINCT kind FROM folio_charges ORDER BY kind').map((r) => r.kind);
+    assert.deepEqual(kinds, ['fnb', 'laundry', 'minibar', 'spa', 'transport']);
+    assert.equal(count('SELECT COUNT(*) AS n FROM reservations WHERE total_cents <> room_total_cents + tax_cents + extras_cents + charges_cents'), 0);
+    const inv = hotel.db.all("SELECT data FROM invoices WHERE status = 'issued'").map((r) => JSON.parse(r.data)).find((d) => d.taxes.length > 1);
+    assert.ok(inv, 'an invoice with GST at more than one rate');
+    assert.ok(inv.lines.some((l) => l.sac === '996331'));
+  });
+
   test('registration cards, Form III, payments, refunds and GST invoices are all there', () => {
     assert.equal(count("SELECT COUNT(*) AS n FROM reservations WHERE status IN ('checked_in', 'checked_out') AND grc_at IS NULL"), 0);
     assert.ok(count("SELECT COUNT(*) AS n FROM reservations r JOIN guests g ON g.id = r.guest_id WHERE g.nationality NOT IN ('IN', 'NP', 'BT') AND r.form3_arrival_ref IS NOT NULL") >= 5);
@@ -159,7 +168,7 @@ describe('sample data', () => {
     assert.equal(refused.status, 422);
     const r = await owner.post('/admin/sample-data/remove', { sure: 'on' });
     assert.equal(r.status, 303);
-    for (const table of ['guests', 'reservations', 'payments', 'invoices', 'rooms', 'room_types', 'extras', 'housekeeping_tasks', 'handover_notes', 'daily_stats', 'revenue', 'outbox', 'password_resets']) {
+    for (const table of ['guests', 'reservations', 'payments', 'invoices', 'rooms', 'room_types', 'extras', 'housekeeping_tasks', 'handover_notes', 'daily_stats', 'revenue', 'outbox', 'password_resets', 'folio_charges']) {
       assert.equal(count(`SELECT COUNT(*) AS n FROM ${table}`), 0, table);
     }
     assert.equal(count('SELECT COUNT(*) AS n FROM users'), 1);

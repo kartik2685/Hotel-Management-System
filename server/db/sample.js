@@ -32,12 +32,13 @@ const stats = require('../services/stats');
 const emails = require('../services/emails');
 const website = require('../services/website');
 const links = require('../services/signin-links');
+const folio = require('../services/folio');
 const DATA = require('./sample-data');
 
 const ZONE = 'Asia/Kolkata';
 const FIRST_AUDIT = -27; // the first business day closed with the system
 const TRACKED = ['users', 'room_types', 'rooms', 'room_blocks', 'rate_plans', 'extras', 'sources', 'guests', 'guest_notes', 'reservations',
-  'housekeeping_tasks', 'handover_notes', 'notifications', 'activity_log', 'payments', 'invoices', 'outbox'];
+  'folio_charges', 'housekeeping_tasks', 'handover_notes', 'notifications', 'activity_log', 'payments', 'invoices', 'outbox'];
 const PHOTO_DIR = path.join(__dirname, '..', '..', 'assets', 'img', 'rooms');
 
 const plusMinutes = (stamp, minutes) => new Date(Date.parse(`${stamp.replace(' ', 'T')}:00Z`) + minutes * 60000).toISOString().slice(0, 16).replace('T', ' ');
@@ -440,6 +441,12 @@ class Sample {
     this.act(s.inAt, s.inKey, (k) => reservations.checkIn(this.db, this.req(k), s.conf), `check-in ${label}`);
     const form3 = registration.needsForm3({ country: 'IN' }, g.nationality);
     if (form3 && s.f3 && s.f3.arr) this.act(this.at(...s.f3.arr), 'desk', (k) => this.form3(s, k, 'arrival'), `Form III ${label}`);
+    // Charges during the stay: [day of the stay (0 = arrival day), time, kind, text, rupees before tax]
+    for (const [day, time, kind, text, rupees] of s.charges || []) {
+      const at = this.at(s.a + day, time);
+      if (at <= s.inAt || (s.outAt && at >= s.outAt)) throw new Error(`Sample data: a charge outside the stay of ${label}`);
+      this.act(at, 'desk', (k) => folio.post(this.db, this.req(k), s.conf, { charge_kind: kind, charge_text: text, charge_amount: String(rupees) }), `charge ${label}`);
+    }
     if (s.move) {
       const at = this.at(s.move.at[0], s.move.at[1]);
       this.act(at, s.move.at[2], (k) => this.edit(s, k, { room: s.room }), `room move ${label}`);
@@ -839,6 +846,7 @@ function remove(db, { by = null } = {}) {
     db.run(`DELETE FROM invoices WHERE ${among('reservation_id', bookings)} OR ${among('id', ids('invoices'))}`);
     db.run(`DELETE FROM payments WHERE ${among('reservation_id', bookings)} OR ${among('id', ids('payments'))}`);
     db.run(`DELETE FROM reservation_extras WHERE ${among('reservation_id', bookings)}`);
+    db.run(`DELETE FROM folio_charges WHERE ${among('reservation_id', bookings)}`);
     db.run(`DELETE FROM reservations WHERE ${among('id', bookings)}`);
     db.run(`DELETE FROM guest_notes WHERE ${among('id', ids('guest_notes'))}`);
     db.run(`DELETE FROM guests WHERE ${among('id', ids('guests'))} AND NOT EXISTS (SELECT 1 FROM reservations r WHERE r.guest_id = guests.id)`);

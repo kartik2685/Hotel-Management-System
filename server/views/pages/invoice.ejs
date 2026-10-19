@@ -64,7 +64,18 @@
       <tfoot>
 <% const span = d.gst ? 2 : 1; -%>
         <tr><td colspan="<%= span %>" class="num">Taxable value</td><td class="num"><%= fmt.money(d.taxable) %></td></tr>
-<% if (d.gst && d.interstate) { -%>
+<% if (d.taxes && d.taxes.length > 1) { -%>
+<%   for (const t of d.taxes) { const on = ' on ' + fmt.money(t.taxable); -%>
+<%     if (d.gst && d.interstate) { -%>
+        <tr><td colspan="<%= span %>" class="num">IGST <%= t.rate %>%<%= on %></td><td class="num"><%= fmt.money(t.igst) %></td></tr>
+<%     } else if (d.gst) { -%>
+        <tr><td colspan="<%= span %>" class="num">CGST <%= t.rate / 2 %>%<%= on %></td><td class="num"><%= fmt.money(t.cgst) %></td></tr>
+        <tr><td colspan="<%= span %>" class="num">SGST <%= t.rate / 2 %>%<%= on %></td><td class="num"><%= fmt.money(t.sgst) %></td></tr>
+<%     } else { -%>
+        <tr><td colspan="<%= span %>" class="num"><%= d.taxLabel %> <%= t.rate %>%<%= on %></td><td class="num"><%= fmt.money(t.tax) %></td></tr>
+<%     } -%>
+<%   } -%>
+<% } else if (d.gst && d.interstate) { -%>
         <tr><td colspan="<%= span %>" class="num">IGST <%= d.percent %>%</td><td class="num"><%= fmt.money(d.igst) %></td></tr>
 <% } else if (d.gst) { -%>
         <tr><td colspan="<%= span %>" class="num">CGST <%= d.percent / 2 %>%</td><td class="num"><%= fmt.money(d.cgst) %></td></tr>

@@ -238,7 +238,7 @@ function checkIn(db, req, confirmation) {
 }
 
 /* Room, tax and extras for a stay of `nights` nights at `rate`: per-night extras follow the number of nights
-   (their stored amounts are updated). Runs inside the caller's transaction. */
+   (their stored amounts are updated); posted charges are kept. Runs inside the caller's transaction. */
 function reprice(db, settings, r, { rate = r.nightly_rate_cents, nights }) {
   const oldNights = f.daysBetween(r.arrival, r.departure);
   let extras = 0;
@@ -249,7 +249,8 @@ function reprice(db, settings, r, { rate = r.nightly_rate_cents, nights }) {
   }
   const roomTotal = rate * nights;
   const tax = Math.round((roomTotal * pricing.taxPercent(settings, rate)) / 100);
-  return { roomTotal, tax, extras, total: roomTotal + tax + extras };
+  // charges posted during the stay (services/folio.js) stay on the bill
+  return { roomTotal, tax, extras, total: roomTotal + tax + extras + (r.charges_cents || 0) };
 }
 
 function checkOut(db, req, confirmation, { settle = false, method = 'Card' } = {}) {

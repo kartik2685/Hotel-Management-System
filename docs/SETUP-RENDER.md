@@ -115,6 +115,11 @@ Apna hotel set karne ke liye **Admin panel** me is order me:
    Send a password link**. Chaho to purane tareeke se temporary password bhi daal sakte ho.
 4. **Website:** guest website shuru me **off** hoti hai. Texts likho aur **on** karo. Guests `https://…onrender.com/hotel` par booking karenge.
 
+**Stay ke dauran charges:** hotel me ruke guest ke booking page par **Add a charge to the bill**: room service, minibar,
+laundry, spa, taxi wagairah, apne GST rate ke saath (khana 18% agar koi room ₹7,500 se upar bikta hai, warna 5%;
+laundry/spa 18%; taxi 5%; chaho to rate badal sakte ho). Charge total, balance aur check-out me judta hai, aur GST invoice par
+SAC code ke saath har rate ka CGST/SGST alag dikhta hai. Galat charge manager **Take off the bill** se hata sakta hai.
+
 **Guest ko WhatsApp:** har booking page par **WhatsApp the guest** button hai. Dabate hi WhatsApp (app ya WhatsApp Web)
 guest ke number aur taiyaar message ke saath khulta hai: booking confirm hone par details + booking dekhne/cancel karne
 ka link, hotel me ho to welcome + room number, check-out ke baad thank-you + invoice ka link. Invoice page par

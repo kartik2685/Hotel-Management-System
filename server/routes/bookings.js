@@ -13,12 +13,14 @@ const registration = require('../services/registration');
 const guests = require('../services/guests');
 const website = require('../services/website');
 const whatsapp = require('../services/whatsapp');
+const folio = require('../services/folio');
 
 const router = express.Router();
 const FLASH = {
   saved: 'Booking saved.', created: 'Booking created and saved.', 'check-in': 'Checked in. The room now shows as occupied.', 'check-out': 'Checked out. The room is marked dirty for housekeeping.',
   'check-out-early': 'Checked out early: the bill now covers the nights stayed. The room is marked dirty for housekeeping.',
   cancel: 'Booking cancelled. The room is free again.', confirm: 'Booking confirmed.', payment: 'Payment recorded.', refund: 'Refund recorded.',
+  charge: 'Charge added to the bill.', 'charge-void': 'Charge taken off the bill.',
   grc: 'Registration card saved and complete.', 'grc-partial': 'Registration card saved. Some details are still missing.', form3: 'Form III acknowledgement saved.',
 };
 
@@ -47,6 +49,7 @@ function renderBooking(req, res, next, extra = {}, status = 200) {
     errors: {}, values: {}, payErrors: {}, payValues: {}, grcErrors: {}, grcValues: {}, invErrors: {}, invValues: {}, f3Errors: {}, actionError: '',
     canBook: can(req.user, 'bookings'), canRefund: can(req.user, 'manage'),
     payments: billing.payments(db, d.b.id), invoices, methods: billing.METHODS, whatsapp: whatsappFor(req, d.b, invoices),
+    charges: folio.list(db, d.b.id), chargeKinds: folio.kinds(db, req.settings), chargeRates: folio.rates(req.settings), chargeErrors: {}, chargeValues: {},
     reg: registration.view(db, d.b), countries: registration.COUNTRIES, idTypes: registration.ID_TYPES, visaTypes: registration.VISA_TYPES, purposes: registration.PURPOSES,
     gst: req.settings.tax_mode === 'gst_india', ...extra,
   });
@@ -124,6 +127,27 @@ router.post('/reservations/:confirmation/form3', requireAbility('bookings'), (re
     res.redirect(303, `/reservations/${encodeURIComponent(req.params.confirmation)}?ok=form3#form3`);
   } catch (error) {
     if (error instanceof reservations.FormError) return renderBooking(req, res, next, { f3Errors: error.errors }, 422);
+    next(error);
+  }
+});
+
+/* Charges during the stay (room service, laundry…): front desk posts them, managers take them off. */
+router.post('/reservations/:confirmation/charges', requireAbility('bookings'), (req, res, next) => {
+  try {
+    folio.post(req.db, req, req.params.confirmation, req.body);
+    res.redirect(303, `/reservations/${encodeURIComponent(req.params.confirmation)}?ok=charge#charges`);
+  } catch (error) {
+    if (error instanceof reservations.FormError) return renderBooking(req, res, next, { chargeErrors: error.errors, chargeValues: error.values }, 422);
+    if (error.status === 422) return renderBooking(req, res, next, { actionError: error.message }, 422);
+    next(error);
+  }
+});
+router.post('/reservations/:confirmation/charges/:id/void', requireAbility('manage'), (req, res, next) => {
+  try {
+    if (!folio.voidCharge(req.db, req, req.params.confirmation, Number.parseInt(req.params.id, 10) || 0)) return next();
+    res.redirect(303, `/reservations/${encodeURIComponent(req.params.confirmation)}?ok=charge-void#charges`);
+  } catch (error) {
+    if (error.status === 422) return renderBooking(req, res, next, { actionError: error.message }, 422);
     next(error);
   }
 });

@@ -103,6 +103,12 @@ textarea.input { min-height: 84px; resize: vertical; }
 .note-list li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; }
 .note-list p { margin: 0; }
 .note-list small { color: var(--muted); }
+/* Charges during the stay on the booking page */
+.charge-list li { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.charge-list .cell-note { color: var(--muted); font-size: .8rem; }
+.charge-list .is-voided { opacity: .6; }
+.charge-list .is-voided strong { text-decoration: line-through; }
+.charge-add { margin-top: 12px; }
 
 /* Error page */
 .error-page { display: grid; place-items: center; min-height: 100vh; padding: 24px; }

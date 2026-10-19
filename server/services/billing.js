@@ -126,10 +126,24 @@ function createInvoice(db, req, confirmation, body) {
 
   const guest = db.get('SELECT * FROM guests WHERE id = ?', r.guest_id);
   const extras = db.all('SELECT x.name, x.per, re.amount_cents FROM reservation_extras re JOIN extras x ON x.id = re.extra_id WHERE re.reservation_id = ?', r.id);
+  const charges = db.all('SELECT * FROM folio_charges WHERE reservation_id = ? AND voided_at IS NULL ORDER BY posted_at, id', r.id);
   const gst = isGst(settings);
   const percent = pricing.taxPercent(settings, r.nightly_rate_cents);
-  const tax = r.tax_cents;
-  const cgst = gst && !interstate ? Math.floor(tax / 2) : 0;
+  // Tax per rate: the room's, then each rate the charges use (one line per rate).
+  const byRate = new Map();
+  const addTax = (bp, taxable, amount) => {
+    const t = byRate.get(bp) || { rate: bp / 100, taxable: 0, tax: 0 };
+    t.taxable += taxable;
+    t.tax += amount;
+    byRate.set(bp, t);
+  };
+  addTax(Math.round(percent * 100), r.room_total_cents, r.tax_cents);
+  for (const c of charges) if (c.tax_bp > 0) addTax(c.tax_bp, c.amount_cents, c.tax_cents);
+  const taxes = [...byRate.values()].map((t) => {
+    const half = gst && !interstate ? Math.floor(t.tax / 2) : 0;
+    return { ...t, cgst: half, sgst: gst && !interstate ? t.tax - half : 0, igst: gst && interstate ? t.tax : 0 };
+  });
+  const sum = (key) => taxes.reduce((n, t) => n + t[key], 0);
   const bd = settingsService.businessDate(db);
   const stamp = clock.stamp(settings.timezone);
 
@@ -145,8 +159,12 @@ function createInvoice(db, req, confirmation, body) {
       lines: [
         { text: `Room ${r.room_number || ''} · ${r.type_name} · ${f.plural(r.nights, 'night', 'nights')} × ${f.money(r.nightly_rate_cents)}`.replace('Room  · ', 'Room · '), sac: gst ? '996311' : '', amount: r.room_total_cents, taxed: true },
         ...extras.map((x) => ({ text: x.name + (x.per === 'night' ? ` · ${f.plural(r.nights, 'night', 'nights')}` : ''), sac: '', amount: x.amount_cents, taxed: false })),
+        ...charges.map((c) => ({
+          text: `${c.description} · ${f.formatDay(c.posted_at)}${c.tax_bp > 0 ? ` · ${Number((c.tax_bp / 100).toFixed(2))}%` : ''}`,
+          sac: gst ? c.sac || '' : '', amount: c.amount_cents, taxed: c.tax_bp > 0,
+        })),
       ],
-      taxable: r.room_total_cents, tax, cgst, sgst: gst && !interstate ? tax - cgst : 0, igst: gst && interstate ? tax : 0,
+      taxable: sum('taxable'), tax: sum('tax'), cgst: sum('cgst'), sgst: sum('sgst'), igst: sum('igst'), taxes,
       total: r.total_cents, paid: r.paid_cents, balance: r.total_cents - r.paid_cents,
       payments: payments(db, r.id).map((p) => ({ when: p.when, method: p.method, reference: p.reference, amount: p.amount_cents })),
       words: amountInWords(r.total_cents, settings),

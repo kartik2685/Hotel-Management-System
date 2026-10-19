@@ -107,7 +107,7 @@ describe('PostgreSQL database', () => {
 
   test('setting up the tables again changes nothing', () => {
     pg.exec(fs.readFileSync(path.join(__dirname, '..', 'server', 'db', 'schema.pg.sql'), 'utf8'));
-    assert.equal(pg.get("SELECT value FROM app_meta WHERE key = 'schema_version'").value, '3');
+    assert.equal(pg.get("SELECT value FROM app_meta WHERE key = 'schema_version'").value, '4');
   });
 
   test('the SQL helpers answer the same on both databases', () => {

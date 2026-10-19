@@ -159,6 +159,9 @@
 <% for (const x of d.extras) { -%>
                 <div><dt><%= x.name %></dt><dd><%= fmt.money(x.amount_cents) %></dd></div>
 <% } -%>
+<% if (b.charges_cents) { -%>
+                <div><dt>Charges during the stay</dt><dd><%= fmt.money(b.charges_cents) %></dd></div>
+<% } -%>
                 <div class="is-total"><dt><strong>Total</strong></dt><dd><%= fmt.money(b.total_cents) %></dd></div>
                 <div><dt>Paid</dt><dd><%= fmt.money(b.paid_cents) %></dd></div>
                 <div><dt>Still open</dt><dd><%= fmt.money(Math.max(0, d.owing)) %></dd></div>
@@ -166,6 +169,35 @@
                 <div><dt>Overpaid, to refund</dt><dd><%= fmt.money(-d.owing) %></dd></div>
 <% } -%>
               </dl>
+<% if (charges.length || (canBook && b.status === 'checked_in')) { -%>
+              <h3 class="form-section__title" id="charges" style="margin-top:18px">Charges during the stay</h3>
+<%   if (charges.length) { -%>
+              <ul class="note-list charge-list">
+<%     for (const c of charges) { -%>
+                <li<%- c.voided_at ? ' class="is-voided"' : '' %>><div><p><strong><%= fmt.money(c.total_cents) %></strong> · <%= c.description %><%= c.voided_at ? ' · taken off the bill' : '' %></p><p class="cell-note"><%= c.kindLabel %> · <%= fmt.money(c.amount_cents) %> + <%= gst ? 'GST' : 'tax' %> <%= c.rateText %> · <%= c.when %> · <%= c.posted_by_name %><%= c.voided_at ? ' · removed by ' + c.voided_by_name : '' %></p></div>
+<%       if (canRefund && !c.voided_at && b.status === 'checked_in') { -%>
+                  <form method="post" action="/reservations/<%= b.confirmation %>/charges/<%= c.id %>/void"><input type="hidden" name="_csrf" value="<%= shell.csrf %>"><button class="button button--secondary button--sm" type="submit">Take off the bill</button></form>
+<%       } -%>
+                </li>
+<%     } -%>
+              </ul>
+<%   } -%>
+<%   if (canBook && b.status === 'checked_in') { const ce = chargeErrors; const cv = chargeValues; -%>
+              <details class="charge-add"<%- Object.keys(ce).length ? ' open' : '' %>>
+                <summary class="text-button">Add a charge to the bill</summary>
+                <form method="post" action="/reservations/<%= b.confirmation %>/charges" novalidate style="margin-top:12px">
+                  <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+                  <div class="form-grid">
+                    <div class="form-grid__col form-grid__col--half"><label class="field-label" for="ch-kind">Kind</label><select class="select<%= ce.charge_kind ? ' is-invalid' : '' %>" id="ch-kind" name="charge_kind"><% for (const k of chargeKinds) { %><option value="<%= k.value %>"<%- cv.charge_kind === k.value ? ' selected' : '' %>><%= k.label %> · <%= k.rate %>%</option><% } %></select><p class="field-error"><%= ce.charge_kind || '' %></p></div>
+                    <div class="form-grid__col form-grid__col--half"><label class="field-label" for="ch-amount">Amount (<%= fmt.symbol() %>) <span class="field-label__hint">before tax</span></label><input class="input<%= ce.charge_amount ? ' is-invalid' : '' %>" id="ch-amount" name="charge_amount" inputmode="decimal" value="<%= cv.charge_amount || '' %>"><p class="field-error"><%= ce.charge_amount || '' %></p></div>
+                    <div class="form-grid__col form-grid__col--half"><label class="field-label" for="ch-text">Description</label><input class="input<%= ce.charge_text ? ' is-invalid' : '' %>" id="ch-text" name="charge_text" maxlength="80" placeholder="e.g. Dinner from room service" value="<%= cv.charge_text || '' %>"><p class="field-error"><%= ce.charge_text || '' %></p></div>
+                    <div class="form-grid__col form-grid__col--half"><label class="field-label" for="ch-rate"><%= gst ? 'GST' : 'Tax' %> rate</label><select class="select<%= ce.charge_rate ? ' is-invalid' : '' %>" id="ch-rate" name="charge_rate"><option value="">Usual for the kind</option><% for (const rate of chargeRates) { %><option value="<%= rate %>"><%= rate %>%</option><% } %></select><p class="field-error"><%= ce.charge_rate || '' %></p></div>
+                  </div>
+                  <div class="form-actions"><button class="button button--secondary" type="submit">Add to the bill</button></div>
+                </form>
+              </details>
+<%   } -%>
+<% } -%>
 <% if (payments.length) { -%>
               <h3 class="form-section__title" style="margin-top:18px">Payments</h3>
               <ul class="note-list"><% for (const p of payments) { %><li><span class="avatar avatar--sm" aria-hidden="true"><%= p.amount_cents < 0 ? '↩' : fmt.initials(p.taken_by_name || 'System') %></span><div><p><strong><%= p.amountText %></strong> · <%= p.method %><%= p.reference ? ' · ' + p.reference : '' %></p><small><%= p.when %> · <%= p.taken_by_name || 'System' %></small></div></li><% } %></ul>

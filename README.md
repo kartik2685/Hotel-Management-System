@@ -55,7 +55,8 @@ Add sample data** (admins only), or `npm run sample` on the command line.
   group, medical stays, foreign guests (Form III; Nepal and Bhutan exempt), a no-show and cancellations.
 - Four weeks of hotel life up to the minute it is added: bookings by phone, email, walk-in, travel sites and the
   website, registration cards, check-ins and check-outs, room moves and an upgrade, payments and refunds, GST
-  invoices, housekeeping tasks, handover notes, outlet revenue and a night audit every day.
+  invoices, housekeeping tasks, handover notes, outlet revenue and a night audit every day; and 13 charges during
+  stays (room service, minibar, laundry, spa, a taxi) on bills and GST invoices.
 
 Nothing is pasted into the tables: everything is made through the same code as the screens, by the member of staff
 on duty, at the time it happened, so every record can be opened and changed. All sample staff sign in with one
@@ -78,6 +79,7 @@ takes it all out again before real use. Names, companies, GSTINs and ID numbers 
 | **Registration card (GRC)** | On the booking page: nationality, address, ID proof (Aadhaar, passport…), visa details for foreign guests, purpose of visit. Printable with signature lines. Optionally required before check-in |
 | **Form III** | For foreign guests at an Indian hotel: the 24-hour deadlines after check-in and check-out, a reminder, and a place to record the FRRO acknowledgement number |
 | **Payments and invoices** | Every payment with method and reference, refunds (managers), and printable invoices. GST invoices show your GSTIN, SAC 996311, CGST + SGST or IGST, the guest company’s GSTIN and the amount in words, numbered per financial year (e.g. `HLW/26-27/0001`). **Send on WhatsApp** gives the guest their own signed link to the invoice (no sign-in; it opens that invoice only) to print or save as PDF |
+| **Charges during the stay** | On an in-house guest's booking page: **Add a charge to the bill** for room service, minibar, laundry, spa, a taxi… with its own GST rate (food is 18% when any room sells above ₹7,500 a night, else 5%; laundry and spa 18%; taxi 5%; staff can pick another). Charges count in the total, the balance and check-out; GST invoices list each with its SAC code and show CGST/SGST per rate. Managers can take a wrong charge off the bill (it stays listed) |
 | **App on phones and computers** | Install Frontdesk from the browser: Android (Chrome) menu → *Install app*; iPhone (Safari) Share → *Add to Home Screen*; Edge or Chrome on a computer, the install icon in the address bar (*My account* has the steps and an Install button). It opens in its own window with the hotel's icon, and shows a clear "No connection" page offline. Pages are never stored on the device |
 
 ### Guest website (`/hotel`)
@@ -286,7 +288,7 @@ the service's **Environment** instead.
 npm test
 ```
 
-105 tests run against a fresh demo hotel or the sample hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
+111 tests run against a fresh demo hotel or the sample hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
 copy, nothing to install), and `TEST_DATABASE=postgres://user:pass@host/postgres npm test` on a real server.
 They cover:
 - sign-in, lockout, CSRF and redirect safety;
@@ -299,6 +301,7 @@ They cover:
 - password reset, reports and CSV safety;
 - staff invite and password links (shown once, emailed, work once, expire, a newer link replaces the older);
 - WhatsApp messages to guests (numbers with country codes, the guest's signed invoice link);
+- charges during the stay (tax rate per charge, SAC codes and GST per rate on the invoice, managers take charges off);
 - the installable app (manifest, icons, service worker and offline page, also for an account that must change its password);
 - database upgrades, and what a new database starts with on a live server;
 - the sample hotel: made through the services, in rupees everywhere, admins only, and removed without a trace;
