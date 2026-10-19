@@ -115,6 +115,12 @@ Apna hotel set karne ke liye **Admin panel** me is order me:
    Send a password link**. Chaho to purane tareeke se temporary password bhi daal sakte ho.
 4. **Website:** guest website shuru me **off** hoti hai. Texts likho aur **on** karo. Guests `https://…onrender.com/hotel` par booking karenge.
 
+**Guest ko WhatsApp:** har booking page par **WhatsApp the guest** button hai. Dabate hi WhatsApp (app ya WhatsApp Web)
+guest ke number aur taiyaar message ke saath khulta hai: booking confirm hone par details + booking dekhne/cancel karne
+ka link, hotel me ho to welcome + room number, check-out ke baad thank-you + invoice ka link. Invoice page par
+**Send on WhatsApp** se guest ko apni invoice ka link jaata hai, jise wo bina login khol ke PDF save kar sakta hai.
+Koi WhatsApp Business account nahi chahiye; message bhejne se pehle aap use badal bhi sakte ho.
+
 ---
 
 ## Part 4: 30 din se pehle database upgrade karo (data rakhna hai to zaroori)

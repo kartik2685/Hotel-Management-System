@@ -4,6 +4,8 @@
  * ===================================================================== */
 .print-page { background: var(--bg); min-height: 100vh; padding: 24px 16px 48px; }
 .print-toolbar { max-width: 210mm; margin: 0 auto 16px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; }
+.print-toolbar--end { justify-content: flex-end; }
+.print-toolbar__actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .sheet {
   max-width: 210mm; margin: 0 auto; padding: 18mm 16mm; background: #fff; color: #1c1b19;
   border: 1px solid var(--line); border-radius: 6px; box-shadow: var(--shadow); font-size: 10.5pt; line-height: 1.45;

@@ -11,6 +11,8 @@ const reservations = require('../services/reservations');
 const billing = require('../services/billing');
 const registration = require('../services/registration');
 const guests = require('../services/guests');
+const website = require('../services/website');
+const whatsapp = require('../services/whatsapp');
 
 const router = express.Router();
 const FLASH = {
@@ -20,17 +22,31 @@ const FLASH = {
   grc: 'Registration card saved and complete.', 'grc-partial': 'Registration card saved. Some details are still missing.', form3: 'Form III acknowledgement saved.',
 };
 
+/* Address of the guest's copy of an invoice, for WhatsApp. */
+const invoiceUrl = (req, inv) => `${website.siteUrl(req, req.settings)}/invoice/${inv.id}?t=${billing.invoiceToken(req.db, inv)}`;
+
+/* "WhatsApp the guest": what fits the booking now, with the links the guest can open themselves. */
+function whatsappFor(req, b, invoices) {
+  const s = req.settings;
+  const manageUrl = s.site_enabled && b.email
+    ? `${website.siteUrl(req, s)}/hotel/booking/${encodeURIComponent(b.confirmation)}?t=${website.token(req.db, b.confirmation, b.email)}` : '';
+  const latest = invoices.find((i) => i.status !== 'cancelled');
+  const text = whatsapp.bookingText(s, b, { manageUrl, invoice: latest ? { ...latest, url: invoiceUrl(req, latest) } : null });
+  return text ? whatsapp.link(whatsapp.phoneDigits(b.phone, s.country), text) : '';
+}
+
 function renderBooking(req, res, next, extra = {}, status = 200) {
   const db = req.db;
   const shell = shellService.build(db, req, 'reservations');
   const d = reservations.detail(db, req.params.confirmation, shell.bd);
   if (!d) return next();
+  const invoices = billing.forReservation(db, d.b.id);
   res.status(status).render('pages/reservation', {
     title: `${d.b.confirmation} · ${d.b.name} · Frontdesk Hotel Management`, description: `Booking ${d.b.confirmation} for ${d.b.name}.`,
     page: 'reservation', css: ['pages/admin'], scripts: [], shell, d, flash: FLASH[req.query.ok] || '',
     errors: {}, values: {}, payErrors: {}, payValues: {}, grcErrors: {}, grcValues: {}, invErrors: {}, invValues: {}, f3Errors: {}, actionError: '',
     canBook: can(req.user, 'bookings'), canRefund: can(req.user, 'manage'),
-    payments: billing.payments(db, d.b.id), invoices: billing.forReservation(db, d.b.id), methods: billing.METHODS,
+    payments: billing.payments(db, d.b.id), invoices, methods: billing.METHODS, whatsapp: whatsappFor(req, d.b, invoices),
     reg: registration.view(db, d.b), countries: registration.COUNTRIES, idTypes: registration.ID_TYPES, visaTypes: registration.VISA_TYPES, purposes: registration.PURPOSES,
     gst: req.settings.tax_mode === 'gst_india', ...extra,
   });
@@ -126,8 +142,19 @@ router.post('/reservations/:confirmation/invoice', requireAbility('bookings'), (
 router.get('/invoices/:id', requireAbility('frontOffice'), (req, res, next) => {
   const inv = billing.invoice(req.db, Number.parseInt(req.params.id, 10) || 0);
   if (!inv) return next();
-  require('../lib/format').setCurrency(inv.data.currency.symbol, inv.data.currency.locale); // amounts as issued
-  res.render('pages/invoice', { inv, d: inv.data });
+  f.setCurrency(inv.data.currency.symbol, inv.data.currency.locale); // amounts as issued
+  const guest = req.db.get('SELECT g.first_name, g.phone FROM reservations r JOIN guests g ON g.id = r.guest_id WHERE r.id = ?', inv.reservation_id);
+  const text = whatsapp.invoiceText(req.settings, guest.first_name, inv, invoiceUrl(req, inv));
+  res.render('pages/invoice', { inv, d: inv.data, guestCopy: false, whatsapp: whatsapp.link(whatsapp.phoneDigits(guest.phone, req.settings.country), text) });
+});
+
+/* The guest's copy of an invoice: the signed link staff send on WhatsApp. No sign-in, and it opens even when
+   the website is switched off. */
+router.get('/invoice/:id', (req, res, next) => {
+  const inv = billing.invoice(req.db, Number.parseInt(req.params.id, 10) || 0);
+  if (!inv || !billing.invoiceTokenOk(req.db, inv, req.query.t)) return next();
+  f.setCurrency(inv.data.currency.symbol, inv.data.currency.locale);
+  res.render('pages/invoice', { inv, d: inv.data, guestCopy: true, whatsapp: '' });
 });
 
 /* ------------------------------------------------------------------ handover notes */

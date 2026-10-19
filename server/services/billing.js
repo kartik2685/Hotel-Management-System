@@ -1,5 +1,6 @@
 'use strict';
 /* Payments (with refunds) and invoices (GST-ready for India). */
+const crypto = require('node:crypto');
 const f = require('../lib/format');
 const clock = require('../lib/clock');
 const activity = require('../lib/activity');
@@ -163,8 +164,16 @@ function invoice(db, id) {
   return row ? { ...row, data: JSON.parse(row.data) } : null;
 }
 
+/* The guest's own link to an invoice (staff send it on WhatsApp): signed, so it opens that invoice only. */
+const invoiceToken = (db, inv) => crypto.createHmac('sha256', settingsService.siteSecret(db)).update(`invoice:${inv.id}:${inv.number}`).digest('base64url').slice(0, 32);
+function invoiceTokenOk(db, inv, given) {
+  const expected = Buffer.from(invoiceToken(db, inv));
+  const actual = Buffer.from(String(given || ''));
+  return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+}
+
 function forReservation(db, reservationId) {
   return db.all('SELECT id, number, status, issued_at, total_cents FROM invoices WHERE reservation_id = ? ORDER BY id DESC', reservationId);
 }
 
-module.exports = { METHODS, payments, record, addPayment, refund, createInvoice, invoice, forReservation, amountInWords, fiscalYear, indianWords, internationalWords };
+module.exports = { METHODS, payments, record, addPayment, refund, createInvoice, invoice, invoiceToken, invoiceTokenOk, forReservation, amountInWords, fiscalYear, indianWords, internationalWords };

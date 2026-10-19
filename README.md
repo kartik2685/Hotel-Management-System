@@ -69,7 +69,7 @@ takes it all out again before real use. Names, companies, GSTINs and ID numbers 
 |---|---|
 | **Dashboard** | Tonight’s occupancy, ADR and RevPAR (worked out from the bookings), arrivals with one-click **check-in**, departures with open balances, live room status, housekeeping progress, shift handover notes, 12-week revenue |
 | **Reservations** | Search and filter bookings, export CSV, and create a **new booking**. The server checks availability for every night, picks a free room, prices the stay (rate plan, extras, tax) and saves it |
-| **Booking page** (click a guest name) | Change dates, room, rate, guests and notes; take a **payment**; **check in**, **check out** (the folio must be settled) or **cancel**. Every change is logged |
+| **Booking page** (click a guest name) | Change dates, room, rate, guests and notes; take a **payment**; **check in**, **check out** (the folio must be settled; leaving early bills the nights stayed) or **cancel**. **WhatsApp the guest** opens WhatsApp with a message that fits the booking: the confirmation with their see-or-cancel link, a welcome with the room, or after check-out a thank-you with their invoice. Every change is logged |
 | **Tape chart** | 48 rooms × 14 nights. Click a stay for details, check-in or confirmation |
 | **Rooms** | Flip rooms clean or dirty, and assign housekeepers (saved instantly) |
 | **Housekeeping** | Tick tasks off. Finishing a clean marks the room clean. Includes printable task sheets |
@@ -77,7 +77,7 @@ takes it all out again before real use. Names, companies, GSTINs and ID numbers 
 | **Shift handover** | Notes for the next shift (*account menu → Add a handover note*) |
 | **Registration card (GRC)** | On the booking page: nationality, address, ID proof (Aadhaar, passport…), visa details for foreign guests, purpose of visit. Printable with signature lines. Optionally required before check-in |
 | **Form III** | For foreign guests at an Indian hotel: the 24-hour deadlines after check-in and check-out, a reminder, and a place to record the FRRO acknowledgement number |
-| **Payments and invoices** | Every payment with method and reference, refunds (managers), and printable invoices. GST invoices show your GSTIN, SAC 996311, CGST + SGST or IGST, the guest company’s GSTIN and the amount in words, numbered per financial year (e.g. `HLW/26-27/0001`) |
+| **Payments and invoices** | Every payment with method and reference, refunds (managers), and printable invoices. GST invoices show your GSTIN, SAC 996311, CGST + SGST or IGST, the guest company’s GSTIN and the amount in words, numbered per financial year (e.g. `HLW/26-27/0001`). **Send on WhatsApp** gives the guest their own signed link to the invoice (no sign-in; it opens that invoice only) to print or save as PDF |
 
 ### Guest website (`/hotel`)
 
@@ -285,7 +285,7 @@ the service's **Environment** instead.
 npm test
 ```
 
-96 tests run against a fresh demo hotel or the sample hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
+102 tests run against a fresh demo hotel or the sample hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
 copy, nothing to install), and `TEST_DATABASE=postgres://user:pass@host/postgres npm test` on a real server.
 They cover:
 - sign-in, lockout, CSRF and redirect safety;
@@ -297,6 +297,7 @@ They cover:
 - GST invoice numbering and tax splits;
 - password reset, reports and CSV safety;
 - staff invite and password links (shown once, emailed, work once, expire, a newer link replaces the older);
+- WhatsApp messages to guests (numbers with country codes, the guest's signed invoice link);
 - database upgrades, and what a new database starts with on a live server;
 - the sample hotel: made through the services, in rupees everywhere, admins only, and removed without a trace;
 - PostgreSQL: the same tables and answers as SQLite, row level security, copying between the two;

@@ -11,9 +11,16 @@
   <link rel="stylesheet" href="/assets/css/pages/print.css">
 </head>
 <body class="print-page">
-  <div class="print-toolbar">
+  <div class="print-toolbar<%= guestCopy ? ' print-toolbar--end' : '' %>">
+<% if (!guestCopy) { -%>
     <a class="button button--secondary" href="/reservations/<%= d.stay.confirmation %>">Back to the booking</a>
-    <button class="button button--primary" type="button" data-print>Print or save as PDF</button>
+<% } -%>
+    <span class="print-toolbar__actions">
+<% if (whatsapp) { -%>
+      <a class="button button--secondary" href="<%= whatsapp %>" target="_blank" rel="noopener">Send on WhatsApp</a>
+<% } -%>
+      <button class="button button--primary" type="button" data-print>Print or save as PDF</button>
+    </span>
   </div>
   <article class="sheet">
     <header class="sheet__head">

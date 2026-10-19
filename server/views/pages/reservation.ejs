@@ -12,6 +12,9 @@
             <p class="page-header__lead"><%= b.type_name %><%= b.room_number ? ' ' + b.room_number : ' · room not assigned' %> · <%= b.from %> → <%= b.to %> · <%= fmt.plural(b.nights, 'night', 'nights') %> <span class="status-pill status-pill--<%= b.statusCss %>"><%= b.statusLabel %></span></p>
           </div>
           <div class="page-header__actions">
+<% if (whatsapp) { -%>
+            <a class="button button--secondary" href="<%= whatsapp %>" target="_blank" rel="noopener" title="Opens WhatsApp with a message to <%= b.first_name %> about this booking, ready to check and send"><%- icon('phone') %>WhatsApp the guest</a>
+<% } -%>
             <a class="button button--secondary" href="/guests?guest=<%= b.guest_id %>"><%- icon('users') %>Guest profile</a>
             <a class="button button--secondary" href="/reservations">Back to reservations</a>
           </div>
