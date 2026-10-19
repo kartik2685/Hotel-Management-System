@@ -12,6 +12,8 @@
 # Leave ADMIN_EMAIL empty to load the demo hotel instead; its staff password is then printed once in the Logs.
 #
 # After that every push to the branch deploys by itself; the data stays in hotel-db.
+# The build runs on npm (`npm ci`, the project's package-lock.json). Do not switch it to yarn: yarn warns that a
+# package-lock.json was found and installs a different dependency tree instead of the tested one.
 # Render's free database expires 30 days after it is created and is deleted 14 days later. Before then, upgrade
 # hotel-db in the Render Dashboard (0.1c-256mb, about $6 a month; the data stays) and change its plan below to match.
 # Step by step, in Hinglish: docs/SETUP-RENDER.md
@@ -29,8 +31,8 @@ services:
     runtime: node
     plan: free
     region: singapore
-    branch: arena/dfe46868-hotel-management-system # the branch with this code (main, once it is merged)
-    buildCommand: npm ci
+    branch: main # the branch with this code
+    buildCommand: npm ci # npm, never yarn: the project uses package-lock.json
     startCommand: npm start
     healthCheckPath: /login
     envVars:

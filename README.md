@@ -24,6 +24,10 @@ npm install
 npm start
 ```
 
+> **The package manager is npm.** The repository has `package-lock.json` and nothing else, so use
+> `npm install` (or `npm ci`). Do not run `yarn` in this folder: it warns that a
+> `package-lock.json` was found and builds its own dependency tree instead of the one in the lockfile.
+
 Open <http://localhost:3000>. The first start creates `data/frontdesk.db` and loads the demo
 hotel (The Harlow Hotel, 48 rooms, about 560 bookings).
 
@@ -215,8 +219,8 @@ values: `ADMIN_EMAIL` (your sign-in), `ADMIN_PASSWORD` (8+ characters) and `HOTE
 The app waits up to about a minute for a database that is still starting, creates its 26 tables and starts as an
 empty hotel with that admin account. Leave `ADMIN_EMAIL` empty to get the demo hotel instead; its staff password is
 then printed once in the **Logs**. Check it in **Admin → Overview**: the **Database** card shows
-*Render PostgreSQL · private network*, 26 tables and a round trip of a few milliseconds. `render.yaml` names the
-branch it deploys (`branch:`); change it to `main` once the code is merged there.
+*Render PostgreSQL · private network*, 26 tables and a round trip of a few milliseconds. `render.yaml` deploys the
+`main` branch (`branch: main`) with the build command `npm ci`.
 
 > **Render's free database lasts 30 days.** Then it stops, and 14 days later Render deletes it with all its data.
 > Before that, upgrade `hotel-db` in the Render Dashboard to `0.1c-256mb` (about $6 a month plus $0.30 per GB of
@@ -232,9 +236,15 @@ branch it deploys (`branch:`); change it to `main` once the code is merged there
 | Language | **Node** |
 | Branch | the branch that has this code (`main` once it is merged) |
 | Root Directory | leave empty |
-| Build Command | `npm ci` |
+| Build Command | `npm ci` — **not** `yarn` |
 | Start Command | `npm start` |
 | Health Check Path (Advanced) | `/login` |
+
+> **Does the build log show `warning package-lock.json found … remove package-lock.json`?** Then Render is
+> running `yarn` instead of npm, because the service's build command is `yarn`. Open the service →
+> **Settings → Build Command**, enter `npm ci`, save, then **Manual Deploy → Deploy latest commit**.
+> Keep `package-lock.json`: it is the project's lockfile and `npm ci` installs exactly those tested versions.
+> Deleting it would make every install pick different versions and break the `npm ci` build.
 
 Then add the environment variables `NODE_ENV=production`, `TRUST_PROXY=1`, **`DATABASE_URL`** = the database's
 **Internal Database URL** (without it a free instance forgets everything on every restart), plus one of:
