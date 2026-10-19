@@ -27,6 +27,16 @@ const safeNext = (value) => (typeof value === 'string' && /^\/(?![/\\])[\w\-./?=
 
 const NOTICES = { done: { title: 'Password changed', text: 'Sign in with your new password.' } };
 
+/* What an email box shows before anyone types. The demo hotel keeps the original's sample address; any other
+   hotel gets a made-up name at its own email domain when that fits in `fits` characters, else plain words.
+   Never a real staff address: this page is public. */
+function emailHint(settings, fits) {
+  if (settings.demo_mode) return 'elena.marsh@example.com';
+  const domain = /@([^\s@]+\.[^\s@]+)$/.exec(String(settings.hotel_email || '').trim());
+  const hint = domain ? `name@${domain[1].toLowerCase()}` : '';
+  return hint && hint.length <= fits ? hint : 'Your work email';
+}
+
 /* The sign-in and password-reset forms carry their own token (see lib/formtoken.js). */
 const loginForm = (req) => ({
   secret: settingsService.siteSecret(req.db), purpose: 'login', cookie: auth.LOGIN_COOKIE, maxAge: 12 * 60 * 60 * 1000, cookieOptions: auth.cookieOptions,
@@ -65,6 +75,8 @@ function renderLogin(req, res, { status = 200, email = '', errors = {}, shift = 
     loginToken: token,
     next,
     email, errors, remember,
+    // characters that fit: the sign-in box on a 360px phone, the narrower password-reset box on a desktop
+    emailHint: { signIn: emailHint(settings, 33), reset: emailHint(settings, 28) },
     shift,
     shifts: SHIFTS.map((s) => ({ ...s, label: `${s.label} · ${(hours[s.value] || []).join('–')}` })),
     demoHint: demoUser ? `Demo: sign in as ${demoUser.email} with the password ${config.demoPassword}.` : '',

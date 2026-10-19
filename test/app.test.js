@@ -34,6 +34,11 @@ describe('signing in', () => {
     assert.match(page.text, /Good morning, Elena/);
   });
 
+  test('the demo sign-in page keeps the original’s sample address', async () => {
+    const page = (await hotel.client().get('/login')).text;
+    assert.equal(page.match(/placeholder="elena\.marsh@example\.com"/g).length, 2);
+  });
+
   test('the login form needs its own CSRF token', async () => {
     const c = hotel.client();
     await c.get('/login');

@@ -74,7 +74,7 @@
           <input type="hidden" name="next" value="<%= next %>">
           <div class="form-group">
             <label class="field-label" for="login-email">Email</label>
-            <div class="icon-input"><%- icon('mail') %><input class="input<%= errors.email ? ' is-invalid' : '' %>" id="login-email" name="email" type="email" autocomplete="username" placeholder="elena.marsh@example.com" required aria-describedby="login-email-err" value="<%= email %>"<%- errors.email ? ' aria-invalid="true"' : '' %>></div>
+            <div class="icon-input"><%- icon('mail') %><input class="input<%= errors.email ? ' is-invalid' : '' %>" id="login-email" name="email" type="email" autocomplete="username" placeholder="<%= emailHint.signIn %>" required aria-describedby="login-email-err" value="<%= email %>"<%- errors.email ? ' aria-invalid="true"' : '' %>></div>
             <p class="field-error" id="login-email-err"><%= errors.email || '' %></p>
           </div>
           <div class="form-group">
@@ -110,7 +110,7 @@
           <form class="reset-box__form" method="post" action="/password/forgot" data-reset-form novalidate>
             <input type="hidden" name="_csrf" value="<%= loginToken %>">
             <label class="sr-only" for="reset-email">Email</label>
-            <input class="input" id="reset-email" name="email" type="email" placeholder="elena.marsh@example.com" required aria-describedby="reset-email-err">
+            <input class="input" id="reset-email" name="email" type="email" placeholder="<%= emailHint.reset %>" required aria-describedby="reset-email-err">
             <button class="button button--secondary" type="submit">Continue</button>
           </form>
           <p class="field-error" id="reset-email-err"></p>

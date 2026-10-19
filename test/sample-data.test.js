@@ -105,6 +105,14 @@ describe('sample data', () => {
     assert.match((await owner.get('/housekeeping')).text, /Floor 5<\/h2>\s*<p class="[^"]*">Pooja Sharma/);
   });
 
+  test('the sign-in page shows this hotel and nothing of the demo hotel', async () => {
+    const page = (await hotel.client().get('/login')).text;
+    assert.match(page, /The Hooghly Residency · Front office/);
+    assert.match(page, /id="login-email"[^>]*placeholder="name@hooghlyresidency\.example\.com"/);
+    assert.match(page, /id="reset-email"[^>]*placeholder="Your work email"/); // the hotel's domain is too long for that box
+    assert.doesNotMatch(page, /harlow|elena|marsh\b/i);
+  });
+
   test('sample staff sign in with the password shown once', async () => {
     const email = hotel.db.get("SELECT email FROM users WHERE title = 'Reservations executive'").email;
     const c = hotel.client();
@@ -154,6 +162,8 @@ describe('sample data', () => {
     const page = await owner.get('/admin?ok=sample-removed');
     assert.match(page.text, /The sample data has been removed\./);
     assert.match(page.text, /Add sample data/);
+    // no hotel email yet, so the sign-in page asks in plain words
+    assert.equal((await hotel.client().get('/login')).text.match(/placeholder="Your work email"/g).length, 2);
   });
 });
 
