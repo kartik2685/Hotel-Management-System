@@ -26,7 +26,7 @@ const link = (digits, text) => `https://wa.me/${digits}?text=${encodeURIComponen
 const join = (lines) => lines.filter((line, i, all) => line !== null && line !== undefined && !(line === '' && (i === 0 || all[i - 1] === ''))).join('\n').trim();
 
 /* What to tell the guest about this booking now; '' when there is nothing to send (a no-show). */
-function bookingText(s, b, { manageUrl = '', invoice = null } = {}) {
+function bookingText(s, b, { manageUrl = '', invoice = null, feedbackUrl = '' } = {}) {
   const room = `${b.type_name}${b.room_number ? `, room ${b.room_number}` : ''}`;
   const stay = `${f.formatDay(b.arrival)} → ${f.formatDay(b.departure)} · ${f.plural(b.nights, 'night', 'nights')} · ${f.guestCount(b.adults, b.children, ', ')}`;
   const call = s.hotel_phone ? `call us on ${s.hotel_phone}` : 'reply here';
@@ -55,6 +55,7 @@ function bookingText(s, b, { manageUrl = '', invoice = null } = {}) {
     return join([
       `Thank you for staying at ${s.hotel_name}, ${b.first_name}. We hope to welcome you again.`,
       invoice ? `Your invoice ${invoice.number} (${f.money(invoice.total_cents)}): ${invoice.url}` : '',
+      feedbackUrl ? `How was your stay? Tell us in thirty seconds: ${feedbackUrl}` : '',
     ]);
   }
   if (b.status === 'cancelled') {

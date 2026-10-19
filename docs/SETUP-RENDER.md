@@ -135,6 +135,11 @@ room par charges), paisa kis tarah aaya (Cash, Card, UPI, Bank), nayi bookings a
 (VIP), departures, hotel me guests, guests se kitna lena baaki hai aur agle 7 din ki occupancy. **Send on WhatsApp** se
 yahi sab ek chhote message me apne phone par bhejo; **Print** se ek page.
 
+**Guest feedback aur Google review:** check-out ke baad **WhatsApp the guest** ke thank-you message me feedback ka link
+jaata hai: guest 1–5 star aur comment deta hai (login nahi). 4–5 star wale ko Google review ka button dikhta hai (apna
+Google review link **Admin → Website** me daalo); 1–3 star par staff ko turant notification jaata hai taaki manager phone
+kare. Jawab booking page, Daily report aur Reports me dikhte hain.
+
 **Group booking (shaadi, conference):** **Reservations → Groups → New group booking**: group ka naam, contact, dates,
 har room type ke kitne rooms, aur chaho to rooming list (har line me ek guest). Har room ki apni booking banti hai. Group
 page par: aaj aane wale sab ek click me check-in (jo ready nahi, unka kaaran dikhta hai), poore group ka ek payment (rooms

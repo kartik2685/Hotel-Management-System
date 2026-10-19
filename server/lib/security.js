@@ -39,7 +39,7 @@ const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 /* Every state-changing request from a signed-in user must carry the session's CSRF token. */
 /* Forms that work without a session carry their own token (checked in their routes). */
-const OWN_TOKEN = /^\/(hotel(\/|$)|login$|password\/)/;
+const OWN_TOKEN = /^\/(hotel(\/|$)|login$|password\/|feedback\/)/; // public forms with their own tokens
 
 function csrf(req, res, next) {
   if (!UNSAFE.has(req.method) || !req.session || OWN_TOKEN.test(req.path)) return next();

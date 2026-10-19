@@ -253,6 +253,13 @@
 <% } -%>
             </section>
 <% } -%>
+<% if (guestFeedback) { -%>
+            <section class="card" aria-labelledby="fb-title">
+              <div class="card__head"><div><h2 class="card__title" id="fb-title">Guest feedback</h2><p class="card__subtitle"><%= fmt.formatDay(guestFeedback.created_at) %></p></div></div>
+              <p class="feedback-stars" aria-label="<%= guestFeedback.rating %> out of 5 stars"><%= stars(guestFeedback.rating) %></p>
+              <% if (guestFeedback.comment) { %><p>“<%= guestFeedback.comment %>”</p><% } %>
+            </section>
+<% } -%>
             <section class="card" aria-labelledby="log-title">
               <div class="card__head"><div><h2 class="card__title" id="log-title">History</h2><p class="card__subtitle">Created <%= b.created_at %></p></div></div>
 <% if (d.log.length) { -%>

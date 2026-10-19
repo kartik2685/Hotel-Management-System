@@ -28,7 +28,7 @@ describe('database card', () => {
     assert.equal(page.status, 200);
     assert.match(page.text, /<h2 class="card__title" id="db-title">Database<\/h2>/);
     assert.match(page.text, sqlite() ? /<p class="card__subtitle">SQLite file<\/p>/ : /<p class="card__subtitle">PostgreSQL<\/p>/);
-    assert.match(page.text, sqlite() ? /<dt>Tables<\/dt><dd>28 · version 7<\/dd>/ : /<dt>Tables<\/dt><dd>29 · version 7<\/dd>/);
+    assert.match(page.text, sqlite() ? /<dt>Tables<\/dt><dd>29 · version 8<\/dd>/ : /<dt>Tables<\/dt><dd>30 · version 8<\/dd>/);
     assert.match(page.text, /<dt>Size<\/dt><dd>[\d.]+ (KB|MB)<\/dd>/);
     assert.equal(/<dt>Round trip<\/dt>/.test(page.text), !sqlite()); // only a database server has a network round trip
     assert.equal(/<dt>Set up<\/dt><dd>\d{1,2} [A-Z][a-z]{2,3} \d{4}<\/dd>/.test(page.text), !sqlite()); // the day PostgreSQL was set up

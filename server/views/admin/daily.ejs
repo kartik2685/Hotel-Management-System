@@ -31,6 +31,12 @@
               </dl>
               <p class="form-hint"><%= fmt.plural(r.bookings.made, 'new booking', 'new bookings') %> worth <%= fmt.money(r.bookings.value) %><%= r.bookings.online ? ' (' + r.bookings.online + ' online)' : '' %> · <%= r.bookings.cancelled %> cancelled · <%= fmt.plural(r.bookings.noShows, 'no-show', 'no-shows') %></p>
             </section>
+            <section class="card" aria-labelledby="d-fb">
+              <div class="card__head"><div><h2 class="card__title" id="d-fb">Guest feedback</h2><p class="card__subtitle"><%= r.feedback.count ? fmt.plural(r.feedback.count, 'answer', 'answers') + ' · average ' + r.feedback.averageText + '★' : 'No answers on ' + fmt.formatDay(r.day) %></p></div></div>
+<% for (const x of r.feedback.latest) { -%>
+              <p><span class="feedback-stars"><%= stars(x.rating) %></span> <a href="/reservations/<%= x.confirmation %>"><%= x.name %></a><%= x.comment ? ': “' + x.comment + '”' : '' %></p>
+<% } -%>
+            </section>
             <section class="card" aria-labelledby="d-week">
               <div class="card__head"><div><h2 class="card__title" id="d-week">The week ahead</h2><p class="card__subtitle">Rooms sold so far for each night</p></div></div>
               <ul class="week-bars">

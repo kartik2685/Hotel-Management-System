@@ -102,6 +102,7 @@ function createApp(db) {
   app.use('/hotel', require('./routes/site'));
   app.use(require('./routes/bookings'));
   app.use(require('./routes/groups'));
+  app.use(require('./routes/feedback'));
   app.use(require('./routes/pages'));
 
   /* Where an error page's button goes: the guest website, the person's start page, or sign-in. */

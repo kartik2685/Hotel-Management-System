@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How was your stay? · <%= hotel.hotel_name %></title>
+  <meta name="theme-color" content="#1c1b19">
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="no-referrer">
+  <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/pages/admin.css">
+</head>
+<body class="auth-page error-page">
+<%- include('../partials/sprite') -%>
+  <main id="main" class="error-page__card card feedback" tabindex="-1">
+    <p class="kicker"><%= hotel.hotel_name %> · <%= fmt.formatDay(b.arrival) %> → <%= fmt.formatDay(b.departure) %></p>
+<% if (answer) { -%>
+    <h1 class="page-header__title">Thank you, <%= b.first_name %></h1>
+    <p class="feedback__given" aria-label="<%= answer.rating %> out of 5 stars"><%= stars(answer.rating) %></p>
+<%   if (answer.rating >= 4) { -%>
+    <p class="page-header__lead">We’re so glad you enjoyed your stay.<%= reviewUrl ? ' Would you share it on Google? It helps other travellers find us.' : ' We hope to welcome you again.' %></p>
+<%     if (reviewUrl) { -%>
+    <p class="error-page__actions"><a class="button button--primary" href="<%= reviewUrl %>" target="_blank" rel="noopener"><%- icon('star') %>Write a Google review</a></p>
+<%     } -%>
+<%   } else { -%>
+    <p class="page-header__lead">We’re sorry we fell short. The manager has your message and will get in touch<%= hotel.hotel_phone ? '; or call us on ' + hotel.hotel_phone : '' %>.</p>
+<%   } -%>
+<% } else { -%>
+    <h1 class="page-header__title">How was your stay, <%= b.first_name %>?</h1>
+    <p class="page-header__lead">Thirty seconds, and it helps us a great deal.</p>
+    <form method="post" action="/feedback/<%= encodeURIComponent(b.confirmation) %>" novalidate>
+      <input type="hidden" name="t" value="<%= t %>">
+      <fieldset class="stars<%= errors.rating ? ' is-invalid' : '' %>">
+        <legend class="field-label">Your rating</legend>
+        <div class="stars__row">
+<% for (const n of [5, 4, 3, 2, 1]) { -%>
+          <input type="radio" id="star-<%= n %>" name="rating" value="<%= n %>"><label for="star-<%= n %>" title="<%= n %> of 5"><span class="sr-only"><%= n %> <%= n === 1 ? 'star' : 'stars' %></span>★</label>
+<% } -%>
+        </div>
+        <p class="field-error"><%= errors.rating || '' %></p>
+      </fieldset>
+      <label class="field-label" for="fb-comment">Anything you’d like to tell us? <span class="field-label__hint">optional</span></label>
+      <textarea class="input" id="fb-comment" name="comment" rows="4" maxlength="1000" placeholder="The room, the staff, breakfast, what we could do better…"><%= values.comment || '' %></textarea>
+      <div class="form-actions"><button class="button button--primary" type="submit">Send</button></div>
+    </form>
+<% } -%>
+  </main>
+</body>
+</html>

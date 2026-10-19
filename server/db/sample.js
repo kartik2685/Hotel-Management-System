@@ -33,6 +33,7 @@ const emails = require('../services/emails');
 const website = require('../services/website');
 const links = require('../services/signin-links');
 const folio = require('../services/folio');
+const feedback = require('../services/feedback');
 const DATA = require('./sample-data');
 
 const ZONE = 'Asia/Kolkata';
@@ -471,6 +472,10 @@ class Sample {
     if (Array.isArray(s.settle)) this.act(plusMinutes(s.outAt, -2), outKey, (k) => this.pay(s, k, 'all', s.settle[0], s.settle[1]), `payment ${label}`);
     this.act(s.outAt, outKey, (k) => reservations.checkOut(this.db, this.req(k), s.conf, { settle: true, method: typeof s.settle === 'string' ? s.settle : 'Card' }), `check-out ${label}`);
     if (s.inv) this.act(plusMinutes(s.outAt, 3), outKey, (k) => this.invoice(s, k, s.inv), `invoice ${label}`);
+    // the guest answers the feedback link from the thank-you message, as the page does (services/feedback.js)
+    if (s.fb) {
+      this.add(plusMinutes(s.outAt, s.fb[2] * 60), () => feedback.save(this.db, feedback.find(this.db, s.conf, feedback.token(this.db, s.conf)), { rating: s.fb[0], comment: s.fb[1] }), `feedback ${label}`);
+    }
     if (s.reissue) this.act(plusMinutes(s.outAt, s.reissue), 'desk', (k) => this.invoice(s, k, 'company'), `new invoice ${label}`);
     if (form3 && s.f3 && s.f3.dep) this.act(this.at(...s.f3.dep), 'desk', (k) => this.form3(s, k, 'departure'), `Form III ${label}`);
   }

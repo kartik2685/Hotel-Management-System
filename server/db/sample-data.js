@@ -273,7 +273,7 @@ const GUESTS = [
 const STAYS = [
   // ---- Kaveri Analytics: Rajesh Iyer, a regular
   { g: 'iyer', a: -26, n: 3, type: 'DLX', plan: 'CORP', src: 'Corporate', book: [-31, '11:20', 'res'], in: '15:10', out: '09:30',
-    settle: ['Bank transfer', 'Kaveri Analytics · PO KA-2291'], inv: 'company' },
+    settle: ['Bank transfer', 'Kaveri Analytics · PO KA-2291'], inv: 'company', fb: [5, 'Quiet room, quick check-in and the filter coffee at breakfast is the best in Park Street.', 6] },
   { g: 'iyer', a: -12, n: 2, type: 'DLX', plan: 'CORP', src: 'Corporate', book: [-16, '10:05', 'res'], edit: { at: [-16, '10:08', 'res'], eta: '20:30', tags: ['late'] },
     in: '20:50', out: '08:45', settle: ['Bank transfer', 'Kaveri Analytics · PO KA-2347'], inv: 'company',
     charges: [[0, '21:45', 'fnb', 'Dinner from room service', 980]] },
@@ -282,23 +282,23 @@ const STAYS = [
   { g: 'iyer', a: -19, n: 2, type: 'DLX', plan: 'CORP', src: 'Corporate', book: [-23, '10:30', 'res'], in: '14:40', out: '09:20',
     settle: ['Bank transfer', 'Kaveri Analytics · PO KA-2318'], inv: 'company' },
   { g: 'menon', a: -26, n: 2, type: 'DLX', plan: 'CORP', src: 'Corporate', book: [-29, '11:40', 'res'], in: '16:30', out: '09:10',
-    settle: ['Bank transfer', 'Kaveri Analytics · PO KA-2285'], inv: 'company' },
+    settle: ['Bank transfer', 'Kaveri Analytics · PO KA-2285'], inv: 'company', fb: [3, 'Room was fine but the Wi-Fi kept dropping in the evening, and I had calls to make.', 9] },
   { g: 'menon', a: 3, n: 3, type: 'DLX', plan: 'CORP', src: 'Corporate', book: [-5, '10:10', 'res'] },
 
   // ---- Yamuna Infra
   { g: 'kapoor', a: -21, n: 3, type: 'PRM', plan: 'CORP', src: 'Corporate', book: [-25, '12:30', 'res'], in: '14:05', out: '10:00',
-    settle: ['Bank transfer', 'Yamuna Infra · PO YI-0812'], inv: 'company' },
+    settle: ['Bank transfer', 'Yamuna Infra · PO YI-0812'], inv: 'company', fb: [4, '', 3] },
   { g: 'kapoor', a: -9, n: 3, type: 'PRM', plan: 'CORP', src: 'Corporate', book: [-14, '15:15', 'res'], in: '14:30', out: '10:10',
     settle: ['Bank transfer', 'Yamuna Infra · PO YI-0870'], inv: 'guest', reissue: 25,
     charges: [[1, '21:15', 'fnb', 'Dinner at the restaurant: 2 guests', 2200], [2, '22:40', 'minibar', 'Minibar: snacks and soft drinks', 380]] },
   { g: 'kapoor', a: 6, n: 2, type: 'PRM', plan: 'CORP', src: 'Corporate', book: [-2, '11:45', 'res'] },
   { g: 'malhotra', a: -10, n: 2, type: 'EXS', plan: 'CORP', src: 'Corporate', book: [-13, '16:20', 'res'], in: '14:55', out: '10:05',
-    settle: ['Bank transfer', 'Yamuna Infra · PO YI-0861'], inv: 'company' },
+    settle: ['Bank transfer', 'Yamuna Infra · PO YI-0861'], inv: 'company', fb: [5, 'The suite was spotless and the staff remembered how I like my tea. Will be back.', 5] },
   { g: 'malhotra', a: 20, n: 2, type: 'EXS', plan: 'CORP', src: 'Corporate', book: [-2, '17:05', 'res'], tentative: true, notes: 'Waiting for the purchase order from Yamuna Infra — hold until {5}.' },
 
   // ---- Eastern Grid (billed to their Kolkata office, so CGST + SGST)
   { g: 'kulkarni', a: -27, n: 3, type: 'STD', plan: 'CORP', src: 'Corporate', book: [-32, '14:10', 'res'], in: '15:05', out: '09:10',
-    settle: ['Bank transfer', 'Eastern Grid · PO EG-5521'], inv: 'company' },
+    settle: ['Bank transfer', 'Eastern Grid · PO EG-5521'], inv: 'company', fb: [4, 'Good value for the area. Breakfast could start a little earlier than 7.', 11] },
   { g: 'kulkarni', a: -20, n: 4, type: 'STD', plan: 'CORP', src: 'Corporate', book: [-25, '10:40', 'res'], edit: { at: [-25, '10:43', 'res'], eta: '12:30', tags: ['early'] },
     in: '12:40', out: '09:15', settle: ['Bank transfer', 'Eastern Grid · PO EG-5590'], inv: 'company' },
   { g: 'kulkarni', a: -13, n: 3, type: 'STD', plan: 'CORP', src: 'Corporate', book: [-17, '11:15', 'res'], in: '15:35', out: '09:05',
@@ -317,7 +317,7 @@ const STAYS = [
     in: '11:50', pay: [[-11, '11:10', 'desk', { n: 7 }, 'Bank transfer', 'Deccan Softworks NEFT · week 1'], [-4, '11:20', 'desk', { n: 7 }, 'Bank transfer', 'Deccan Softworks NEFT · week 2']],
     charges: [[3, '19:30', 'laundry', 'Laundry: weekly bag', 650], [10, '19:45', 'laundry', 'Laundry: weekly bag', 700], [16, '20:15', 'fnb', 'Room service: dinner', 540]] },
   { g: 'reddy', a: -18, n: 3, type: 'STD', plan: 'CORP', src: 'Corporate', book: [-22, '15:36', 'res'], in: '11:55', out: '09:00',
-    settle: ['Bank transfer', 'Deccan Softworks · PO DS-3307'], inv: 'company' },
+    settle: ['Bank transfer', 'Deccan Softworks · PO DS-3307'], inv: 'company', fb: [2, 'The AC in my room was very noisy at night and nobody came when I called at 1 am.', 4] },
   { g: 'reddy', a: -8, n: 4, type: 'STD', plan: 'CORP', src: 'Corporate', book: [-12, '10:15', 'res'], in: '14:25', out: '09:20',
     settle: ['Bank transfer', 'Deccan Softworks · PO DS-3362'], inv: 'company' },
 
@@ -338,7 +338,7 @@ const STAYS = [
     edit: { at: [-12, '16:09', 'res'], eta: '21:15', tags: ['late'] }, in: '21:30', f3: { arr: [-3, '09:40'] }, grc: { from: 'Frankfurt', to: 'Stuttgart' },
     charges: [[1, '22:10', 'minibar', 'Minibar: 2 beers, 1 juice', 690], [2, '17:30', 'spa', 'Spa: 60-minute aromatherapy massage', 3200]] },
   { g: 'watanabe', a: -22, n: 4, type: 'PRM', plan: 'BAR', src: 'Phone', book: [-27, '10:30', 'res'], in: '14:50', f3: { arr: [-21, '09:55'], dep: [-18, '13:40'] },
-    out: '10:20', settle: 'Card', inv: 'company', grc: { from: 'Bangkok', to: 'Osaka' } },
+    out: '10:20', settle: 'Card', inv: 'company', grc: { from: 'Bangkok', to: 'Osaka' }, fb: [5, 'Very helpful with the Form C paperwork and a taxi to the airport at 4 am. Thank you!', 20] },
   { g: 'watanabe', a: 12, n: 4, type: 'PRM', plan: 'CORP', src: 'Corporate', book: [-3, '09:45', 'res'] },
 
   // ---- VIPs
@@ -419,7 +419,7 @@ const STAYS = [
     in: '11:40', f3: { arr: [-3, '15:10'] }, grc: { purpose: 'Medical', from: 'Chattogram', to: 'Chattogram' },
     charges: [[2, '09:15', 'laundry', 'Laundry: 6 pieces', 420]] },
   { g: 'dorji', a: -11, n: 4, type: 'STD', plan: 'BAR', src: 'Walk-in', book: [-11, '12:10', 'desk'], pay: [[-11, '12:15', 'desk', 'all', 'Cash', '']],
-    in: '12:20', out: '10:10', inv: 'guest', grc: { purpose: 'Leisure', from: 'Phuentsholing', to: 'Thimphu' } },
+    in: '12:20', out: '10:10', inv: 'guest', grc: { purpose: 'Leisure', from: 'Phuentsholing', to: 'Thimphu' }, fb: [5, '', 2] },
   { g: 'shrestha', a: -2, n: 3, type: 'STT', plan: 'BAR', src: 'Phone', book: [-6, '15:10', 'res'], in: '12:50', grc: { purpose: 'Visiting family or friends' } },
   { g: 'bajwa', a: -1, n: 1, type: 'STD', plan: 'BAR', src: 'Walk-in', ad: 1, book: [-1, '21:15', 'desk'], pay: [[-1, '21:18', 'desk', 'all', 'Cash', '']], in: '21:25', out: '09:20', inv: 'guest' },
   { g: 'das', a: -9, n: 3, type: 'STT', plan: 'BAR', src: 'Phone', ad: 1, book: [-12, '17:10', 'desk'], pay: [[-9, '14:10', 'desk', 'all', 'Cash', 'Paid in full at check-in']], in: '14:15',

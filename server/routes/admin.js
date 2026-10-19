@@ -25,6 +25,7 @@ const seasons = require('../services/seasons');
 const calendar = require('../services/calendar');
 const daily = require('../services/daily');
 const whatsapp = require('../services/whatsapp');
+const feedback = require('../services/feedback');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -436,7 +437,7 @@ router.get('/daily', (req, res) => {
   const r = daily.build(req.db, day);
   render(req, res, 'daily', 'daily', {
     heading: 'Daily report', lead: 'How a day went and what today holds, on one page: for the owner every morning.',
-    r, message: daily.text(req.settings, r), whatsapp: whatsapp.link('', daily.text(req.settings, r)), today: settingsService.businessDate(req.db),
+    r, message: daily.text(req.settings, r), whatsapp: whatsapp.link('', daily.text(req.settings, r)), today: settingsService.businessDate(req.db), stars: feedback.stars,
     scripts: ['pages/print'],
   });
 });
@@ -644,7 +645,9 @@ router.post('/website', (req, res) => {
     site_intro: form.longText('site_intro', { label: 'Introduction', max: 600 }),
     site_amenities: form.list('site_amenities', { max: 12, maxLength: 60 }),
     site_policies: form.longText('site_policies', { label: 'Policies', max: 800 }),
+    review_url: form.text('review_url', { label: 'Google review link', max: 300 }),
   };
+  if (v.review_url && !/^https:\/\/\S+$/.test(v.review_url)) form.fail('review_url', 'Paste the full link, starting with https://');
   if (!form.ok) return websitePage(req, res, { errors: form.errors, values: form.values }, 422);
   settingsService.save(req.db, v);
   activity.log(req.db, req, 'website.update', `Website ${v.site_enabled ? 'on' : 'off'}; texts updated`);
@@ -707,10 +710,10 @@ function reportData(db, query) {
       WHERE r.arrival >= ? AND r.arrival <= ? AND r.status NOT IN ('cancelled', 'no_show') GROUP BY 1 ORDER BY revenue DESC, 1`, from, to,
   );
   const cancellations = db.get("SELECT COUNT(*) AS n FROM reservations WHERE arrival >= ? AND arrival <= ? AND status IN ('cancelled', 'no_show')", from, to).n;
-  return { from, to, days, totals, outlets, sources, cancellations };
+  return { from, to, days, totals, outlets, sources, cancellations, feedback: feedback.summary(db, from, to) };
 }
 router.get('/reports', (req, res) => {
-  render(req, res, 'reports', 'reports', { heading: 'Reports', lead: 'Occupancy, ADR, RevPAR and revenue for any period (closed days use night-audit figures).', r: reportData(req.db, req.query) });
+  render(req, res, 'reports', 'reports', { heading: 'Reports', lead: 'Occupancy, ADR, RevPAR and revenue for any period (closed days use night-audit figures).', r: reportData(req.db, req.query), stars: feedback.stars });
 });
 router.get('/reports.csv', (req, res) => {
   const r = reportData(req.db, req.query);

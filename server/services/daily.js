@@ -5,6 +5,7 @@
 const f = require('../lib/format');
 const settingsService = require('./settings');
 const stats = require('./stats');
+const feedback = require('./feedback');
 
 const isDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
 const METHODS = ['Cash', 'Card', 'UPI', 'Bank transfer'];
@@ -46,7 +47,7 @@ function build(db, day) {
     toCollect: owing(inHouse), dueOut: departures.filter((d) => d.status === 'checked_in' && d.total_cents > d.paid_cents),
     outOfOrder: db.get('SELECT COUNT(*) AS n FROM room_blocks WHERE start_date <= ? AND end_date > ?', next, next).n,
     dirty: db.get("SELECT COUNT(*) AS n FROM rooms WHERE active = 1 AND hk_status = 'dirty'").n,
-    week,
+    week, feedback: feedback.summary(db, day, day),
   };
 }
 
@@ -60,11 +61,12 @@ function text(settings, r) {
     `Revenue: rooms ${m(r.revenue.rooms)}${other ? ` · food & spa ${m(other)}` : ''}${r.revenue.charges ? ` · charged to rooms ${m(r.revenue.charges)}` : ''}`,
     `Money in: ${m(r.money.in)}${r.money.byMethod.length ? ` (${r.money.byMethod.map((x) => `${x.method} ${m(x.amount)}`).join(' · ')})` : ''}${r.money.refunds ? ` · refunds ${m(r.money.refunds)}` : ''}`,
     `Bookings: ${r.bookings.made} new (${m(r.bookings.value)}${r.bookings.online ? `, ${r.bookings.online} online` : ''}) · ${r.bookings.cancelled} cancelled · ${r.bookings.noShows} no-show${r.bookings.noShows === 1 ? '' : 's'}`,
+    r.feedback.count ? `Guest feedback: ${r.feedback.count} · average ${r.feedback.averageText}★${r.feedback.low.length ? ` · ${r.feedback.low.length} unhappy` : ''}` : null,
     '',
     `${f.formatDay(r.next)}: ${f.plural(r.arrivals.length, 'arrival', 'arrivals')}${r.vip ? ` (${r.vip} VIP)` : ''} · ${f.plural(r.departures.length, 'departure', 'departures')} · ${r.inHouse.length} in house`,
     `Still to collect from guests in house: ${m(r.toCollect)}`,
     `Next 7 nights: ${r.week.map((w) => `${w.occupancy}%`).join(' · ')}`,
-  ].join('\n');
+  ].filter((line) => line !== null).join('\n');
 }
 
 /* The day a morning report is about: the one before the business date. */

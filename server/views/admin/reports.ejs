@@ -35,6 +35,19 @@
 <% } -%>
               </tbody></table></div>
             </section>
+            <section class="card" aria-labelledby="rp-fb">
+              <div class="card__head"><div><h2 class="card__title" id="rp-fb">Guest feedback</h2><p class="card__subtitle"><%= r.feedback.count ? fmt.plural(r.feedback.count, 'answer', 'answers') + ' · average ' + r.feedback.averageText + '★' : 'No answers in this period' %></p></div></div>
+<% if (r.feedback.count) { -%>
+              <dl class="money-lines">
+<%   for (const x of r.feedback.stars) { -%>
+                <div><dt><span class="feedback-stars"><%= stars(x.n) %></span></dt><dd><%= x.count %></dd></div>
+<%   } -%>
+              </dl>
+<%   for (const x of r.feedback.latest.filter((y) => y.comment).slice(0, 5)) { -%>
+              <p class="form-hint"><span class="feedback-stars"><%= stars(x.rating) %></span> <a href="/reservations/<%= x.confirmation %>"><%= x.name %></a>, <%= x.when %>: “<%= x.comment %>”</p>
+<%   } -%>
+<% } -%>
+            </section>
             <section class="card" aria-labelledby="rp-out">
               <div class="card__head"><div><h2 class="card__title" id="rp-out">Revenue by outlet</h2><p class="card__subtitle">From the night audit</p></div></div>
               <dl class="money-lines">

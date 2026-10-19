@@ -174,3 +174,15 @@ textarea.input { min-height: 84px; resize: vertical; }
 @media print {
   [data-page="admin"] .sidenav, [data-page="admin"] .appbar, [data-page="admin"] .admin-tabs, .daily-bar, [data-page="admin"] .site-footer { display: none !important; }
 }
+/* Guest feedback page: five stars, chosen right to left so hovering lights the ones before */
+.feedback { max-width: 520px; }
+.feedback .page-header__title { margin-bottom: 6px; }
+.feedback form { display: grid; gap: 10px; margin-top: 14px; }
+.stars { border: 0; padding: 0; margin: 0; }
+.stars__row { display: inline-flex; flex-direction: row-reverse; gap: 4px; }
+.stars__row input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.stars__row label { font-size: 2.2rem; line-height: 1; color: var(--line); cursor: pointer; transition: color .12s; }
+.stars__row input:checked ~ label, .stars__row label:hover, .stars__row label:hover ~ label { color: var(--brass); }
+.stars__row input:focus-visible + label { outline: 2px solid var(--brass); outline-offset: 2px; border-radius: 4px; }
+.feedback__given { font-size: 1.8rem; color: var(--brass); letter-spacing: 2px; margin: 4px 0 10px; }
+.feedback-stars { color: var(--brass); letter-spacing: 1px; }

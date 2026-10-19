@@ -10,7 +10,7 @@ const DEFAULTS = {
   check_in_time: '14:00', check_out_time: '11:00', timezone: 'Asia/Kolkata', business_date_mode: 'auto', business_date: null,
   shifts: { morning: ['07:00', '15:00'], evening: ['15:00', '23:00'], night: ['23:00', '07:00'] }, demo_mode: false,
   require_grc: true, default_room_type: '', confirmation_prefix: 'HTL', invoice_prefix: 'INV',
-  site_enabled: false, site_tagline: '', site_intro: '', site_amenities: [], site_policies: '', site_url: '',
+  site_enabled: false, site_tagline: '', site_intro: '', site_amenities: [], site_policies: '', site_url: '', review_url: '',
 };
 
 let cache = null;

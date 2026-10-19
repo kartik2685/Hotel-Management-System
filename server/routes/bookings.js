@@ -14,6 +14,7 @@ const guests = require('../services/guests');
 const website = require('../services/website');
 const whatsapp = require('../services/whatsapp');
 const folio = require('../services/folio');
+const feedback = require('../services/feedback');
 
 const router = express.Router();
 const FLASH = {
@@ -33,7 +34,8 @@ function whatsappFor(req, b, invoices) {
   const manageUrl = s.site_enabled && b.email
     ? `${website.siteUrl(req, s)}/hotel/booking/${encodeURIComponent(b.confirmation)}?t=${website.token(req.db, b.confirmation, b.email)}` : '';
   const latest = invoices.find((i) => i.status !== 'cancelled');
-  const text = whatsapp.bookingText(s, b, { manageUrl, invoice: latest ? { ...latest, url: invoiceUrl(req, latest) } : null });
+  const feedbackUrl = b.status === 'checked_out' ? website.siteUrl(req, s) + feedback.pathOf(req.db, b.confirmation) : '';
+  const text = whatsapp.bookingText(s, b, { manageUrl, invoice: latest ? { ...latest, url: invoiceUrl(req, latest) } : null, feedbackUrl });
   return text ? whatsapp.link(whatsapp.phoneDigits(b.phone, s.country), text) : '';
 }
 
@@ -44,8 +46,9 @@ function renderBooking(req, res, next, extra = {}, status = 200) {
   if (!d) return next();
   const invoices = billing.forReservation(db, d.b.id);
   const group = d.b.group_id ? db.get('SELECT id, code, name FROM booking_groups WHERE id = ?', d.b.group_id) : null;
+  const guestFeedback = db.get('SELECT * FROM feedback WHERE reservation_id = ?', d.b.id) || null;
   res.status(status).render('pages/reservation', {
-    group,
+    group, guestFeedback, stars: feedback.stars,
     title: `${d.b.confirmation} · ${d.b.name} · Frontdesk Hotel Management`, description: `Booking ${d.b.confirmation} for ${d.b.name}.`,
     page: 'reservation', css: ['pages/admin'], scripts: [], shell, d, flash: FLASH[req.query.ok] || '',
     errors: {}, values: {}, payErrors: {}, payValues: {}, grcErrors: {}, grcValues: {}, invErrors: {}, invValues: {}, f3Errors: {}, actionError: '',
