@@ -12,6 +12,7 @@
  *
  *   npm run sample                  -> adds it to the database in DATABASE_URL / DB_PATH (a hotel with no rooms or guests yet)
  *   npm run sample -- --remove      -> takes it out again
+ *   options: --by you@hotel.com (the admin named in the activity log), --site-url https://… (links in booking emails)
  * Admins have the same two buttons in Admin panel → Overview.
  */
 const crypto = require('node:crypto');
@@ -859,11 +860,14 @@ async function main() {
   };
   const db = open(option('--db') || config.databaseUrl || config.dbPath);
   try {
+    // --by you@hotel.com: the admin named in the activity log (otherwise "System").
+    const by = option('--by') ? db.get('SELECT id, name FROM users WHERE lower(email) = lower(?)', option('--by')) : null;
+    if (option('--by') && !by) throw fail(`No account with the email ${option('--by')}.`);
     if (args.includes('--remove')) {
-      const counts = remove(db);
+      const counts = remove(db, { by });
       console.log(`Sample data removed from ${db.label}: ${counts.guests} guests, ${counts.bookings} bookings, ${counts.staff} staff accounts.`);
     } else {
-      const result = await add(db, { siteUrl: option('--site-url') || settingsService.all(db).site_url || '' });
+      const result = await add(db, { by, siteUrl: option('--site-url') || settingsService.all(db).site_url || '' });
       const c = result.counts;
       console.log(`Sample data added to ${db.label}: ${c.guests} guests, ${c.bookings} bookings, ${c.staff} staff accounts, ${c.rooms} rooms, `
         + `${c.payments} payments, ${c.invoices} invoices.`);
