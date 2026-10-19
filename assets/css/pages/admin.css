@@ -133,3 +133,28 @@ textarea.input { min-height: 84px; resize: vertical; }
 /* Seasons and weekends: the days of the week in one row */
 .check-days { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 6px 0; }
 .check-days label { display: inline-flex; align-items: center; gap: 6px; font-size: .875rem; }
+/* Rate calendar: room types down the side (they stay in view), 30 nights across */
+.cal-bar { align-items: center; }
+.cal-jump { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.cal-jump .field-label { margin: 0; }
+.cal-jump .input { width: auto; }
+.cal-legend { flex-basis: 100%; margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.cal-key { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--line); vertical-align: -1px; }
+.cal-key--weekend { background: var(--brass-soft); }
+.cal-key--season { background: var(--occupied-soft); }
+.cal-key--full { background: var(--ooo-soft); }
+.rate-cal { border-collapse: separate; border-spacing: 0; }
+.rate-cal th, .rate-cal td { white-space: nowrap; }
+.rate-cal__type { position: sticky; left: 0; z-index: 1; background: var(--surface, #fff); min-width: 170px; text-align: left; box-shadow: 1px 0 0 var(--line); }
+.rate-cal__day { text-align: center; font-weight: 500; min-width: 82px; }
+.rate-cal__day strong { font-size: .95rem; }
+.rate-cal__day.is-today { color: var(--brass-strong); }
+.rate-cal__season { display: inline-block; max-width: 78px; overflow: hidden; text-overflow: ellipsis; font-size: .66rem; color: var(--occupied-text); }
+.rate-cal__cell { text-align: center; font-size: .8rem; }
+.rate-cal__cell span { color: var(--muted); font-size: .72rem; }
+.rate-cal .is-weekend { background: color-mix(in srgb, var(--brass-soft) 55%, transparent); }
+.rate-cal__cell.is-season { background: var(--occupied-soft); }
+.rate-cal__cell.is-season strong { color: var(--occupied-text); }
+.rate-cal__cell.is-full { background: var(--ooo-soft); }
+.rate-cal__cell.is-full span { color: var(--ooo-text, var(--rose-text)); font-weight: 700; }
+.rate-cal tfoot td, .rate-cal tfoot th { border-top: 2px solid var(--line); }

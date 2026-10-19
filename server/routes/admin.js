@@ -22,6 +22,7 @@ const emails = require('../services/emails');
 const gstReturn = require('../services/gst-return');
 const taxKinds = require('../services/tax-kinds');
 const seasons = require('../services/seasons');
+const calendar = require('../services/calendar');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -45,6 +46,7 @@ const TABS = [
   { key: 'room-types', href: '/admin/room-types', label: 'Room types', ability: 'manage' },
   { key: 'rooms', href: '/admin/rooms', label: 'Rooms', ability: 'manage' },
   { key: 'rates', href: '/admin/rates', label: 'Rates & extras', ability: 'manage' },
+  { key: 'calendar', href: '/admin/calendar', label: 'Rate calendar', ability: 'manage' },
   { key: 'sources', href: '/admin/sources', label: 'Booking sources', ability: 'manage' },
   { key: 'staff', href: '/admin/staff', label: 'Staff accounts', ability: 'administer' },
   { key: 'website', href: '/admin/website', label: 'Website', ability: 'manage' },
@@ -423,6 +425,15 @@ router.post(['/extras', '/extras/:id'], (req, res) => {
   else db.run('INSERT INTO extras (code, name, price_cents, per, sort, active, gst_kind) VALUES (?, ?, ?, ?, ?, ?, ?)', v.code, v.name, v.price, v.per, v.sort, v.active ? 1 : 0, v.gstKind || 'none');
   activity.log(db, req, 'extra.save', `${id ? 'Updated' : 'Added'} extra ${v.name}`);
   back(res, '/admin/rates', id ? 'saved' : 'created');
+});
+
+/* ------------------------------------------------------------------ rate and availability calendar */
+router.get('/calendar', (req, res) => {
+  const from = calendar.isDate(req.query.from) ? req.query.from : settingsService.businessDate(req.db);
+  render(req, res, 'calendar', 'calendar', {
+    heading: 'Rate calendar', lead: 'The room rate and the rooms still free for every room type, 30 nights at a time. Rates include seasons and weekends, before a rate plan.',
+    c: calendar.build(req.db, from), today: settingsService.businessDate(req.db),
+  });
 });
 
 /* ------------------------------------------------------------------ seasons and weekends */

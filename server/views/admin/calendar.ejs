@@ -1,0 +1,42 @@
+<%- include('_top') %>
+        <div class="card filter-bar cal-bar">
+          <a class="button button--secondary" href="/admin/calendar?from=<%= c.prev %>"><%- icon('chevron-left') %>Previous 30 nights</a>
+          <a class="button button--secondary" href="/admin/calendar">From today</a>
+          <a class="button button--secondary" href="/admin/calendar?from=<%= c.next %>">Next 30 nights<%- icon('chevron-right') %></a>
+          <form class="cal-jump" method="get" action="/admin/calendar"><label class="field-label" for="cal-from">From</label><input class="input" id="cal-from" name="from" type="date" value="<%= c.from %>"><button class="button button--primary" type="submit">Show</button></form>
+          <p class="form-hint cal-legend"><span class="cal-key cal-key--weekend"></span>Friday and Saturday nights · <span class="cal-key cal-key--season"></span>a season’s rate · <span class="cal-key cal-key--full"></span>sold out · <a href="/admin/rates#seasons-title">Seasons &amp; weekends</a></p>
+        </div>
+        <section class="card card--flush" aria-labelledby="cal-title" style="margin-top:20px">
+          <div class="card__head" style="padding:20px 24px 0"><div><h2 class="card__title" id="cal-title"><%= fmt.formatDay(c.from) %> → <%= fmt.formatDay(c.dates[c.dates.length - 1].date) %></h2><p class="card__subtitle">Each cell: the night’s room rate, then the rooms still free of that type. Scroll sideways for more nights.</p></div></div>
+          <div class="table-scroll">
+            <table class="table admin-table rate-cal">
+              <thead>
+                <tr>
+                  <th scope="col" class="rate-cal__type">Room type</th>
+<% for (const d of c.dates) { -%>
+                  <th scope="col" class="rate-cal__day<%= d.weekend ? ' is-weekend' : '' %><%= d.date === today ? ' is-today' : '' %>"><%= d.label.slice(0, 3) %><br><strong><%= d.label.slice(4) %></strong><% if (d.season) { %><br><span class="rate-cal__season" title="<%= d.season %>"><%= d.season %></span><% } %></th>
+<% } -%>
+                </tr>
+              </thead>
+              <tbody>
+<% for (const t of c.rows) { -%>
+                <tr>
+                  <th scope="row" class="rate-cal__type"><strong><%= t.name %></strong><br><small class="cell-note"><%= t.total %> rooms · <%= fmt.moneyWhole(t.base_rate_cents) %></small></th>
+<% t.cells.forEach((x, i) => { const d = c.dates[i]; -%>
+                  <td class="rate-cal__cell<%= d.weekend ? ' is-weekend' : '' %><%= x.changed ? ' is-season' : '' %><%= x.left === 0 ? ' is-full' : '' %>" title="<%= t.name %>, <%= d.label %>: <%= fmt.money(x.rate) %><%= x.season ? ' (' + x.season + ')' : '' %> · <%= x.booked %> booked<%= x.blocked ? ', ' + x.blocked + ' out of order' : '' %>"><strong><%= fmt.moneyWhole(x.rate) %></strong><br><span><%= x.left === 0 ? 'Sold out' : x.left + ' left' %></span></td>
+<% }) -%>
+                </tr>
+<% } -%>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th scope="row" class="rate-cal__type">All rooms</th>
+<% c.totals.forEach((x, i) => { -%>
+                  <td class="rate-cal__cell<%= c.dates[i].weekend ? ' is-weekend' : '' %>"><strong><%= x.left %> left</strong><br><span><%= x.occupancy %>% sold</span></td>
+<% }) -%>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </section>
+<%- include('_bottom') %>

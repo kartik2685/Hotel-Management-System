@@ -111,7 +111,8 @@ Apna hotel set karne ke liye **Admin panel** me is order me:
    check-out = *Same as the room*, airport pickup = *Transport 5%*, decoration / parking = *Other 18%*, ya *No GST*.
    Usi page par **Seasons & weekends**: tyohar ke liye tareekhein (jaise Durga Puja +30%), weekend ke liye din (Fri, Sat
    +10%), ya dono; sab room types ya ek. Har raat apne rate par bikti hai, GST bhi har raat ke rate se lagta hai, aur
-   staff form, website aur invoice par raat-raat ka rate dikhta hai.
+   staff form, website aur invoice par raat-raat ka rate dikhta hai. **Admin panel → Rate calendar** me agle 30 din ka
+   har room type ka rate aur bache rooms ek table me dikhte hain (weekend, season aur sold-out din alag rang me).
 3. **Staff accounts** (sidebar me **ADMIN → Staff accounts**): har staff ka naam, email aur role daalo, password
    **khali chhod do** → **Add account**. Ek **invite link** banta hai (7 din, sirf ek baar chalta hai): **Copy link**
    ya **Send on WhatsApp** dabake staff ko bhej do (email set ho to email bhi chala jaata hai). Staff link kholke apna

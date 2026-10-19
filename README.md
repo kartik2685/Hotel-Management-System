@@ -114,6 +114,9 @@ there). It is also in the account menu (click your name, top right), and at `/ad
   by the night's band), keeps those rates when the stay is shortened, prices only the nights added when it is extended,
   and shows them night by night on the booking page, the website and the invoice. A rate typed by staff counts for
   every night.
+- **Rate calendar:** 30 nights at a time, every room type's rate for each night (seasons and weekends included) and the
+  rooms still free, with Friday and Saturday nights, a season's rates and sold-out nights marked, and the hotel's
+  rooms left and occupancy for each night.
 - **Booking sources:** walk-in, phone, website, OTAs; choose which appear on the booking form.
 - **Staff accounts** (admins): add people with a role, then either
   - leave the password blank to get an **invite link** (works once, for 7 days): copy it or press **Send on WhatsApp**,
@@ -301,7 +304,7 @@ the service's **Environment** instead.
 npm test
 ```
 
-131 tests run against a fresh demo hotel or the sample hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
+135 tests run against a fresh demo hotel or the sample hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
 copy, nothing to install), and `TEST_DATABASE=postgres://user:pass@host/postgres npm test` on a real server.
 They cover:
 - sign-in, lockout, CSRF and redirect safety;
@@ -318,6 +321,7 @@ They cover:
 - GST returns (GSTR-1 tables that add up to the invoices, the offline tool's CSV columns and dates, managers only);
 - GST on extras (the room's rate or the extra's own, kept by each booking; quotes on the form and the website match the saved total);
 - seasons and weekends (one rule a night, GST by the night, edits keep the nights' rates, website and invoice night by night);
+- the rate calendar (rates by night, rooms left counted like bookings, out-of-order rooms);
 - the installable app (manifest, icons, service worker and offline page, also for an account that must change its password);
 - database upgrades, and what a new database starts with on a live server;
 - the sample hotel: made through the services, in rupees everywhere, admins only, and removed without a trace;
