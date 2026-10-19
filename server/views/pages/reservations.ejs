@@ -7,6 +7,9 @@
           </div>
           <div class="page-header__actions">
             <button class="button button--secondary js-only" type="button" data-export-csv><%- icon('download') %>Export CSV</button>
+<% if (!shell.demo) { -%>
+            <a class="button button--secondary" href="/groups"><%- icon('users') %>Groups</a>
+<% } -%>
             <a class="button button--primary" href="#new-booking"><%- icon('plus') %>New booking</a>
           </div>
         </div>

@@ -168,7 +168,7 @@ describe('sample data', () => {
     assert.equal(refused.status, 422);
     const r = await owner.post('/admin/sample-data/remove', { sure: 'on' });
     assert.equal(r.status, 303);
-    for (const table of ['guests', 'reservations', 'payments', 'invoices', 'rooms', 'room_types', 'extras', 'housekeeping_tasks', 'handover_notes', 'daily_stats', 'revenue', 'outbox', 'password_resets', 'folio_charges', 'rate_seasons']) {
+    for (const table of ['guests', 'reservations', 'payments', 'invoices', 'rooms', 'room_types', 'extras', 'housekeeping_tasks', 'handover_notes', 'daily_stats', 'revenue', 'outbox', 'password_resets', 'folio_charges', 'rate_seasons', 'booking_groups']) {
       assert.equal(count(`SELECT COUNT(*) AS n FROM ${table}`), 0, table);
     }
     assert.equal(count('SELECT COUNT(*) AS n FROM users'), 1);

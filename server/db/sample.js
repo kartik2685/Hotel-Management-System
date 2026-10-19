@@ -38,7 +38,7 @@ const DATA = require('./sample-data');
 const ZONE = 'Asia/Kolkata';
 const FIRST_AUDIT = -27; // the first business day closed with the system
 const TRACKED = ['users', 'room_types', 'rooms', 'room_blocks', 'rate_plans', 'rate_seasons', 'extras', 'sources', 'guests', 'guest_notes', 'reservations',
-  'folio_charges', 'housekeeping_tasks', 'handover_notes', 'notifications', 'activity_log', 'payments', 'invoices', 'outbox'];
+  'folio_charges', 'booking_groups', 'housekeeping_tasks', 'handover_notes', 'notifications', 'activity_log', 'payments', 'invoices', 'outbox'];
 const PHOTO_DIR = path.join(__dirname, '..', '..', 'assets', 'img', 'rooms');
 
 const plusMinutes = (stamp, minutes) => new Date(Date.parse(`${stamp.replace(' ', 'T')}:00Z`) + minutes * 60000).toISOString().slice(0, 16).replace('T', ' ');
@@ -112,7 +112,7 @@ class Sample {
     this.events = [];
     this.seq = 0;
     this.needed = new Map();
-    this.ids = { staff: {}, type: {}, room: {}, plan: {}, source: {}, extra: {} };
+    this.ids = { staff: {}, type: {}, room: {}, plan: {}, source: {}, extra: {}, group: {} };
     this.staff = Object.fromEntries(DATA.STAFF.map((s) => [s.key, s]));
     this.guest = Object.fromEntries(DATA.GUESTS.map((g) => [g.key, g]));
     const current = settingsService.all(db).hotel_name;
@@ -389,6 +389,7 @@ class Sample {
       };
     });
     this.allocate();
+    for (const g of DATA.GROUPS) this.act(this.at(g.at[0], g.at[1]), g.at[2], (k) => this.createGroup(k, g), `group ${g.name}`);
     for (const s of this.stays) this.planStay(s);
   }
 
@@ -490,8 +491,20 @@ class Sample {
     if (booking.room_id !== roomId) this.db.run('UPDATE reservations SET room_id = ? WHERE id = ?', roomId, booking.id);
   }
 
+  /* A group as the reservations desk opens it before booking its rooms (services/groups.js does the same). */
+  createGroup(key, g) {
+    const guest = this.guest[g.contact];
+    const last = this.db.get('SELECT code FROM booking_groups ORDER BY id DESC LIMIT 1');
+    const code = `GRP-${last ? Number(last.code.replace(/\D/g, '')) + 1 : 101}`;
+    this.ids.group[g.key] = this.db.get(`INSERT INTO booking_groups (code, name, contact_name, contact_email, contact_phone, company, notes, created_by, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`, code, g.name, `${guest.first} ${guest.last}`, guest.email, guest.phone, g.company || null, g.notes || null,
+    this.ids.staff[key], clock.stamp(ZONE)).id;
+    activity.log(this.db, this.req(key), 'group.create', `Booked group ${code} (${g.name})`);
+  }
+
   staffBooking(s, key) {
     const booking = reservations.create(this.db, this.req(key), this.bookingInput(s));
+    if (s.group) this.db.run('UPDATE reservations SET group_id = ? WHERE id = ?', this.ids.group[s.group], booking.id);
     this.place(s, booking);
     if (s.tentative) this.db.run("UPDATE reservations SET status = 'tentative' WHERE id = ?", booking.id);
   }
@@ -855,6 +868,7 @@ function remove(db, { by = null } = {}) {
     db.run(`DELETE FROM reservation_extras WHERE ${among('reservation_id', bookings)}`);
     db.run(`DELETE FROM folio_charges WHERE ${among('reservation_id', bookings)}`);
     db.run(`DELETE FROM reservations WHERE ${among('id', bookings)}`);
+    db.run(`DELETE FROM booking_groups WHERE ${among('id', ids('booking_groups'))}`);
     db.run(`DELETE FROM guest_notes WHERE ${among('id', ids('guest_notes'))}`);
     db.run(`DELETE FROM guests WHERE ${among('id', ids('guests'))} AND NOT EXISTS (SELECT 1 FROM reservations r WHERE r.guest_id = guests.id)`);
     for (const table of ['housekeeping_tasks', 'handover_notes', 'notifications', 'outbox', 'activity_log', 'room_blocks']) {

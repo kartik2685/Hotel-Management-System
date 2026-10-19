@@ -1,0 +1,43 @@
+<%- include('../partials/shell-top') %>
+<% const v = (k, d) => (values[k] !== undefined ? values[k] : d ?? ''); const err = (k) => errors[k] || ''; const inv = (k) => (errors[k] ? ' is-invalid' : ''); -%>
+        <div class="page-header">
+          <div>
+            <p class="kicker">Groups</p>
+            <h1 class="page-header__title">New group booking</h1>
+            <p class="page-header__lead">Book several rooms at once for a wedding, a conference or a tour. Each room becomes a booking of its own; the group keeps them together.</p>
+          </div>
+          <div class="page-header__actions"><a class="button button--secondary" href="/groups">Back to groups</a></div>
+        </div>
+        <form class="card" method="post" action="/groups" novalidate style="max-width:880px">
+          <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+          <h2 class="form-section__title">The group</h2>
+          <div class="form-grid">
+            <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-name">Group name</label><input class="input<%= inv('name') %>" id="g-name" name="name" value="<%= v('name') %>" placeholder="e.g. Agarwal–Jalan wedding"><p class="field-error"><%= err('name') %></p></div>
+            <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-contact">Contact person</label><input class="input<%= inv('contact_name') %>" id="g-contact" name="contact_name" value="<%= v('contact_name') %>"><p class="field-error"><%= err('contact_name') %></p></div>
+            <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-email">Email <span class="field-label__hint">optional</span></label><input class="input<%= inv('contact_email') %>" id="g-email" name="contact_email" type="email" value="<%= v('contact_email') %>"><p class="field-error"><%= err('contact_email') %></p></div>
+            <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-phone">Phone <span class="field-label__hint">optional</span></label><input class="input" id="g-phone" name="contact_phone" type="tel" value="<%= v('contact_phone') %>" placeholder="+91 98300 12345"></div>
+            <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-company">Bill to <span class="field-label__hint">company or family, optional</span></label><input class="input" id="g-company" name="company" value="<%= v('company') %>"></div>
+            <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-gstin">GSTIN <span class="field-label__hint">for a company invoice</span></label><input class="input<%= inv('gstin') %>" id="g-gstin" name="gstin" value="<%= v('gstin') %>" maxlength="15"><p class="field-error"><%= err('gstin') %></p></div>
+          </div>
+          <h2 class="form-section__title" style="margin-top:18px">The stay</h2>
+          <div class="form-grid">
+            <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-arrival">Arrival</label><input class="input<%= inv('arrival') %>" id="g-arrival" name="arrival" type="date" min="<%= bd %>" value="<%= v('arrival', bd) %>"><p class="field-error"><%= err('arrival') %></p></div>
+            <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-departure">Departure</label><input class="input<%= inv('departure') %>" id="g-departure" name="departure" type="date" value="<%= v('departure') %>"><p class="field-error"><%= err('departure') %></p></div>
+            <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-plan">Rate plan</label><select class="select<%= inv('rate_plan_id') %>" id="g-plan" name="rate_plan_id"><% for (const p of plans) { %><option value="<%= p.id %>"<%- String(v('rate_plan_id')) === String(p.id) ? ' selected' : '' %>><%= p.name %></option><% } %></select><p class="field-error"><%= err('rate_plan_id') %></p></div>
+            <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="g-adults">Adults per room</label><input class="input<%= inv('adults') %>" id="g-adults" name="adults" type="number" min="1" max="6" value="<%= v('adults', 2) %>"><p class="field-error"><%= err('adults') %></p></div>
+            <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="g-source">Source</label><select class="select" id="g-source" name="source_id"><% for (const s of sources) { %><option value="<%= s.id %>"<%- String(v('source_id')) === String(s.id) || (!v('source_id') && s.name === 'Phone') ? ' selected' : '' %>><%= s.name %></option><% } %></select></div>
+          </div>
+          <h2 class="form-section__title" style="margin-top:18px">Rooms</h2>
+          <p class="field-error" style="margin:0 0 8px"><%= err('rooms') %></p>
+          <div class="form-grid">
+<% for (const t of types) { -%>
+            <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="g-rooms-<%= t.code %>"><%= t.name %> <span class="field-label__hint"><%= fmt.moneyWhole(t.base_rate_cents) %></span></label><input class="input<%= inv('rooms_' + t.code) %>" id="g-rooms-<%= t.code %>" name="rooms_<%= t.code %>" type="number" min="0" max="50" value="<%= v('rooms_' + t.code, 0) %>"><p class="field-error"><%= err('rooms_' + t.code) %></p></div>
+<% } -%>
+          </div>
+          <div class="form-grid" style="margin-top:8px">
+            <div class="form-grid__col"><label class="field-label" for="g-list">Rooming list <span class="field-label__hint">optional · one guest per line, in room order</span></label><textarea class="input" id="g-list" name="rooming_list" rows="4" placeholder="Mahesh Agarwal&#10;Savitri Agarwal&#10;Kiran Goenka"><%= v('rooming_list') %></textarea></div>
+            <div class="form-grid__col"><label class="field-label" for="g-notes">Notes <span class="field-label__hint">on every booking of the group</span></label><textarea class="input" id="g-notes" name="notes" rows="2" placeholder="Rooms close together; the family pays the balance at check-out."><%= v('notes') %></textarea></div>
+          </div>
+          <div class="form-actions"><button class="button button--primary" type="submit">Book the group</button><a class="button button--secondary" href="/groups">Cancel</a></div>
+        </form>
+<%- include('../partials/shell-bottom') %>

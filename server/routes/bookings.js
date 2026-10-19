@@ -43,7 +43,9 @@ function renderBooking(req, res, next, extra = {}, status = 200) {
   const d = reservations.detail(db, req.params.confirmation, shell.bd);
   if (!d) return next();
   const invoices = billing.forReservation(db, d.b.id);
+  const group = d.b.group_id ? db.get('SELECT id, code, name FROM booking_groups WHERE id = ?', d.b.group_id) : null;
   res.status(status).render('pages/reservation', {
+    group,
     title: `${d.b.confirmation} · ${d.b.name} · Frontdesk Hotel Management`, description: `Booking ${d.b.confirmation} for ${d.b.name}.`,
     page: 'reservation', css: ['pages/admin'], scripts: [], shell, d, flash: FLASH[req.query.ok] || '',
     errors: {}, values: {}, payErrors: {}, payValues: {}, grcErrors: {}, grcValues: {}, invErrors: {}, invValues: {}, f3Errors: {}, actionError: '',

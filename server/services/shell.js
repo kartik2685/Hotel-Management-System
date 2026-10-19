@@ -67,6 +67,7 @@ function build(db, req, active) {
   accountLinks.push({ href: '/account', label: 'Change password' }, { href: signOut, label: 'Sign out' });
 
   return {
+    demo: Boolean(settings.demo_mode), // the demo hotel shows the original pages exactly
     active,
     home: frontOffice ? '/dashboard' : '/housekeeping',
     csrf: req.session.csrf_token,

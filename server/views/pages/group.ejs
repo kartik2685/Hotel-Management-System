@@ -1,0 +1,90 @@
+<%- include('../partials/shell-top') %>
+<% const g = d.g; const s = d.s; const issued = d.invoices.find((i) => i.status === 'issued');
+   const pv = (k, dflt) => (payValues[k] !== undefined ? payValues[k] : dflt ?? ''); const iv = (k, dflt) => (invValues[k] !== undefined ? invValues[k] : dflt ?? ''); -%>
+        <div class="page-header">
+          <div>
+            <p class="kicker">Group <span class="mono"><%= g.code %></span></p>
+            <h1 class="page-header__title"><%= g.name %></h1>
+            <p class="page-header__lead"><%= fmt.plural(s.rooms, 'room', 'rooms') %><%= s.arrival ? ' · ' + fmt.formatDay(s.arrival) + ' → ' + fmt.formatDay(s.departure) : '' %> · <%= fmt.plural(s.guests, 'guest', 'guests') %> · <%= g.contact_name %><% if (g.contact_phone) { %> · <span class="nowrap"><%= g.contact_phone %></span><% } %></p>
+          </div>
+          <div class="page-header__actions"><a class="button button--secondary" href="/groups">All groups</a></div>
+        </div>
+<% if (flash) { -%>
+        <div class="notice notice--ok" role="status"><%- icon('check') %><p><%= flash %></p></div>
+<% } -%>
+<% if (actionError) { -%>
+        <div class="notice notice--error" role="alert"><%- icon('info') %><p><%= actionError %></p></div>
+<% } -%>
+<% if (result) { -%>
+        <div class="notice<%= result.skipped.length ? '' : ' notice--ok' %>" role="status"><%- icon(result.skipped.length ? 'info' : 'check') %><div>
+          <p><strong><%= result.done.length ? fmt.plural(result.done.length, 'room', 'rooms') + ' checked in' : 'Nobody was checked in' %></strong><%= result.done.length ? ': ' + result.done.map((m) => m.room_number + ' ' + m.name).join(', ') + '.' : '.' %></p>
+<% for (const x of result.skipped) { -%>
+          <p><a href="/reservations/<%= x.m.confirmation %>"><%= x.m.name %></a>: <%= x.reason %></p>
+<% } -%>
+        </div></div>
+<% } -%>
+        <div class="admin-grid">
+          <section class="card card--flush" aria-labelledby="rooms-title">
+            <div class="card__head" style="padding:20px 24px 0"><div><h2 class="card__title" id="rooms-title">Rooms</h2><p class="card__subtitle">Each room is a booking of its own: open it to add the guest’s name, registration card or charges.</p></div></div>
+            <div class="table-scroll">
+              <table class="table admin-table">
+                <thead><tr><th scope="col">Guest</th><th scope="col">Room</th><th scope="col">Status</th><th scope="col" class="numeric">Total</th><th scope="col" class="numeric">Still open</th></tr></thead>
+                <tbody>
+<% for (const m of d.rows) { -%>
+                  <tr<%- ['cancelled', 'no_show'].includes(m.status) ? ' class="is-inactive"' : '' %>><td><a href="/reservations/<%= m.confirmation %>"><strong><%= m.name %></strong></a><br><small class="cell-note mono"><%= m.confirmation %></small></td><td><%= m.room_number || '—' %><br><small class="cell-note"><%= m.type_name %> · <%= fmt.guestCount(m.adults, m.children, ', ') %></small></td><td><span class="status-pill status-pill--<%= m.statusCss %>"><%= m.statusLabel %></span></td><td class="numeric"><%= fmt.money(m.total_cents) %></td><td class="numeric"><%= fmt.money(Math.max(0, m.total_cents - m.paid_cents)) %></td></tr>
+<% } -%>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <div class="admin-stack">
+<% if (canBook && d.arriving.length) { -%>
+            <form class="card" method="post" action="/groups/<%= g.id %>/check-in">
+              <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+              <div class="card__head"><div><h2 class="card__title">Arriving today</h2><p class="card__subtitle"><%= fmt.plural(d.arriving.length, 'room', 'rooms') %> to check in. Rooms not ready (registration card, cleaning) are listed with what is missing.</p></div></div>
+              <div class="form-actions"><button class="button button--primary" type="submit"><%- icon('key') %>Check in everyone arriving</button></div>
+            </form>
+<% } -%>
+            <section class="card" aria-labelledby="money-title">
+              <div class="card__head"><div><h2 class="card__title" id="money-title">Money</h2><p class="card__subtitle"><%= g.company ? 'Bill to ' + g.company : 'Billed to ' + g.contact_name %><%= g.gstin ? ' · GSTIN ' + g.gstin : '' %></p></div></div>
+              <dl class="money-lines">
+                <div class="is-total"><dt><strong>Total</strong></dt><dd><%= fmt.money(s.total) %></dd></div>
+                <div><dt>Paid</dt><dd><%= fmt.money(s.paid) %></dd></div>
+                <div><dt>Still open</dt><dd><%= fmt.money(s.owing) %></dd></div>
+              </dl>
+<% if (canBook && s.owing > 0) { -%>
+              <form method="post" action="/groups/<%= g.id %>/payment" novalidate style="margin-top:16px">
+                <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+                <div class="form-grid">
+                  <div class="form-grid__col form-grid__col--half"><label class="field-label" for="gp-amount">Payment (<%= fmt.symbol() %>)</label><input class="input<%= payErrors.amount ? ' is-invalid' : '' %>" id="gp-amount" name="amount" inputmode="decimal" value="<%= pv('amount', (s.owing / 100).toFixed(2)) %>"><p class="field-error"><%= payErrors.amount || '' %></p></div>
+                  <div class="form-grid__col form-grid__col--half"><label class="field-label" for="gp-method">Method</label><select class="select" id="gp-method" name="method"><% for (const m of methods) { %><option<%- pv('method') === m ? ' selected' : '' %>><%= m %></option><% } %></select></div>
+                  <div class="form-grid__col"><label class="field-label" for="gp-ref">Reference <span class="field-label__hint">NEFT, UPI or card slip</span></label><input class="input" id="gp-ref" name="reference" value="<%= pv('reference') %>"></div>
+                </div>
+                <div class="form-actions"><button class="button button--secondary" type="submit">Record group payment</button><span class="form-hint">Shared out over the rooms that owe, in arrival order.</span></div>
+              </form>
+<% } -%>
+            </section>
+            <section class="card" aria-labelledby="ginv-title">
+              <div class="card__head"><div><h2 class="card__title" id="ginv-title">Group invoice</h2><p class="card__subtitle">One invoice for every room that has checked in, with the GST for each rate. It replaces any earlier invoice of these rooms.</p></div></div>
+<% if (issued) { -%>
+              <p><a href="/invoices/<%= issued.id %>"><strong><%= issued.number %></strong></a> · <%= issued.issued_at %> · <%= fmt.money(issued.total_cents) %></p>
+<% } -%>
+<% if (canBook && (s.inHouse || s.out)) { -%>
+              <form method="post" action="/groups/<%= g.id %>/invoice" novalidate style="margin-top:12px">
+                <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+                <div class="form-grid">
+                  <div class="form-grid__col form-grid__col--half"><label class="field-label" for="gi-to">Bill to</label><input class="input" id="gi-to" name="bill_to" value="<%= iv('bill_to', g.company || g.name) %>"></div>
+                  <div class="form-grid__col form-grid__col--half"><label class="field-label" for="gi-gstin">GSTIN</label><input class="input<%= invErrors.gstin ? ' is-invalid' : '' %>" id="gi-gstin" name="gstin" value="<%= iv('gstin', g.gstin || '') %>" maxlength="15"><p class="field-error"><%= invErrors.gstin || '' %></p></div>
+                </div>
+                <div class="form-actions"><button class="button button--secondary" type="submit"><%= issued ? 'Make a new group invoice' : 'Create group invoice' %></button></div>
+              </form>
+<% } else if (!issued) { -%>
+              <p class="form-hint">Once someone in the group has checked in.</p>
+<% } -%>
+            </section>
+<% if (g.notes) { -%>
+            <section class="card"><div class="card__head"><div><h2 class="card__title">Notes</h2></div></div><p><%= g.notes %></p></section>
+<% } -%>
+          </div>
+        </div>
+<%- include('../partials/shell-bottom') %>

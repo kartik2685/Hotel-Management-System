@@ -130,6 +130,11 @@ har tax rate ki line), B2C ka total, rate-wise CGST/SGST, HSN/SAC summary aur do
 number, cancel wale) ban jaate hain. Har table ki CSV GST offline tool ke column naamon ke saath download hoti hai,
 seedha accountant ko de do. GSTR-1 agle mahine ki 11 tarikh tak (QRMP me quarter ke baad 13 tarikh tak).
 
+**Group booking (shaadi, conference):** **Reservations → Groups → New group booking**: group ka naam, contact, dates,
+har room type ke kitne rooms, aur chaho to rooming list (har line me ek guest). Har room ki apni booking banti hai. Group
+page par: aaj aane wale sab ek click me check-in (jo ready nahi, unka kaaran dikhta hai), poore group ka ek payment (rooms
+me baant diya jaata hai) aur poore group ka ek GST invoice company / family ke naam, GSTIN ke saath.
+
 **Guest ko WhatsApp:** har booking page par **WhatsApp the guest** button hai. Dabate hi WhatsApp (app ya WhatsApp Web)
 guest ke number aur taiyaar message ke saath khulta hai: booking confirm hone par details + booking dekhne/cancel karne
 ka link, hotel me ho to welcome + room number, check-out ke baad thank-you + invoice ka link. Invoice page par

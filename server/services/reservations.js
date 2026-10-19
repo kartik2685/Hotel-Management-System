@@ -163,7 +163,7 @@ function create(db, req, input) {
  * Saves a validated booking (staff form or website): checks availability for every night,
  * assigns a free room, finds or creates the guest by email, prices the stay and logs it.
  */
-function insertBooking(db, req, v, { createdBy = null, actor, online = false } = {}) {
+function insertBooking(db, req, v, { createdBy = null, actor, online = false, groupId = null, quiet = false } = {}) {
   const settings = settingsService.all(db);
   return db.tx(() => {
     if (!typeAvailable(db, v.type.id, v.arrival, v.departure)) {
@@ -195,10 +195,10 @@ function insertBooking(db, req, v, { createdBy = null, actor, online = false } =
     const confirmation = nextConfirmation(db, settings);
     const { id: reservationId } = db.get(
       `INSERT INTO reservations (confirmation, guest_id, room_type_id, room_id, arrival, departure, adults, children, rate_plan_id, nightly_rate_cents,
-         night_rates, source_id, status, tags, requests, room_total_cents, tax_cents, extras_cents, total_cents, created_by, created_at, booked_online)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+         night_rates, source_id, status, tags, requests, room_total_cents, tax_cents, extras_cents, total_cents, created_by, created_at, booked_online, group_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
       confirmation, guest.id, v.type.id, room ? room.id : null, v.arrival, v.departure, v.adults, v.children, v.plan.id, q.rate, seasons.stored(q.nightRates),
-      v.source ? v.source.id : null, JSON.stringify(tags), v.requests, q.roomTotal, q.tax + extrasTax, q.extras, q.total + extrasTax, createdBy, stamp, online ? 1 : 0,
+      v.source ? v.source.id : null, JSON.stringify(tags), v.requests, q.roomTotal, q.tax + extrasTax, q.extras, q.total + extrasTax, createdBy, stamp, online ? 1 : 0, groupId,
     );
     for (const l of extraLines) {
       db.run('INSERT INTO reservation_extras (reservation_id, extra_id, amount_cents, gst_kind, tax_bp, tax_cents) VALUES (?, ?, ?, ?, ?, ?)',
@@ -206,8 +206,10 @@ function insertBooking(db, req, v, { createdBy = null, actor, online = false } =
     }
     const summary = `${v.first} ${v.last} · ${v.type.name} · ${f.formatDay(v.arrival)} → ${f.formatDay(v.departure)}`;
     activity.log(db, req, 'reservation.create', `Booked ${confirmation}${online ? ' online' : ''}: ${summary}`, actor);
-    db.run('INSERT INTO notifications (icon, tone, title, detail, created_at) VALUES (?, ?, ?, ?, ?)',
-      'calendar-check', online ? 'gold' : '', `New ${online ? 'website ' : ''}booking ${confirmation}`, summary, stamp);
+    if (!quiet) {
+      db.run('INSERT INTO notifications (icon, tone, title, detail, created_at) VALUES (?, ?, ?, ?, ?)',
+        'calendar-check', online ? 'gold' : '', `New ${online ? 'website ' : ''}booking ${confirmation}`, summary, stamp);
+    }
     return byConfirmation(db, confirmation);
   });
 }

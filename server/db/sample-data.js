@@ -84,6 +84,12 @@ const SEASONS = [
   { name: 'Festive season', from: 12, to: 21, kind: 'percent', value: 25 },
 ];
 
+/* Group bookings (services/groups.js): the stays with `group: key` belong to it. */
+const GROUPS = [
+  { key: 'agarwal-jalan', name: 'Agarwal–Jalan wedding', contact: 'mahesh', company: 'Agarwal family', at: [-5, '10:56', 'res'],
+    notes: 'Wedding at the Jalan home on Ballygunge Circular Road. Rooms close together; the family pays the balance at check-out.' },
+];
+
 /* Booking sources. The empty hotel's Walk-in, Phone and Website are kept and put in this order. */
 const SOURCES = [
   { name: 'Walk-in', kind: 'walk_in', form: 1 }, { name: 'Phone', kind: 'direct', form: 2 }, { name: 'Website', kind: 'direct', form: 3 },
@@ -375,11 +381,11 @@ const STAYS = [
     pay: [[-17, '13:28', 'res', 'all', 'Bank transfer', 'MakeMyTrip prepaid · MMT-6610274']], in: '13:10', out: '10:40', inv: 'guest' },
   { g: 'srinivasan', a: -3, n: 3, type: 'STD', plan: 'BAR', src: 'MakeMyTrip', ad: 1, book: [-6, '19:50', 'desk'],
     pay: [[-6, '19:53', 'desk', 'all', 'Bank transfer', 'MakeMyTrip prepaid · MMT-6648213']], in: '15:20', out: '10:15', inv: 'guest' },
-  { g: 'savitri', a: 9, n: 3, type: 'DLX', plan: 'CP', src: 'Phone', book: [-5, '11:00', 'res'], req: 'Agarwal–Jalan wedding — three rooms for the family, close together please.',
+  { g: 'savitri', a: 9, n: 3, type: 'DLX', plan: 'CP', src: 'Phone', book: [-5, '11:00', 'res'], group: 'agarwal-jalan', req: 'Agarwal–Jalan wedding — three rooms for the family, close together please.',
     pay: [[-5, '11:12', 'res', 'night', 'Bank transfer', 'Agarwal–Jalan wedding advance · NEFT']] },
-  { g: 'mahesh', a: 9, n: 3, type: 'DLX', plan: 'CP', src: 'Phone', book: [-5, '11:04', 'res'], req: 'Agarwal–Jalan wedding block.',
+  { g: 'mahesh', a: 9, n: 3, type: 'DLX', plan: 'CP', src: 'Phone', book: [-5, '11:04', 'res'], group: 'agarwal-jalan', req: 'Agarwal–Jalan wedding block.',
     pay: [[-5, '11:14', 'res', 'night', 'Bank transfer', 'Agarwal–Jalan wedding advance · NEFT']] },
-  { g: 'goenka', a: 9, n: 3, type: 'FAM', plan: 'CP', src: 'Phone', ch: 2, book: [-5, '11:08', 'res'], req: 'Agarwal–Jalan wedding block.',
+  { g: 'goenka', a: 9, n: 3, type: 'FAM', plan: 'CP', src: 'Phone', ch: 2, book: [-5, '11:08', 'res'], group: 'agarwal-jalan', req: 'Agarwal–Jalan wedding block.',
     pay: [[-5, '11:16', 'res', 'night', 'Bank transfer', 'Agarwal–Jalan wedding advance · NEFT']] },
   { g: 'siddiqui', a: -24, n: 2, type: 'PRM', plan: 'BAR', src: 'Website', book: [-30, '21:35', 'web'], in: '15:05', out: '10:35', settle: 'Card', inv: 'guest' },
   { g: 'siddiqui', a: 4, n: 2, type: 'PRM', plan: 'ADV', src: 'Phone', book: [-8, '12:40', 'res'], pay: [[-8, '12:44', 'res', 'all', 'Card', 'Advance purchase · card ending 2290']] },
@@ -477,4 +483,4 @@ const CHANGES = [
 /* Maintenance jobs on today’s housekeeping sheet: [room, job, minutes, done at]. */
 const MAINTENANCE = [['106', 'Fix the bathroom tap', 20, '10:20'], ['305', 'AC compressor replacement', 90, null]];
 
-module.exports = { INDIA, FILL, WEBSITE, ROOM_TYPES, ROOMS, PLANS, BAR, EXTRAS, SEASONS, SOURCES, STAFF, GUESTS, STAYS, BLOCKS, HANDOVER, CHANGES, MAINTENANCE };
+module.exports = { INDIA, FILL, WEBSITE, ROOM_TYPES, ROOMS, PLANS, BAR, EXTRAS, SEASONS, GROUPS, SOURCES, STAFF, GUESTS, STAYS, BLOCKS, HANDOVER, CHANGES, MAINTENANCE };

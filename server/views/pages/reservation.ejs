@@ -7,7 +7,7 @@
    const locked = !d.open || !canBook; -%>
         <div class="page-header">
           <div>
-            <p class="kicker">Booking <span class="mono"><%= b.confirmation %></span></p>
+            <p class="kicker">Booking <span class="mono"><%= b.confirmation %></span><% if (group) { %> · group <a href="/groups/<%= group.id %>"><%= group.code %> <%= group.name %></a><% } %></p>
             <h1 class="page-header__title"><%= b.name %></h1>
             <p class="page-header__lead"><%= b.type_name %><%= b.room_number ? ' ' + b.room_number : ' · room not assigned' %> · <%= b.from %> → <%= b.to %> · <%= fmt.plural(b.nights, 'night', 'nights') %> <span class="status-pill status-pill--<%= b.statusCss %>"><%= b.statusLabel %></span></p>
           </div>
@@ -236,7 +236,9 @@
 <% if (invoices.length) { -%>
               <ul class="note-list"><% for (const i of invoices) { %><li><span class="status-icon tone-<%= i.status === 'issued' ? 'clean' : 'ooo' %>" aria-hidden="true"><%- icon(i.status === 'issued' ? 'check' : 'close') %></span><div><p><a href="/invoices/<%= i.id %>" target="_blank" rel="noopener"><strong><%= i.number %></strong></a> · <%= fmt.money(i.total_cents) %></p><small><%= i.status === 'issued' ? 'Issued' : 'Cancelled' %> · <%= i.issued_at %></small></div></li><% } %></ul>
 <% } -%>
-<% if (canBook) { -%>
+<% if (group) { -%>
+              <p class="form-hint">This room is billed on the group’s invoice: <a href="/groups/<%= group.id %>#ginv-title">make it on the page of <%= group.name %></a>.</p>
+<% } else if (canBook) { -%>
               <form method="post" action="/reservations/<%= b.confirmation %>/invoice" novalidate style="margin-top:14px">
                 <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
                 <div class="form-grid">
