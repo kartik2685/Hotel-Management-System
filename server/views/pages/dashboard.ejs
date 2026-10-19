@@ -1,0 +1,185 @@
+<%- include('../partials/shell-top') %>
+        <div class="page-header">
+          <div>
+            <p class="kicker"><%= d.kicker %></p>
+            <h1 class="page-header__title"><%= d.greeting %></h1>
+            <p class="page-header__lead"><%= d.lead %></p>
+          </div>
+          <div class="page-header__actions">
+            <a class="button button--secondary" href="/tape-chart"><%- icon('tape-chart') %>Tape chart</a>
+            <a class="button button--primary" href="/reservations#new-booking"><%- icon('plus') %>New booking</a>
+          </div>
+        </div>
+        <section class="metrics" aria-label="Key figures for today">
+          <article class="metric">
+            <div class="metric__top"><h2 class="metric__label">Occupancy tonight</h2><span class="metric__icon"><%- icon('bed') %></span></div>
+            <p class="metric__value"><%= d.kpi.occupancy %><span class="metric__unit">%</span></p>
+            <div class="progress" role="img" aria-label="<%= d.kpi.sold %> of <%= d.kpi.rooms %> rooms sold"><span class="progress__fill" style="width:<%= d.kpi.occupancy %>%"></span></div>
+            <p class="metric__foot"><% if (d.kpi.occupancyTrend) { %><span class="trend trend--<%= d.kpi.occupancyTrend.dir %>"><%- icon('trend-' + (d.kpi.occupancyTrend.dir === 'down' ? 'down' : 'up')) %><%= d.kpi.occupancyTrend.text %></span><% } %><span class="metric__compare"><%= d.kpi.sold %> of <%= d.kpi.rooms %> rooms sold</span></p>
+          </article>
+          <article class="metric">
+            <div class="metric__top"><h2 class="metric__label">Arrivals &amp; departures</h2><span class="metric__icon"><%- icon('luggage') %></span></div>
+            <div class="metric__split">
+              <div>
+                <p class="metric__value"><%= d.arrivals.length %></p>
+                <p class="metric__sub">Arrivals</p>
+                <div class="progress progress--thin" role="img" aria-label="<%= d.arrived %> of <%= d.arrivals.length %> arrivals checked in" data-metric-checked-in-meter><span class="progress__fill" style="width:<%= fmt.pct1(d.arrived, d.arrivals.length) %>%"></span></div>
+                <p class="metric__mini"><strong data-metric-checked-in><%= d.arrived %></strong> in so far</p>
+              </div>
+              <div>
+                <p class="metric__value"><%= d.departures.length %></p>
+                <p class="metric__sub">Departures</p>
+                <div class="progress progress--thin progress--dark" role="img" aria-label="<%= d.checkedOut %> of <%= d.departures.length %> departures checked out"><span class="progress__fill" style="width:<%= fmt.pct1(d.checkedOut, d.departures.length) %>%"></span></div>
+                <p class="metric__mini"><strong><%= d.checkedOut %></strong> out so far</p>
+              </div>
+            </div>
+          </article>
+          <article class="metric">
+            <div class="metric__top"><h2 class="metric__label">ADR</h2><span class="metric__hint">Average daily rate</span></div>
+            <p class="metric__value"><%= d.kpi.adr[0] %><span class="metric__unit"><%= d.kpi.adr[1] %></span></p>
+            <svg class="sparkline" data-sparkline="<%= d.sparkAdr.data %>" viewBox="0 0 120 32" preserveAspectRatio="none" role="img" aria-label="<%= d.sparkAdr.label %>"></svg>
+            <p class="metric__foot"><% if (d.kpi.adrTrend) { %><span class="trend trend--<%= d.kpi.adrTrend.dir %>"><%- icon('trend-' + (d.kpi.adrTrend.dir === 'down' ? 'down' : 'up')) %><%= d.kpi.adrTrend.text %></span><span class="metric__compare"><%= d.kpi.lastWeekLabel %></span><% } %></p>
+          </article>
+          <article class="metric">
+            <div class="metric__top"><h2 class="metric__label">RevPAR</h2><span class="metric__hint">Revenue per available room</span></div>
+            <p class="metric__value"><%= d.kpi.revpar[0] %><span class="metric__unit"><%= d.kpi.revpar[1] %></span></p>
+            <svg class="sparkline" data-sparkline="<%= d.sparkRevpar.data %>" viewBox="0 0 120 32" preserveAspectRatio="none" role="img" aria-label="<%= d.sparkRevpar.label %>"></svg>
+            <p class="metric__foot"><% if (d.kpi.revparTrend) { %><span class="trend trend--<%= d.kpi.revparTrend.dir %>"><%- icon('trend-' + (d.kpi.revparTrend.dir === 'down' ? 'down' : 'up')) %><%= d.kpi.revparTrend.text %></span><span class="metric__compare"><%= d.kpi.lastWeekLabel %></span><% } %></p>
+          </article>
+        </section>
+        <div class="dashboard">
+          <div class="dashboard__col">
+            <section class="card" aria-labelledby="rev-title">
+              <div class="card__head">
+                <div>
+                  <h2 class="card__title" id="rev-title">Revenue by week</h2>
+                  <p class="card__subtitle">Last <%= d.weeks.length %> weeks, by week commencing · all outlets</p>
+                </div>
+                <div class="revenue-total">
+                  <span class="revenue-total__label"><%= d.weeks.length %>-week total</span>
+                  <strong class="revenue-total__value"><%= fmt.moneyWhole(d.revenueTotal) %></strong>
+                </div>
+              </div>
+              <ul class="chart-legend" aria-label="Chart legend">
+                <li><span class="chart-legend__swatch chart-legend__swatch--rooms"></span>Rooms</li>
+                <li><span class="chart-legend__swatch chart-legend__swatch--fnb"></span>Food &amp; beverage</li>
+                <li><span class="chart-legend__swatch chart-legend__swatch--spa"></span>Spa &amp; other</li>
+              </ul>
+              <div class="bar-chart" data-revenue-chart="rev-table">
+                <p class="bar-chart__fallback">The chart draws from the data table below.</p>
+              </div>
+              <details class="chart-data">
+                <summary>Show data table</summary>
+                <div class="table-scroll">
+                  <table class="table" id="rev-table">
+                    <caption class="sr-only">Weekly revenue by outlet, <%= d.currencyName %></caption>
+                    <thead><tr><th scope="col">Week of</th><th scope="col" class="numeric">Rooms</th><th scope="col" class="numeric">Food &amp; beverage</th><th scope="col" class="numeric">Spa &amp; other</th><th scope="col" class="numeric">Total</th></tr></thead>
+                    <tbody>
+<% for (const w of d.weeks) { -%>
+                      <tr><th scope="row"><%= w.label %></th><td class="numeric"><%= fmt.moneyWhole(w.rooms) %></td><td class="numeric"><%= fmt.moneyWhole(w.fnb) %></td><td class="numeric"><%= fmt.moneyWhole(w.spa) %></td><td class="numeric"><%= fmt.moneyWhole(w.total) %></td></tr>
+<% } -%>
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            </section>
+            <section class="card" aria-labelledby="arr-title">
+              <div class="card__head">
+                <div>
+                  <h2 class="card__title" id="arr-title">Today’s arrivals</h2>
+                  <p class="card__subtitle" aria-live="polite"><span data-arrivals-total><%= d.arrivals.length %></span> guests · <span data-arrivals-in><%= d.arrived %></span> checked in</p>
+                </div>
+                <div class="segmented" role="group" aria-label="Filter arrivals">
+                  <button type="button" aria-pressed="true" data-arrival-filter="all">All</button>
+                  <button type="button" aria-pressed="false" data-arrival-filter="expected">Expected</button>
+                  <button type="button" aria-pressed="false" data-arrival-filter="in">Checked in</button>
+                  <button type="button" aria-pressed="false" data-arrival-filter="vip">VIP</button>
+                </div>
+              </div>
+              <ul class="arrival-list" data-arrival-list>
+<% for (const a of d.arrivals) { -%>
+                <li class="arrival" data-state="<%= a.inHouse ? 'in' : 'expected' %>"<%- a.vip ? ' data-vip' : '' %> data-confirmation="<%= a.confirmation %>">
+                  <span class="avatar<%= a.vip ? ' avatar--gold' : '' %>" aria-hidden="true"><%= a.initials %></span>
+                  <div class="arrival__guest">
+                    <p class="arrival__name"><strong><%= a.name %></strong><% for (const c of a.chips) { %><span class="<%= c.cls %>"><%= c.text %></span><% } %></p>
+                    <p class="arrival__meta"><%= a.meta %></p>
+                  </div>
+                  <div class="arrival__room"><span class="arrival__room-no"><%= a.room %></span><small><%= a.typeName %></small></div>
+                  <div class="arrival__eta"><small><%= a.inHouse ? 'Arrived' : 'ETA' %></small><strong><%= a.time || '—' %></strong></div>
+<% if (a.action === 'in') { -%>
+                  <div class="arrival__action" data-arrival-action><span class="room-state room-state--in"><%- icon('check') %>Checked in <%= a.time %></span></div>
+<% } else if (a.action === 'cleaning') { -%>
+                  <div class="arrival__action" data-arrival-action><span class="room-state room-state--dirty"><%- icon('broom') %>Being cleaned</span></div>
+<% } else if (a.action === 'unassigned') { -%>
+                  <div class="arrival__action" data-arrival-action><span class="room-state room-state--dirty"><%- icon('key') %>No room yet</span></div>
+<% } else { -%>
+                  <div class="arrival__action" data-arrival-action><button class="button button--primary button--sm" type="button" data-check-in aria-label="Check in <%= a.name %>, room <%= a.room %>"><%- icon('key') %>Check in</button></div>
+<% } -%>
+                </li>
+<% } -%>
+              </ul>
+              <p class="empty-state" data-arrivals-empty hidden>No arrivals match this filter.</p>
+            </section>
+          </div>
+          <div class="dashboard__col">
+            <section class="card" aria-labelledby="status-title">
+              <div class="card__head">
+                <div>
+                  <h2 class="card__title" id="status-title">Room status</h2>
+                  <p class="card__subtitle">Right now · <%= fmt.plural(d.roomCounts.total, 'room', 'rooms') %></p>
+                </div>
+                <a class="arrow-link" href="/rooms">Room board<%- icon('chevron-right') %></a>
+              </div>
+              <div class="status-strip" role="img" aria-label="<%= d.roomCounts.occupied %> occupied, <%= d.roomCounts.clean %> clean, <%= d.roomCounts.dirty %> dirty, <%= d.roomCounts.ooo %> out of order">
+                <span class="status-strip__seg tone-occupied" style="flex-grow:<%= d.roomCounts.occupied %>"></span><span class="status-strip__seg tone-clean" style="flex-grow:<%= d.roomCounts.clean %>"></span><span class="status-strip__seg tone-dirty" style="flex-grow:<%= d.roomCounts.dirty %>"></span><span class="status-strip__seg tone-ooo" style="flex-grow:<%= d.roomCounts.ooo %>"></span>
+              </div>
+              <ul class="status-list">
+                <li class="status-list__item"><span class="status-icon tone-occupied" aria-hidden="true"><%- icon('user') %></span><span class="status-list__text"><strong>Occupied</strong><small><%= d.roomCounts.occupiedClean %> clean · <%= d.roomCounts.occupiedDirty %> to service</small></span><span class="status-list__num"><%= d.roomCounts.occupied %></span></li>
+                <li class="status-list__item"><span class="status-icon tone-clean" aria-hidden="true"><%- icon('check') %></span><span class="status-list__text"><strong>Clean</strong><small>Vacant and ready to sell</small></span><span class="status-list__num"><%= d.roomCounts.clean %></span></li>
+                <li class="status-list__item"><span class="status-icon tone-dirty" aria-hidden="true"><%- icon('broom') %></span><span class="status-list__text"><strong>Dirty</strong><small><%= d.dirtyNote %></small></span><span class="status-list__num"><%= d.roomCounts.dirty %></span></li>
+                <li class="status-list__item"><span class="status-icon tone-ooo" aria-hidden="true"><%- icon('wrench') %></span><span class="status-list__text"><strong>Out of order</strong><small><%= d.ooo %></small></span><span class="status-list__num"><%= d.roomCounts.ooo %></span></li>
+              </ul>
+              <a class="hk-summary" href="/housekeeping">
+                <span class="hk-summary__text"><strong>Housekeeping</strong><small><%= d.tasks.done %> of <%= d.tasks.total %> tasks done · <%= fmt.plural(d.attendantsOnShift, 'attendant', 'attendants') %> on shift</small></span>
+                <span class="donut" style="--p:<%= d.hkPercent %>" role="img" aria-label="<%= d.hkPercent %> percent complete"><span class="donut__label"><%= d.hkPercent %>%</span></span>
+              </a>
+            </section>
+            <section class="card" aria-labelledby="handover-title">
+              <div class="card__head">
+                <div>
+                  <h2 class="card__title" id="handover-title">Shift handover</h2>
+                  <p class="card__subtitle">Notes from night audit and the day team</p>
+                </div>
+              </div>
+              <ol class="handover-list">
+<% for (const h of d.handover) { -%>
+                <li>
+                  <span class="avatar avatar--sm<%= h.avatar_tone ? ' avatar--' + h.avatar_tone : '' %>" aria-hidden="true"><%= h.initials %></span>
+                  <div>
+                    <p><strong><%= h.lead %></strong> <%= h.body %></p>
+                    <p class="handover-list__by"><%= h.author_name %> · <%= h.department %> · <%= h.when %></p>
+                  </div>
+                </li>
+<% } -%>
+              </ol>
+            </section>
+            <section class="card" aria-labelledby="dep-title">
+              <div class="card__head">
+                <div>
+                  <h2 class="card__title" id="dep-title">Departures</h2>
+                  <p class="card__subtitle"><%= d.checkedOut %> checked out · <%= d.stillIn %> still in house</p>
+                </div>
+              </div>
+              <ul class="departure-list">
+<% for (const x of d.departures) { -%>
+                <li class="departure<%= x.due ? ' departure--due' : '' %>">
+                  <span class="departure__room"><%= x.room %></span>
+                  <span class="departure__guest"><strong><%= x.name %></strong><small><%= x.sub %></small></span>
+                  <span class="departure__right"><span class="departure__when"><%= x.when %></span><% if (x.owing > 0) { %><span class="departure__balance departure__balance--owing"><%= fmt.money(x.owing) %> open</span><% } else { %><span class="departure__balance">Settled</span><% } %></span>
+                </li>
+<% } -%>
+              </ul>
+            </section>
+          </div>
+        </div>
+<%- include('../partials/shell-bottom') %>

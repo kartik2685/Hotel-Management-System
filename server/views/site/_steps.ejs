@@ -1,0 +1,5 @@
+<ol class="steps" aria-label="Booking steps">
+<% [['1', 'Choose a room'], ['2', 'Your details'], ['3', 'Confirmed']].forEach(([n, label], i) => { -%>
+  <li<%- i + 1 === step ? ' aria-current="step"' : i + 1 < step ? ' class="is-done"' : '' %>><span><%= n %></span><%= label %></li>
+<% }) -%>
+</ol>

@@ -1,0 +1,87 @@
+<%- include('../partials/shell-top') %>
+        <div class="page-header">
+          <div>
+            <p class="kicker">Operations · updated <%= rm.updated %></p>
+            <h1 class="page-header__title">Room status</h1>
+            <p class="page-header__lead">Flip a room between clean and dirty, or hand it to another attendant. Counts update as you go.</p>
+          </div>
+          <div class="page-header__actions">
+            <a class="button button--secondary" href="/housekeeping"><%- icon('sparkles') %>Housekeeping tasks</a>
+          </div>
+        </div>
+        <div class="status-tiles" role="group" aria-label="Filter rooms by status">
+          <button class="status-tile status-tile--all" type="button" aria-pressed="true" data-room-filter="all">
+            <span class="status-tile__label">All rooms</span><strong class="status-tile__num"><%= rm.counts.total %></strong><small><%= fmt.plural(rm.counts.floors, 'floor', 'floors') %></small>
+          </button>
+          <button class="status-tile status-tile--occupied" type="button" aria-pressed="false" data-room-filter="occupied">
+            <span class="status-tile__label"><span class="status-icon tone-occupied" aria-hidden="true"><%- icon('user') %></span>Occupied</span><strong class="status-tile__num" data-status-count="occupied"><%= rm.counts.occupied %></strong><small data-occupied-split><%= rm.counts.occupiedClean %> clean · <%= rm.counts.occupiedDirty %> to service</small>
+          </button>
+          <button class="status-tile status-tile--clean" type="button" aria-pressed="false" data-room-filter="clean">
+            <span class="status-tile__label"><span class="status-icon tone-clean" aria-hidden="true"><%- icon('check') %></span>Clean</span><strong class="status-tile__num" data-status-count="clean"><%= rm.counts.clean %></strong><small>Vacant, ready to sell</small>
+          </button>
+          <button class="status-tile status-tile--dirty" type="button" aria-pressed="false" data-room-filter="dirty">
+            <span class="status-tile__label"><span class="status-icon tone-dirty" aria-hidden="true"><%- icon('broom') %></span>Dirty</span><strong class="status-tile__num" data-status-count="dirty"><%= rm.counts.dirty %></strong><small>Vacant, needs a clean</small>
+          </button>
+          <button class="status-tile status-tile--ooo" type="button" aria-pressed="false" data-room-filter="ooo">
+            <span class="status-tile__label"><span class="status-icon tone-ooo" aria-hidden="true"><%- icon('wrench') %></span>Out of order</span><strong class="status-tile__num" data-status-count="ooo"><%= rm.counts.ooo %></strong><small>Off sale</small>
+          </button>
+        </div>
+        <div class="toolbar">
+          <div class="field field--inline">
+            <label class="field-label" for="room-find">Find a room</label>
+            <div class="icon-input"><%- icon('search') %><input class="input input--sm" id="room-find" type="search" inputmode="numeric" placeholder="e.g. 305" data-room-search></div>
+          </div>
+          <div class="field field--inline">
+            <label class="field-label" for="room-attendant">Attendant</label>
+            <select class="select select--sm" id="room-attendant" data-room-attendant>
+              <option value="">Everyone</option>
+<% for (const a of rm.attendants) { -%>
+              <option value="<%= a.code %>"><%= a.name %></option>
+<% } -%>
+            </select>
+          </div>
+          <p class="result-count" aria-live="polite" data-room-result>Showing <%= fmt.plural(rm.counts.total, 'room', 'rooms') %></p>
+        </div>
+<% for (const floor of rm.floors) { -%>
+        <section class="floor" aria-labelledby="floor-<%= floor.number %>" data-floor="<%= floor.number %>">
+          <div class="floor__head">
+            <h2 class="floor__title" id="floor-<%= floor.number %>">Floor <%= floor.number %></h2>
+            <p class="floor__stats" data-floor-stats><%= floor.stats %></p>
+<% if (floor.lead) { -%>
+            <p class="floor__lead"><span class="avatar avatar--xs" aria-hidden="true"><%= floor.lead.initials %></span><%= floor.lead.name %></p>
+<% } -%>
+          </div>
+          <div class="room-grid">
+<% for (const room of floor.rooms) { -%>
+            <article class="room-card" data-room="<%= room.number %>" data-status="<%= room.status %>" data-housekeeping="<%= room.hk_status %>" data-occupancy="<%= room.occupancy %>">
+              <div class="room-card__head">
+                <h3 class="room-card__number"><%= room.number %></h3>
+                <span class="room-card__type"><%= room.type_name %></span>
+                <span class="room-card__occupancy"><%= room.occupancyLabel %></span>
+              </div>
+              <div class="room-card__body">
+                <p class="room-card__guest"><%- icon(room.text.icon) %><span><%= room.text.guest %></span></p><p class="room-card__note"><%= room.text.note %></p>
+<% if (room.flags.length) { -%>
+                <p class="room-card__flags"><% for (const flag of room.flags) { %><span class="<%= flag.cls %>"><%= flag.text %></span><% } %></p>
+<% } -%>
+              </div>
+              <div class="room-card__controls">
+                <button class="clean-switch" type="button" role="switch" aria-checked="<%= room.hk_status === 'clean' %>" aria-label="Room <%= room.number %> clean" data-clean-toggle<%- room.status === 'ooo' || !rm.canEdit ? ' disabled' : '' %>>
+                  <span class="clean-switch__track" aria-hidden="true"><span class="clean-switch__thumb"></span></span>
+                  <span class="clean-switch__text" aria-hidden="true" data-clean-label><%= room.hk_status === 'clean' ? 'Clean' : 'Dirty' %></span>
+                </button>
+                <label class="sr-only" for="hk-<%= room.number %>">Housekeeper for room <%= room.number %></label>
+                <select class="select select--sm room-card__assign" id="hk-<%= room.number %>" data-assign<%- rm.canAssign ? '' : ' disabled' %>>
+                  <option value="">Unassigned</option>
+<% for (const a of rm.attendants) { -%>
+                  <option value="<%= a.code %>"<%- a.code === room.attendant_code ? ' selected' : '' %>><%= a.short %></option>
+<% } -%>
+                </select>
+              </div>
+            </article>
+<% } -%>
+          </div>
+        </section>
+<% } -%>
+        <p class="empty-state" data-room-empty hidden>No rooms match. <button class="text-button" type="button" data-room-reset>Show all rooms</button></p>
+<%- include('../partials/shell-bottom') %>

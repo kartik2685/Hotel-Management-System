@@ -1,0 +1,81 @@
+<%- include('_top') %>
+<% const val = (k) => (s[k] ?? ''); const err = (k) => (errors[k] || ''); const inv = (k) => (errors[k] ? ' is-invalid' : ''); -%>
+        <form class="card" method="post" action="/admin/settings" novalidate>
+          <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+          <div class="form-section">
+            <h2 class="form-section__title">Hotel</h2>
+            <div class="form-grid">
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-name">Hotel name</label><input class="input<%= inv('hotel_name') %>" id="s-name" name="hotel_name" value="<%= val('hotel_name') %>" required aria-describedby="s-name-err"><p class="field-error" id="s-name-err"><%= err('hotel_name') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-city">City</label><input class="input<%= inv('hotel_city') %>" id="s-city" name="hotel_city" value="<%= val('hotel_city') %>"><p class="field-error"><%= err('hotel_city') %></p></div>
+              <div class="form-grid__col"><label class="field-label" for="s-address">Address <span class="field-label__hint">optional</span></label><input class="input" id="s-address" name="hotel_address" value="<%= val('hotel_address') %>"></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-phone">Phone <span class="field-label__hint">optional</span></label><input class="input" id="s-phone" name="hotel_phone" value="<%= val('hotel_phone') %>"></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-email">Email <span class="field-label__hint">optional</span></label><input class="input" id="s-email" name="hotel_email" value="<%= val('hotel_email') %>"></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-taxid">GSTIN / tax number <span class="field-label__hint">optional</span></label><input class="input" id="s-taxid" name="tax_id" value="<%= val('tax_id') %>"></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-country">Country</label>
+                <select class="select<%= inv('country') %>" id="s-country" name="country"><% for (const c of countries) { %><option value="<%= c.code %>"<%- val('country') === c.code ? ' selected' : '' %>><%= c.name %></option><% } %></select><p class="field-error"><%= err('country') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-state">State <span class="field-label__hint">printed on GST invoices</span></label><input class="input" id="s-state" name="hotel_state" value="<%= val('hotel_state') %>" placeholder="e.g. West Bengal"></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-url">Website address <span class="field-label__hint">used in email links</span></label><input class="input<%= inv('site_url') %>" id="s-url" name="site_url" value="<%= val('site_url') %>" placeholder="https://www.yourhotel.com"><p class="field-error"><%= err('site_url') %></p></div>
+            </div>
+            <div class="check-row"><label><input type="checkbox" name="require_grc"<%- s.require_grc ? ' checked' : '' %>> Guests can only be checked in once their registration card (GRC) is complete</label></div>
+          </div>
+          <div class="form-section">
+            <h2 class="form-section__title">Money and tax</h2>
+            <div class="form-grid">
+              <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="s-cur">Currency code</label><input class="input<%= inv('currency_code') %>" id="s-cur" name="currency_code" value="<%= val('currency_code') %>" maxlength="3"><p class="field-error"><%= err('currency_code') %></p></div>
+              <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="s-sym">Symbol</label><input class="input<%= inv('currency_symbol') %>" id="s-sym" name="currency_symbol" value="<%= val('currency_symbol') %>" maxlength="4"><p class="field-error"><%= err('currency_symbol') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-loc">Number format</label>
+                <select class="select" id="s-loc" name="currency_locale">
+<% for (const [v, l] of [['en-US', '1,234,567.89 (US)'], ['en-IN', '12,34,567.89 (India)'], ['en-GB', '1,234,567.89 (UK)'], ['de-DE', '1.234.567,89 (Germany)'], ['fr-FR', '1 234 567,89 (France)']]) { -%>
+                  <option value="<%= v %>"<%- val('currency_locale') === v ? ' selected' : '' %>><%= l %></option>
+<% } -%>
+                </select></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-taxmode">Tax rule</label>
+                <select class="select" id="s-taxmode" name="tax_mode">
+                  <option value="flat"<%- val('tax_mode') === 'flat' ? ' selected' : '' %>>One rate on the room charge</option>
+                  <option value="gst_india"<%- val('tax_mode') === 'gst_india' ? ' selected' : '' %>>India GST on rooms (0% below ₹1,000 · 5% up to ₹7,500 · 18% above)</option>
+                  <option value="none"<%- val('tax_mode') === 'none' ? ' selected' : '' %>>No tax</option>
+                </select><p class="form-hint">GST bands as of 22 September 2025. Check them with your accountant.</p></div>
+              <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="s-taxrate">Rate %</label><input class="input<%= inv('tax_rate') %>" id="s-taxrate" name="tax_rate" value="<%= val('tax_rate') %>" inputmode="decimal"><p class="field-error"><%= err('tax_rate') %></p></div>
+              <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="s-taxlabel">Tax name</label><input class="input" id="s-taxlabel" name="tax_label" value="<%= val('tax_label') %>"></div>
+            </div>
+          </div>
+          <div class="form-section">
+            <h2 class="form-section__title">Times and shifts</h2>
+            <div class="form-grid">
+              <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="s-in">Check-in from</label><input class="input<%= inv('check_in_time') %>" id="s-in" name="check_in_time" type="time" value="<%= val('check_in_time') %>"><p class="field-error"><%= err('check_in_time') %></p></div>
+              <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="s-out">Check-out by</label><input class="input<%= inv('check_out_time') %>" id="s-out" name="check_out_time" type="time" value="<%= val('check_out_time') %>"><p class="field-error"><%= err('check_out_time') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-tz">Time zone</label>
+                <select class="select<%= inv('timezone') %>" id="s-tz" name="timezone">
+<% for (const tz of timezones) { -%>
+                  <option<%- val('timezone') === tz ? ' selected' : '' %>><%= tz %></option>
+<% } -%>
+                </select><p class="field-error"><%= err('timezone') %></p></div>
+<% for (const [key, label] of [['morning', 'Morning shift'], ['evening', 'Evening shift'], ['night', 'Night audit']]) { const h = (s.shifts && s.shifts[key]) || ['', '']; -%>
+              <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="s-<%= key %>-start"><%= label %> starts</label><input class="input<%= inv(key + '_start') %>" id="s-<%= key %>-start" name="<%= key %>_start" type="time" value="<%= h[0] %>"></div>
+              <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="s-<%= key %>-end"><%= label %> ends</label><input class="input<%= inv(key + '_end') %>" id="s-<%= key %>-end" name="<%= key %>_end" type="time" value="<%= h[1] %>"></div>
+<% } -%>
+            </div>
+          </div>
+          <div class="form-section">
+            <h2 class="form-section__title">Business date and bookings</h2>
+            <div class="form-grid">
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-bdmode">Business date</label>
+                <select class="select" id="s-bdmode" name="business_date_mode">
+                  <option value="auto"<%- val('business_date_mode') === 'auto' ? ' selected' : '' %>>Follow today’s date (hotel time zone)</option>
+                  <option value="fixed"<%- val('business_date_mode') === 'fixed' ? ' selected' : '' %>>Fixed — the night audit moves it on</option>
+                </select></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-bd">Fixed business date</label><input class="input<%= inv('business_date') %>" id="s-bd" name="business_date" type="date" value="<%= val('business_date') %>"><p class="field-error"><%= err('business_date') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-deftype">Room type selected on the booking form</label>
+                <select class="select" id="s-deftype" name="default_room_type">
+<% for (const t of types) { -%>
+                  <option value="<%= t.code %>"<%- val('default_room_type') === t.code ? ' selected' : '' %>><%= t.name %></option>
+<% } -%>
+                </select></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-prefix">Confirmation number prefix</label><input class="input<%= inv('confirmation_prefix') %>" id="s-prefix" name="confirmation_prefix" value="<%= val('confirmation_prefix') || 'HTL' %>"><p class="field-error"><%= err('confirmation_prefix') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-invprefix">Invoice number prefix <span class="field-label__hint">e.g. <%= val('invoice_prefix') || 'INV' %>/26-27/0001</span></label><input class="input<%= inv('invoice_prefix') %>" id="s-invprefix" name="invoice_prefix" value="<%= val('invoice_prefix') || 'INV' %>"><p class="field-error"><%= err('invoice_prefix') %></p></div>
+            </div>
+            <div class="check-row"><label><input type="checkbox" name="demo_mode"<%- s.demo_mode ? ' checked' : '' %>> Demo mode (shows the demo sign-in on the login page, but never on a live server)</label></div>
+          </div>
+          <div class="form-actions"><button class="button button--primary" type="submit">Save settings</button></div>
+        </form>
+<%- include('_bottom') %>

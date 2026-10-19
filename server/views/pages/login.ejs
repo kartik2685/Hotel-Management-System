@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · Frontdesk Hotel Management</title>
+  <meta name="description" content="Staff sign-in for the Frontdesk property management system at <%= hotel.name %>.">
+  <meta name="theme-color" content="#1c1b19">
+  <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-title" content="Frontdesk">
+  <script src="/assets/js/theme-init.js"></script>
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/pages/login.css">
+</head>
+<body class="auth-page" data-page="login">
+<%- include('../partials/sprite') -%>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <div class="auth">
+    <div class="auth__visual">
+      <img src="/assets/img/lobby.jpg" alt="Hotel lobby with marble columns, a patterned armchair and warm lamplight" width="1200" height="800">
+      <div class="auth__visual-inner">
+        <a class="logo logo--on-dark" href="/dashboard" aria-label="Frontdesk, go to dashboard">
+          <span class="logo__mark"><%- icon('cloche') %></span>
+          <span class="logo__word">Frontdesk</span>
+        </a>
+        <figure class="auth__quote">
+          <blockquote><p>Every stay starts at the desk. Make the first two minutes count.</p></blockquote>
+          <figcaption>House standards · <%= hotel.name %></figcaption>
+        </figure>
+        <ul class="auth__stats" aria-label="Tonight at <%= hotel.short %>">
+          <li><strong><%= hotel.rooms %></strong><span>rooms</span></li>
+          <li><strong><%= hotel.occupancy %>%</strong><span>sold tonight</span></li>
+          <li><strong><%= hotel.arrivals %></strong><span>arrivals</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="auth__main">
+      <header class="auth__header">
+        <a class="logo" href="/dashboard" aria-label="Frontdesk, go to dashboard">
+          <span class="logo__mark"><%- icon('cloche') %></span>
+          <span class="logo__word">Frontdesk</span>
+        </a>
+        <button class="icon-button theme-switch js-only" type="button" aria-label="Dark theme" aria-pressed="false" data-theme-toggle>
+          <span class="theme-switch__moon"><%- icon('moon') %></span>
+          <span class="theme-switch__sun"><%- icon('sun') %></span>
+        </button>
+      </header>
+      <main id="main" class="auth__card" tabindex="-1">
+        <p class="kicker"><%= hotel.name %> · Front office</p>
+        <h1 class="auth__title">Sign in to Frontdesk</h1>
+        <p class="auth__lead">Owner, admin or staff: everyone signs in here with their own email. Shared workstations sign out after <%= idleMinutes %> minutes idle.</p>
+        <div class="success-box auth__notice" data-cookie-notice role="alert"<%- locals.cookieBlocked ? '' : ' hidden' %>>
+          <span class="success-box__icon"><%- icon('info') %></span>
+          <div data-cookie-help="frame"<%- locals.cookieBlocked === 'page' ? ' hidden' : '' %>>
+            <p class="success-box__title">Sign in from a new tab</p>
+            <p class="success-box__text">This browser blocks cookies inside the preview panel, and signing in needs one. Open Frontdesk in its own tab and sign in there.</p>
+            <div class="success-box__actions">
+              <a class="button button--primary button--sm" href="<%= loginPath %>" target="_blank" rel="noopener" data-cookie-open>Open in a new tab</a>
+              <button class="button button--secondary button--sm js-only" type="button" data-cookie-copy>Copy address</button>
+            </div>
+            <p class="auth__notice-address">Or copy this address: <span data-cookie-address><%= loginAddress %></span></p>
+            <p class="auth__notice-tip auth__notice-tip--alert" data-cookie-popup-blocked role="status" hidden>This panel can’t open new tabs. Open a new browser tab yourself, paste the address and press Enter.</p>
+            <p class="auth__notice-tip">To sign in inside the panel instead, allow cookies for <span data-cookie-host><%= loginHost %></span> in the browser settings, then reload.</p>
+          </div>
+          <div data-cookie-help="page"<%- locals.cookieBlocked === 'page' ? '' : ' hidden' %>>
+            <p class="success-box__title">Allow cookies to sign in</p>
+            <p class="success-box__text">This browser is blocking cookies for this site, and signing in needs one. Allow cookies for <span data-cookie-host><%= loginHost %></span> in the browser settings, then reload this page.</p>
+          </div>
+        </div>
+        <form class="auth__form" method="post" action="/login" data-login-form novalidate>
+          <input type="hidden" name="_csrf" value="<%= loginToken %>">
+          <input type="hidden" name="next" value="<%= next %>">
+          <div class="form-group">
+            <label class="field-label" for="login-email">Email</label>
+            <div class="icon-input"><%- icon('mail') %><input class="input<%= errors.email ? ' is-invalid' : '' %>" id="login-email" name="email" type="email" autocomplete="username" placeholder="<%= emailHint.signIn %>" required aria-describedby="login-email-err" value="<%= email %>"<%- errors.email ? ' aria-invalid="true"' : '' %>></div>
+            <p class="field-error" id="login-email-err"><%= errors.email || '' %></p>
+          </div>
+          <div class="form-group">
+            <label class="field-label" for="login-password">Password</label>
+            <div class="icon-input icon-input--password"><%- icon('lock') %><input class="input<%= errors.password ? ' is-invalid' : '' %>" id="login-password" name="password" type="password" autocomplete="current-password" minlength="8" required aria-describedby="login-password-err"<%- errors.password ? ' aria-invalid="true"' : '' %>>
+              <button class="password-toggle" type="button" aria-label="Show password" aria-pressed="false" data-password-toggle><span class="password-toggle__show"><%- icon('eye') %></span><span class="password-toggle__hide"><%- icon('eye-off') %></span></button>
+            </div>
+            <p class="field-error" id="login-password-err"><%= errors.password || '' %></p>
+          </div>
+          <div class="form-group">
+            <label class="field-label" for="login-shift">Shift</label>
+            <select class="select" id="login-shift" name="shift">
+<% for (const s of shifts) { -%>
+              <option value="<%= s.value %>"<%- s.value === shift ? ' selected' : '' %>><%= s.label %></option>
+<% } -%>
+            </select>
+          </div>
+          <div class="auth__row">
+            <div class="checkbox">
+              <input class="checkbox__input" type="checkbox" id="login-remember" name="remember"<%- remember ? ' checked' : '' %>>
+              <label class="checkbox__label" for="login-remember">Keep me signed in on this workstation</label>
+            </div>
+            <button class="text-button" type="button" aria-expanded="<%= locals.resetSent ? 'true' : 'false' %>" aria-controls="reset-panel" data-reset-toggle>Forgot password?</button>
+          </div>
+          <button class="button button--primary button--lg button--block" type="submit">Sign in</button>
+<% if (demoHint) { -%>
+          <p class="auth__hint"><%- icon('info') %><%= demoHint %></p>
+<% } -%>
+        </form>
+        <div class="reset-box" id="reset-panel" data-reset-panel<%- locals.resetSent ? '' : ' hidden' %>>
+          <h2 class="reset-box__title">Reset your password</h2>
+          <p>Enter the email of your account and we will show you the next step.</p>
+          <form class="reset-box__form" method="post" action="/password/forgot" data-reset-form novalidate>
+            <input type="hidden" name="_csrf" value="<%= loginToken %>">
+            <label class="sr-only" for="reset-email">Email</label>
+            <input class="input" id="reset-email" name="email" type="email" placeholder="<%= emailHint.reset %>" required aria-describedby="reset-email-err">
+            <button class="button button--secondary" type="submit">Continue</button>
+          </form>
+          <p class="field-error" id="reset-email-err"></p>
+          <p class="reset-box__done" data-reset-done role="status"<%- locals.resetSent ? '' : ' hidden' %>>If that email belongs to a staff account, a link to choose a new password is on its way. It works once, for one hour.<%= locals.mailReady ? '' : ' (Email isn’t set up yet: an administrator can find the link in Admin panel → Emails.)' %></p>
+        </div>
+
+        <div class="success-box auth__success" data-login-success<%- locals.notice ? '' : ' hidden' %> tabindex="-1" role="status">
+          <span class="success-box__icon"><%- icon('check') %></span>
+          <div>
+            <p class="success-box__title"><%= locals.notice ? notice.title : 'Signed in' %></p>
+            <p class="success-box__text"><%= locals.notice ? notice.text : 'Opening the dashboard…' %></p>
+          </div>
+        </div>
+      </main>
+
+      <footer class="site-footer site-footer--centered">
+        <p>© <%= hotel.name %> · Frontdesk property management</p>
+        <p>Hotel management, made simple with Frontdesk.</p>
+      </footer>
+    </div>
+  </div>
+
+  <script src="/assets/js/core.js"></script>
+  <script src="/assets/js/pages/login.js"></script>
+</body>
+</html>

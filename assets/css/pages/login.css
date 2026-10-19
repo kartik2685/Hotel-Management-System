@@ -1,0 +1,121 @@
+/* =====================================================================
+   Frontdesk HMS · pages/login.css
+   Split sign-in screen: lobby photo on the left, form on the right
+   ===================================================================== */
+
+.auth { display: grid; min-height: 100vh; }
+@media (min-width: 992px) { .auth { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); } }
+
+/* ---------------------------------------------------------------------
+   Photo panel
+   --------------------------------------------------------------------- */
+.auth__visual { position: relative; overflow: hidden; min-height: 190px; background: var(--sidebar); }
+.auth__visual img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.auth__visual::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(18, 16, 13, .5) 0%, rgba(18, 16, 13, .1) 30%, rgba(18, 16, 13, .72) 62%, rgba(18, 16, 13, .93) 100%);
+}
+.auth__visual-inner {
+  position: relative;
+  z-index: 1;
+  display: none;
+  height: 100%;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 40px 48px;
+  color: #f4ecdd;
+}
+@media (min-width: 992px) {
+  .auth__visual { min-height: 100vh; position: sticky; top: 0; height: 100vh; }
+  .auth__visual-inner { display: flex; }
+}
+.auth__quote { margin: auto 0 0; max-width: 470px; }
+.auth__quote blockquote { margin: 0 0 12px; }
+.auth__quote p { margin: 0; font-size: clamp(2rem, 1.4rem + 1.5vw, 2.7rem); line-height: 1.08; }
+.auth__quote figcaption {
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--sidebar-accent);
+}
+.auth__stats { list-style: none; margin: 0; padding: 20px 0 0; display: flex; gap: 32px; border-top: 1px solid rgba(255, 255, 255, .18); }
+.auth__stats strong { display: block; font-size: 1.5rem; font-weight: 800; font-variant-numeric: proportional-nums; }
+.auth__stats span { font-size: .75rem; color: #cfc5b3; }
+
+/* ---------------------------------------------------------------------
+   Form side
+   --------------------------------------------------------------------- */
+.auth__main { display: flex; flex-direction: column; min-height: 100%; background: var(--bg); }
+@media (min-width: 992px) { .auth__main { min-height: 100vh; } }
+.auth__header { display: flex; align-items: center; justify-content: space-between; padding: 20px 20px 0; }
+@media (min-width: 992px) {
+  .auth__header { justify-content: flex-end; padding: 24px 32px 0; }
+  .auth__header .logo { display: none; } /* the photo panel shows the logo */
+}
+.auth__card {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 32px 20px 40px;
+}
+.auth__card:focus { outline: 0; }
+.auth__title { margin: 0; font-size: 2.6rem; line-height: 1.02; }
+.auth__lead { margin: 10px 0 28px; color: var(--text-2); font-size: .9rem; }
+.auth__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: 4px 0 22px; }
+.auth__row .checkbox { margin: 0; }
+.auth__row .checkbox__label { font-size: .82rem; color: var(--text-2); }
+.auth__row .text-button { font-size: .82rem; }
+
+/* Password field with a show/hide button inside it */
+.icon-input--password .input { padding-right: 46px; }
+.password-toggle {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 38px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+}
+.password-toggle:hover { color: var(--text); background: var(--surface-3); }
+.password-toggle .icon { width: 18px; height: 18px; }
+.password-toggle__hide { display: none; }
+.password-toggle[aria-pressed="true"] .password-toggle__show { display: none; }
+.password-toggle[aria-pressed="true"] .password-toggle__hide { display: inline; }
+.password-toggle__show, .password-toggle__hide { line-height: 0; }
+
+.auth__hint { display: flex; gap: 8px; align-items: flex-start; margin: 16px 0 0; font-size: .76rem; color: var(--muted); }
+.auth__hint .icon { width: 16px; height: 16px; margin-top: 1px; }
+
+/* "Forgot password?" panel */
+.reset-box { margin-top: 22px; padding: 18px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); }
+.reset-box__title { margin: 0 0 4px; font-size: 1rem; font-weight: 800; font-family: var(--font-sans); }
+.reset-box p { font-size: .82rem; color: var(--text-2); margin-bottom: 12px; }
+.reset-box__form { display: flex; gap: 8px; }
+.reset-box__form .input { flex: 1; min-width: 0; }
+.reset-box .reset-box__done { margin: 12px 0 0; color: var(--clean-text); font-weight: 600; }
+
+.auth__success { margin-top: 18px; }
+
+/* Only shown when the browser blocks the sign-in cookie, e.g. inside an embedded preview panel */
+.auth__notice { margin: 0 0 24px; background: var(--dirty-soft); border-color: color-mix(in srgb, var(--dirty) 40%, transparent); }
+.auth__notice .success-box__icon { background: var(--dirty); }
+.auth__notice-address { margin: 10px 0 0; font-size: .78rem; color: var(--text-2); overflow-wrap: anywhere; }
+.auth__notice-address span { color: var(--text); font-weight: 700; user-select: all; }
+.auth__notice-tip { margin: 8px 0 0; font-size: .78rem; color: var(--text-2); overflow-wrap: anywhere; }
+.auth__notice-tip--alert { color: var(--dirty-text); font-weight: 700; }
+
+.site-footer--centered { border-top: 0; justify-content: center; text-align: center; }

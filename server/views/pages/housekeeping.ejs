@@ -1,0 +1,98 @@
+<%- include('../partials/shell-top') %>
+        <div class="page-header">
+          <div>
+            <p class="kicker"><%= hk.kicker %></p>
+            <h1 class="page-header__title">Housekeeping</h1>
+            <p class="page-header__lead">Tick a task when the room is done. Rush cleans are rooms with guests arriving today.</p>
+          </div>
+          <div class="page-header__actions">
+            <button class="button button--secondary" type="button" data-print><%- icon('printer') %>Print task sheets</button>
+            <a class="button button--primary" href="/rooms"><%- icon('bed') %>Room board</a>
+          </div>
+        </div>
+        <div class="hk-overview">
+          <section class="card hk-progress" aria-labelledby="hkp-title">
+            <div class="card__head">
+              <div>
+                <h2 class="card__title" id="hkp-title">Shift progress</h2>
+                <p class="card__subtitle"><%= hk.shiftHours %> · <%= fmt.plural(hk.team.length, 'attendant', 'attendants') %></p>
+              </div>
+            </div>
+            <div class="hk-progress__body">
+              <div class="donut donut--lg" style="--p:<%= hk.percent %>" role="progressbar" aria-valuemin="0" aria-valuemax="<%= hk.total %>" aria-valuenow="<%= hk.done %>" aria-valuetext="<%= hk.done %> of <%= hk.total %> tasks done" aria-label="Shift progress" data-shift-ring>
+                <span class="donut__label"><strong data-shift-percent><%= hk.percent %>%</strong><small><span data-shift-done><%= hk.done %></span> of <%= hk.total %></small></span>
+              </div>
+              <ul class="task-kinds">
+<% for (const k of hk.kinds) { -%>
+                <li data-kind-row="<%= k.kind %>"><span class="task-kinds__name"><%= k.label %></span><span class="task-kinds__num"><span data-kind-done><%= k.done %></span> / <%= k.total %></span><span class="progress progress--thin" aria-hidden="true"><span class="progress__fill" style="width:<%= k.pct %>%"></span></span></li>
+<% } -%>
+              </ul>
+            </div>
+          </section>
+          <section class="card hk-team" aria-labelledby="hkt-title">
+            <div class="card__head">
+              <div>
+                <h2 class="card__title" id="hkt-title">Attendants</h2>
+                <p class="card__subtitle">Tasks done and minutes left</p>
+              </div>
+            </div>
+            <ul class="team-list">
+<% for (const a of hk.team) { -%>
+              <li data-team="<%= a.code %>">
+                <span class="avatar avatar--sm<%= a.avatar_tone ? ' avatar--' + a.avatar_tone : '' %>" aria-hidden="true"><%= a.initials %></span>
+                <span class="team-list__text"><strong><%= a.name %></strong><small><%= a.area || (a.floor ? 'Floor ' + a.floor : '') %></small></span>
+                <span class="team-list__num"><span data-team-done><%= a.done %></span>/<%= a.total %></span>
+                <span class="team-list__left"><span data-team-left><%= a.left %></span> min</span>
+                <span class="progress progress--thin team-list__meter" aria-hidden="true"><span class="progress__fill" style="width:<%= a.pct %>%"></span></span>
+              </li>
+<% } -%>
+            </ul>
+          </section>
+        </div>
+        <div class="toolbar">
+          <div class="field field--inline">
+            <label class="field-label" for="hk-who">Attendant</label>
+            <select class="select select--sm" id="hk-who" data-task-attendant>
+              <option value="">Everyone</option>
+<% for (const a of hk.attendants) { -%>
+              <option value="<%= a.code %>"><%= a.name %></option>
+<% } -%>
+            </select>
+          </div>
+          <div class="toggle">
+            <input class="toggle__input" type="checkbox" role="switch" id="hk-hide" data-task-hide-done>
+            <label class="toggle__label" for="hk-hide">Hide completed</label>
+          </div>
+          <p class="result-count" aria-live="polite" data-task-count><%= fmt.plural(hk.open, 'task', 'tasks') %> open</p>
+        </div>
+        <div class="hk-floors">
+<% for (const floor of hk.floors) { -%>
+          <section class="card hk-floor" aria-labelledby="hkf-<%= floor.number %>" data-task-floor>
+            <div class="card__head">
+              <div>
+                <h2 class="card__title" id="hkf-<%= floor.number %>">Floor <%= floor.number %></h2>
+                <p class="card__subtitle"><%= floor.subtitle %></p>
+              </div>
+              <div class="floor-progress">
+                <span class="floor-progress__num"><span data-floor-done><%= floor.done %></span> of <%= floor.total %></span>
+                <span class="progress" role="progressbar" aria-label="Floor <%= floor.number %> progress" aria-valuemin="0" aria-valuemax="<%= floor.total %>" aria-valuenow="<%= floor.done %>" data-floor-meter><span class="progress__fill" style="width:<%= floor.pct %>%"></span></span>
+              </div>
+            </div>
+            <ul class="task-list">
+<% for (const t of floor.tasks) { -%>
+              <li class="task<%= t.done ? ' is-done' : '' %>" data-attendant="<%= t.attendant_code || '' %>" data-kind="<%= t.kind %>" data-task-id="<%= t.id %>">
+                <input class="task__check" type="checkbox" id="<%= t.domId %>"<%- t.done ? ' checked' : '' %>>
+                <label class="task__label" for="<%= t.domId %>">
+                  <span class="task__room"><%= t.room_number %></span>
+                  <span class="task__what"><strong><%= t.title %></strong><small><%= t.type_name %> · <%= t.minutes %> min</small></span>
+                </label>
+                <span class="task__tags"><% for (const tag of t.tags) { %><span class="<%= tag.cls %>"><%= tag.text %></span><% } %></span>
+                <span class="avatar avatar--xs" role="img" aria-label="<%= t.attendant_name ? 'Assigned to ' + t.attendant_name : 'Not assigned' %>" title="<%= t.attendant_name || 'Not assigned' %>"><%= t.initials %></span>
+              </li>
+<% } -%>
+            </ul>
+            <p class="empty-state empty-state--inline" data-floor-empty hidden>Nothing left here for this filter.</p>
+          </section>
+<% } -%>
+        </div>
+<%- include('../partials/shell-bottom') %>

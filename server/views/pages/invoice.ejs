@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Invoice <%= d.number %> · <%= d.hotel.name %></title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/pages/print.css">
+</head>
+<body class="print-page">
+  <div class="print-toolbar<%= guestCopy ? ' print-toolbar--end' : '' %>">
+<% if (!guestCopy) { -%>
+    <a class="button button--secondary" href="/reservations/<%= d.stay.confirmation %>">Back to the booking</a>
+<% } -%>
+    <span class="print-toolbar__actions">
+<% if (whatsapp) { -%>
+      <a class="button button--secondary" href="<%= whatsapp %>" target="_blank" rel="noopener">Send on WhatsApp</a>
+<% } -%>
+      <button class="button button--primary" type="button" data-print>Print or save as PDF</button>
+    </span>
+  </div>
+  <article class="sheet">
+    <header class="sheet__head">
+      <div class="sheet__hotel">
+        <h1><%= d.hotel.name %></h1>
+        <% if (d.hotel.address) { %><p><%= d.hotel.address %></p><% } %>
+        <p class="sheet__muted"><%= [d.hotel.phone, d.hotel.email].filter(Boolean).join(' · ') %></p>
+        <% if (d.hotel.taxId) { %><p><strong><%= d.gst ? 'GSTIN' : 'Tax number' %>:</strong> <%= d.hotel.taxId %><%= d.hotel.state ? ' · State: ' + d.hotel.state : '' %></p><% } %>
+      </div>
+      <div class="sheet__meta">
+        <p><strong><%= d.gst ? 'Tax invoice' : 'Invoice' %></strong><% if (inv.status === 'cancelled') { %><span class="sheet__stamp">Cancelled</span><% } %></p>
+        <p>No. <strong><%= d.number %></strong></p>
+        <p>Date: <%= fmt.formatDay(d.date) %> <%= d.date.slice(0, 4) %></p>
+        <p class="sheet__muted">Booking <%= d.stay.confirmation %></p>
+      </div>
+    </header>
+    <div class="sheet__cols">
+      <section>
+        <h2>Billed to</h2>
+        <p><strong><%= d.billTo.name %></strong></p>
+        <% if (d.billTo.gstin) { %><p>GSTIN: <%= d.billTo.gstin %></p><% } %>
+        <% if (d.billTo.address) { %><p><%= d.billTo.address %></p><% } %>
+        <p class="sheet__muted"><%= [d.guest.email, d.guest.phone].filter(Boolean).join(' · ') %></p>
+        <% if (d.gst) { %><p class="sheet__muted">Supply: <%= d.interstate ? 'inter-state (IGST)' : 'intra-state (CGST + SGST)' %></p><% } %>
+      </section>
+      <section>
+        <h2>Stay</h2>
+        <p><strong><%= d.guest.name %></strong> · <%= d.stay.guests %></p>
+        <p><%= d.stay.type %><%= d.stay.room ? ', room ' + d.stay.room : '' %><%= d.stay.plan ? ' · ' + d.stay.plan : '' %></p>
+        <p><%= fmt.formatDay(d.stay.arrival) %> → <%= fmt.formatDay(d.stay.departure) %> · <%= fmt.plural(d.stay.nights, 'night', 'nights') %></p>
+      </section>
+    </div>
+    <h2>Charges</h2>
+    <table>
+      <thead><tr><th>Description</th><% if (d.gst) { %><th>SAC</th><% } %><th class="num">Amount</th></tr></thead>
+      <tbody>
+<% for (const l of d.lines) { -%>
+        <tr><td><%= l.text %><%= l.taxed ? '' : ' (no tax)' %></td><% if (d.gst) { %><td><%= l.sac %></td><% } %><td class="num"><%= fmt.money(l.amount) %></td></tr>
+<% } -%>
+      </tbody>
+      <tfoot>
+<% const span = d.gst ? 2 : 1; -%>
+        <tr><td colspan="<%= span %>" class="num">Taxable value</td><td class="num"><%= fmt.money(d.taxable) %></td></tr>
+<% if (d.taxes && d.taxes.length > 1) { -%>
+<%   for (const t of d.taxes) { const on = ' on ' + fmt.money(t.taxable); -%>
+<%     if (d.gst && d.interstate) { -%>
+        <tr><td colspan="<%= span %>" class="num">IGST <%= t.rate %>%<%= on %></td><td class="num"><%= fmt.money(t.igst) %></td></tr>
+<%     } else if (d.gst) { -%>
+        <tr><td colspan="<%= span %>" class="num">CGST <%= t.rate / 2 %>%<%= on %></td><td class="num"><%= fmt.money(t.cgst) %></td></tr>
+        <tr><td colspan="<%= span %>" class="num">SGST <%= t.rate / 2 %>%<%= on %></td><td class="num"><%= fmt.money(t.sgst) %></td></tr>
+<%     } else { -%>
+        <tr><td colspan="<%= span %>" class="num"><%= d.taxLabel %> <%= t.rate %>%<%= on %></td><td class="num"><%= fmt.money(t.tax) %></td></tr>
+<%     } -%>
+<%   } -%>
+<% } else if (d.gst && d.interstate) { -%>
+        <tr><td colspan="<%= span %>" class="num">IGST <%= d.percent %>%</td><td class="num"><%= fmt.money(d.igst) %></td></tr>
+<% } else if (d.gst) { -%>
+        <tr><td colspan="<%= span %>" class="num">CGST <%= d.percent / 2 %>%</td><td class="num"><%= fmt.money(d.cgst) %></td></tr>
+        <tr><td colspan="<%= span %>" class="num">SGST <%= d.percent / 2 %>%</td><td class="num"><%= fmt.money(d.sgst) %></td></tr>
+<% } else { -%>
+        <tr><td colspan="<%= span %>" class="num"><%= d.taxLabel %> <%= d.percent %>%</td><td class="num"><%= fmt.money(d.tax) %></td></tr>
+<% } -%>
+        <tr class="total"><td colspan="<%= span %>" class="num">Total</td><td class="num"><%= fmt.money(d.total) %></td></tr>
+      </tfoot>
+    </table>
+    <p class="sheet__words"><%= d.words %></p>
+    <h2>Payments</h2>
+    <table>
+      <tbody>
+<% for (const p of d.payments) { -%>
+        <tr><td><%= p.when %></td><td><%= p.method %><%= p.reference ? ' · ' + p.reference : '' %></td><td class="num"><%= fmt.money(p.amount) %></td></tr>
+<% } -%>
+<% if (!d.payments.length) { -%>
+        <tr><td colspan="3" class="sheet__muted">No payments yet.</td></tr>
+<% } -%>
+      </tbody>
+      <tfoot><tr class="total"><td colspan="2" class="num"><%= d.balance > 0 ? 'Balance due' : 'Balance' %></td><td class="num"><%= fmt.money(Math.max(0, d.balance)) %></td></tr></tfoot>
+    </table>
+    <div class="sheet__sign"><p>Guest signature</p><p>For <%= d.hotel.name %> · authorised signatory</p></div>
+    <p class="sheet__foot">Issued <%= inv.issued_at %><%= inv.issued_by_name ? ' by ' + inv.issued_by_name : '' %>. <%= d.gst ? 'Accommodation service, SAC 996311. Please check GST details with your accountant.' : '' %></p>
+  </article>
+  <script src="/assets/js/pages/print.js"></script>
+</body>
+</html>

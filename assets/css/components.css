@@ -1,0 +1,599 @@
+/* =====================================================================
+   Frontdesk HMS · components.css
+   ---------------------------------------------------------------------
+   Building blocks shared by several pages:
+   1. Page header           6. Progress bars, donut, segmented control
+   2. Buttons and links     7. Lists: legend, empty state, result count
+   3. Cards                 8. Forms
+   4. Avatars and chips     9. Tables
+   5. Status indicators    10. Success message, toolbar, print
+   ===================================================================== */
+
+/* ---------------------------------------------------------------------
+   1. Page header
+   --------------------------------------------------------------------- */
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 24px;
+  margin-bottom: 24px;
+}
+.kicker {
+  margin: 0 0 6px;
+  font-size: .7rem;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--brass-strong);
+}
+.page-header__title {
+  margin: 0;
+  font-size: clamp(2.1rem, 1.7rem + 1.3vw, 2.75rem);
+  line-height: 1.02;
+  letter-spacing: -.005em;
+}
+.page-header__lead { margin: 10px 0 0; max-width: 62ch; color: var(--text-2); }
+.page-header__actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* ---------------------------------------------------------------------
+   2. Buttons and links
+      Colours come from custom properties so variants only swap values.
+   --------------------------------------------------------------------- */
+.button {
+  --btn-px: 1rem;
+  --btn-py: .6rem;
+  --btn-font-size: .85rem;
+  --btn-radius: 10px;
+  --btn-color: var(--text);
+  --btn-bg: transparent;
+  --btn-border: transparent;
+  --btn-hover-border: transparent;
+  --btn-disabled-opacity: .65;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: var(--btn-py) var(--btn-px);
+  font-size: var(--btn-font-size);
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: .005em;
+  color: var(--btn-color);
+  text-align: center;
+  text-decoration: none;
+  vertical-align: middle;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  border: 1px solid var(--btn-border);
+  border-radius: var(--btn-radius);
+  background-color: var(--btn-bg);
+  transition: color .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+}
+.button .icon { width: 18px; height: 18px; }
+.button:hover {
+  color: var(--btn-hover-color);
+  background-color: var(--btn-hover-bg);
+  border-color: var(--btn-hover-border);
+}
+.button:focus-visible {
+  color: var(--btn-hover-color);
+  background-color: var(--btn-hover-bg);
+  border-color: var(--btn-hover-border);
+  outline: 0;
+  box-shadow: var(--focus-ring);
+}
+.button:active {
+  color: var(--btn-active-color);
+  background-color: var(--btn-active-bg);
+  border-color: var(--btn-active-border);
+}
+.button:disabled {
+  color: var(--btn-disabled-color);
+  pointer-events: none;
+  background-color: var(--btn-disabled-bg);
+  border-color: var(--btn-disabled-border);
+  opacity: var(--btn-disabled-opacity);
+}
+.button--sm { --btn-px: .75rem; --btn-py: .38rem; --btn-font-size: .78rem; --btn-radius: 8px; }
+.button--lg { --btn-px: 1.25rem; --btn-py: .8rem; --btn-font-size: .95rem; --btn-radius: 12px; }
+.button--block { width: 100%; }
+
+/* Primary: charcoal in light mode, ivory in dark mode */
+.button--primary {
+  --btn-bg: var(--ink);             --btn-color: var(--on-ink);        --btn-border: var(--ink);
+  --btn-hover-bg: var(--ink-hover); --btn-hover-color: var(--on-ink);  --btn-hover-border: var(--ink-hover);
+  --btn-active-bg: var(--ink);      --btn-active-color: var(--on-ink); --btn-active-border: var(--ink);
+  --btn-disabled-bg: var(--surface-3); --btn-disabled-color: var(--muted); --btn-disabled-border: var(--line-strong);
+  --btn-disabled-opacity: 1;
+}
+/* Secondary: outlined on the card surface */
+.button--secondary {
+  --btn-bg: var(--surface);           --btn-color: var(--text);        --btn-border: var(--line-strong);
+  --btn-hover-bg: var(--surface-2);   --btn-hover-color: var(--text);  --btn-hover-border: var(--brass-line);
+  --btn-active-bg: var(--surface-3);  --btn-active-color: var(--text); --btn-active-border: var(--brass-line);
+  --btn-disabled-bg: var(--surface-2); --btn-disabled-color: var(--muted); --btn-disabled-border: var(--line);
+  --btn-disabled-opacity: 1;
+}
+
+/* A button that looks like an underlined link */
+.text-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brass-strong);
+  font-weight: 700;
+  font-size: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+.text-button:hover { color: var(--text); }
+
+/* "Room board >" style link with a nudging arrow */
+.arrow-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--brass-strong);
+  white-space: nowrap;
+}
+.arrow-link .icon { width: 16px; height: 16px; transition: transform .15s var(--ease); }
+.arrow-link:hover .icon { transform: translateX(2px); }
+
+/* ---------------------------------------------------------------------
+   3. Cards
+   --------------------------------------------------------------------- */
+.card {
+  min-width: 0;
+  padding: 18px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+@media (min-width: 576px) { .card { padding: 22px 24px; } }
+.card--flush { padding: 0 !important; overflow: hidden; }
+.card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-bottom: 18px;
+}
+.card__title { margin: 0; font-size: 1.45rem; line-height: 1.1; }
+.card__subtitle { margin: 4px 0 0; font-size: .8rem; color: var(--muted); }
+
+/* ---------------------------------------------------------------------
+   4. Avatars (initials) and chips (small labels)
+   --------------------------------------------------------------------- */
+.avatar {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: inline-grid;
+  place-items: center;
+  background: var(--surface-3);
+  color: var(--text-2);
+  border: 1px solid var(--line);
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .03em;
+  line-height: 1;
+}
+.avatar--gold { background: var(--brass-grad); color: #1b1a17; border-color: transparent; }
+.avatar--xs { width: 26px; height: 26px; font-size: .6rem; }
+.avatar--sm { width: 34px; height: 34px; font-size: .68rem; }
+.avatar--lg { width: 52px; height: 52px; font-size: .95rem; }
+.avatar--xl { width: 72px; height: 72px; font-size: 1.3rem; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+  line-height: 1.6;
+}
+.chip--gold { background: var(--brass-soft); border-color: var(--brass-line); color: var(--brass-strong); }
+.chip--rose { background: var(--rose-soft); border-color: transparent; color: var(--rose-text); }
+.chip--blue { background: var(--occupied-soft); border-color: transparent; color: var(--occupied-text); }
+.chip--amber { background: var(--dirty-soft); border-color: transparent; color: var(--dirty-text); }
+
+/* ---------------------------------------------------------------------
+   5. Status indicators
+   --------------------------------------------------------------------- */
+
+/* Booking status pill: confirmed, tentative, checked in/out, cancelled */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  padding: 2px 10px 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: .74rem;
+  font-weight: 700;
+}
+.status-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.status-pill--confirmed { background: var(--brass-soft); border-color: var(--brass-line); color: var(--brass-strong); }
+.status-pill--tentative { background: transparent; border: 1px dashed var(--brass-line); color: var(--text-2); }
+.status-pill--checked-in { background: var(--occupied-soft); color: var(--occupied-text); }
+.status-pill--checked-out { background: var(--surface-3); color: var(--muted); }
+.status-pill--cancelled { background: var(--ooo-soft); color: var(--ooo-text); }
+
+/* Matching dot used in summaries */
+.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.status-dot--confirmed { background: var(--brass); }
+.status-dot--tentative { background: transparent; box-shadow: inset 0 0 0 1.5px var(--brass); }
+.status-dot--checked-in { background: var(--occupied); }
+.status-dot--checked-out { background: var(--line-strong); }
+.status-dot--cancelled { background: var(--ooo); }
+
+/* Room readiness for an arriving guest */
+.room-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: .74rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.room-state .icon { width: 14px; height: 14px; }
+.room-state--ready { background: var(--clean-soft); color: var(--clean-text); }
+.room-state--dirty { background: var(--dirty-soft); color: var(--dirty-text); }
+.room-state--in { background: var(--occupied-soft); color: var(--occupied-text); }
+
+/* Room status tones. Any element can pick one up; children read
+   --tone (solid), --tone-soft (wash) and --tone-text (readable text). */
+.tone-occupied { --tone: var(--occupied); --tone-soft: var(--occupied-soft); --tone-text: var(--occupied-text); }
+.tone-clean    { --tone: var(--clean);    --tone-soft: var(--clean-soft);    --tone-text: var(--clean-text); }
+.tone-dirty    { --tone: var(--dirty);    --tone-soft: var(--dirty-soft);    --tone-text: var(--dirty-text); }
+.tone-ooo      { --tone: var(--ooo);      --tone-soft: var(--ooo-soft);      --tone-text: var(--ooo-text); }
+
+/* Rounded square holding a status icon */
+.status-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: inline-grid;
+  place-items: center;
+  background: var(--tone-soft);
+  color: var(--tone-text);
+  flex-shrink: 0;
+}
+.status-icon .icon { width: 16px; height: 16px; stroke-width: 2; }
+
+/* ---------------------------------------------------------------------
+   6. Progress bar, donut, segmented control
+   --------------------------------------------------------------------- */
+.progress { display: block; height: 8px; border-radius: 999px; background: var(--brass-soft); overflow: hidden; }
+.progress__fill { display: block; height: 100%; border-radius: inherit; background: var(--brass); transition: width .4s var(--ease); }
+.progress--thin { height: 5px; }
+.progress--dark { background: var(--surface-3); }
+.progress--dark .progress__fill { background: var(--text-2); }
+
+/* Donut chart: set --p (0-100) inline, e.g. style="--p:47" */
+.donut {
+  --p: 0;
+  --size: 58px;
+  --thick: 7px;
+  position: relative;
+  flex-shrink: 0;
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(var(--brass) calc(var(--p) * 1%), var(--brass-soft) 0);
+}
+.donut::before { content: ""; position: absolute; inset: var(--thick); border-radius: 50%; background: var(--surface-2); }
+.donut__label { position: relative; font-size: .78rem; font-weight: 800; }
+.donut--lg { --size: 152px; --thick: 13px; }
+.donut--lg::before { background: var(--surface); }
+.donut--lg .donut__label { display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
+.donut--lg strong { font-size: 2.1rem; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: proportional-nums; }
+.donut--lg small { font-size: .78rem; color: var(--muted); font-weight: 600; }
+
+/* Segmented control: a row of toggle buttons using aria-pressed */
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 11px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.segmented button {
+  border: 0;
+  background: transparent;
+  color: var(--text-2);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: .78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background-color .15s var(--ease), color .15s var(--ease);
+}
+.segmented button:hover { color: var(--text); }
+.segmented button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .08), 0 0 0 1px var(--line);
+}
+.segmented--full { display: flex; }
+.segmented--full button { flex: 1; padding: 6px 8px; }
+
+/* ---------------------------------------------------------------------
+   7. Legend, empty state, result count
+   --------------------------------------------------------------------- */
+.chart-legend {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: .78rem;
+  color: var(--text-2);
+}
+.chart-legend li { display: inline-flex; align-items: center; gap: 8px; }
+
+.empty-state { margin: 0; padding: 28px 20px; text-align: center; color: var(--muted); font-size: .875rem; }
+.empty-state--inline { padding: 14px 0 0; text-align: left; }
+.result-count { margin: 0; padding: 12px 20px 0; font-size: .78rem; color: var(--muted); }
+
+/* ---------------------------------------------------------------------
+   8. Forms
+   --------------------------------------------------------------------- */
+.form-group { margin-bottom: 1rem; }
+.field-label { display: block; margin-bottom: 6px; font-size: .78rem; font-weight: 700; color: var(--text-2); }
+.field-label--spaced { margin-top: 1rem; }
+.field-label__hint { font-weight: 500; color: var(--muted); font-size: .92em; }
+
+/* Text inputs, textareas and selects */
+.input,
+.select {
+  display: block;
+  width: 100%;
+  padding: .56rem .8rem;
+  font-size: .875rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--text);
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+}
+.input { background-clip: padding-box; }
+.select {
+  padding-right: 2.25rem;
+  background-image: var(--select-caret);
+  background-repeat: no-repeat;
+  background-position: right .75rem center;
+  background-size: 16px 12px;
+}
+textarea.input { min-height: calc(1.5em + .75rem + 2px); }
+.input::placeholder { color: var(--muted); opacity: 1; }
+.input::-webkit-date-and-time-value { min-width: 85px; height: 1.5em; margin: 0; }
+.input::-webkit-datetime-edit { display: block; padding: 0; }
+.input:disabled, .select:disabled { background-color: var(--surface-2); opacity: 1; }
+.input--sm, .select--sm { font-size: .8rem; padding-top: .36rem; padding-bottom: .36rem; border-radius: 8px; }
+.input--sm { min-height: calc(1.5em + .5rem + 2px); }
+.input:focus,
+.select:focus {
+  color: var(--text);
+  background-color: var(--surface);
+  border-color: var(--brass);
+  outline: 0;
+  box-shadow: var(--focus-ring);
+}
+
+/* Validation */
+.input.is-invalid, .select.is-invalid { border-color: var(--ooo); background-image: none; padding-right: .8rem; }
+.select.is-invalid { padding-right: 4.125rem; }
+.input.is-invalid:focus { border-color: var(--invalid-focus); box-shadow: 0 0 0 3px rgba(166, 61, 59, .22); }
+.select.is-invalid:focus { border-color: var(--invalid-focus); box-shadow: 0 0 0 .25rem rgba(220, 53, 69, .25); }
+.field-error { margin: 5px 0 0; font-size: .76rem; font-weight: 600; color: var(--ooo-text); }
+.field-error:empty { display: none; }
+
+/* Custom checkbox ("Keep me signed in") and switch ("Hide completed") */
+.checkbox { display: block; min-height: 1.5rem; padding-left: 1.5em; margin-bottom: .125rem; }
+.checkbox__input,
+.toggle__input {
+  flex-shrink: 0;
+  width: 1em;
+  height: 1em;
+  margin-top: .25em;
+  vertical-align: top;
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: var(--surface);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  border: 1px solid var(--line-strong);
+  border-radius: .25em;
+  print-color-adjust: exact;
+}
+.checkbox__input { float: left; margin-left: -1.5em; }
+.checkbox__input:active, .toggle__input:active { filter: brightness(90%); }
+.checkbox__input:checked, .toggle__input:checked { background-color: var(--ink); border-color: var(--ink); }
+.checkbox__input:checked { background-image: var(--check-tick); }
+.checkbox__input:focus, .toggle__input:focus { border-color: var(--brass); outline: 0; box-shadow: var(--focus-ring); }
+
+.toggle { display: inline-flex; align-items: center; gap: 10px; margin: 0; }
+.toggle__input {
+  width: 2.3em;
+  height: 1.25em;
+  margin: 0;
+  cursor: pointer;
+  background-image: var(--switch-knob);
+  background-position: left center;
+  border-radius: 2em;
+  transition: background-position .15s ease-in-out;
+}
+.toggle__input:focus { background-image: var(--switch-knob-focus); }
+.toggle__input:checked { background-position: right center; background-image: var(--switch-knob-on); }
+.toggle__label { font-size: .82rem; font-weight: 700; color: var(--text-2); cursor: pointer; }
+
+/* Input with a leading icon */
+.icon-input { position: relative; }
+.icon-input > .icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 17px;
+  height: 17px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.icon-input > .input { padding-left: 38px; }
+.icon-input > .input--sm { padding-left: 34px; }
+
+/* Label beside its control instead of above it */
+.field--inline { display: flex; align-items: center; gap: 8px; }
+.field--inline > .field-label { margin: 0; white-space: nowrap; font-size: .78rem; }
+
+/* 12-column field grid used by the booking form */
+.form-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 1rem; }
+.form-grid__col { grid-column: span 12; }
+.form-grid__col--half { grid-column: span 6; }
+.form-grid__col--narrow { grid-column: span 6; }
+@media (min-width: 576px) {
+  .form-grid__col--wide { grid-column: span 6; }
+  .form-grid__col--narrow { grid-column: span 3; }
+}
+/* Fields side by side keep their boxes on one line, even when one label wraps onto two lines:
+   every field (label, box, message) shares the grid's rows. The 1rem between rows of fields moves
+   from row-gap into each field's bottom padding, and the last row's 1rem is given back below. */
+@supports (grid-template-rows: subgrid) {
+  .form-grid { row-gap: 0; margin-bottom: -1rem; }
+  .form-grid__col { display: grid; grid-row: span 3; grid-template-rows: subgrid; align-items: start; padding-bottom: 1rem; }
+}
+
+/* ---------------------------------------------------------------------
+   9. Tables
+   --------------------------------------------------------------------- */
+.table-scroll { overflow-x: auto; }
+.table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .85rem; }
+.table th {
+  padding: 10px 14px;
+  text-align: left;
+  white-space: nowrap;
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+}
+.table tbody th { text-transform: none; letter-spacing: 0; font-size: .85rem; font-weight: 700; color: var(--text); background: transparent; }
+.table td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.table tbody tr:last-child td, .table tbody tr:last-child th { border-bottom: 0; }
+.table .numeric { text-align: right; }
+.table small { color: var(--muted); font-size: .74rem; }
+
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+.sort-button .icon { width: 13px; height: 13px; opacity: .55; }
+.sort-button:hover { color: var(--text); }
+th[aria-sort="ascending"] .sort-button, th[aria-sort="descending"] .sort-button { color: var(--brass-strong); }
+th[aria-sort="ascending"] .sort-button .icon, th[aria-sort="descending"] .sort-button .icon { opacity: 1; }
+
+/* ---------------------------------------------------------------------
+   10. Success message, toolbar, print
+   --------------------------------------------------------------------- */
+.success-box {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 18px;
+  border-radius: 14px;
+  background: var(--clean-soft);
+  border: 1px solid color-mix(in srgb, var(--clean) 35%, transparent);
+}
+.success-box:focus { outline: 0; }
+.success-box__icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--clean);
+  color: #fff;
+}
+.success-box__icon .icon { width: 20px; height: 20px; stroke-width: 2.4; }
+.success-box__title { margin: 2px 0 4px; font-weight: 800; }
+.success-box__text { margin: 0; font-size: .875rem; color: var(--text-2); }
+.success-box__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+/* Filter row above the room board and the housekeeping task list */
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin: 22px 0 6px; }
+.toolbar .result-count { padding: 0; margin-left: auto; }
+.toolbar .icon-input { width: 150px; }
+
+@media print {
+  .page-header__actions, .toolbar { display: none !important; }
+  .card { box-shadow: none; break-inside: avoid; }
+}
+
+/* ---------------------------------------------------------------------
+ * Additions for the live system
+ * ------------------------------------------------------------------- */
+/* Guest names in the bookings table open the booking. */
+.row-link { color: inherit; text-decoration: none; }
+.row-link:hover, .row-link:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Message from the server (for example "Room 209 is still being cleaned"). */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 200;
+  max-width: min(92vw, 460px);
+  padding: 12px 18px;
+  transform: translateX(-50%);
+  border-radius: 12px;
+  background: var(--ink);
+  color: var(--on-ink);
+  font-size: .875rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-lg);
+}
+.toast[data-tone="error"] { background: var(--ooo); color: #fff; }
+.toast[hidden] { display: none; }

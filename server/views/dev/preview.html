@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frontdesk · Preview</title>
+<style>
+  /* Development preview bar (PREVIEW_BAR=1): shows the app at a real Desktop / Tablet / Mobile width. Not used in production. */
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { display: flex; flex-direction: column; background: #34312c; font: 600 13px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .bar { flex: 0 0 auto; display: flex; align-items: center; gap: 12px; height: 46px; padding: 0 12px; background: #121a24; color: #e8edf3; white-space: nowrap; }
+  .bar strong { font-weight: 800; letter-spacing: .02em; }
+  .size { color: #8fa1b5; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+  .seg { display: inline-flex; margin-left: auto; padding: 3px; border-radius: 9px; background: #1e2a38; }
+  .seg button { font: inherit; border: 0; background: none; cursor: pointer; padding: 7px 12px; border-radius: 7px; color: #b8c4d1; }
+  .seg button[aria-pressed="true"] { background: #e8edf3; color: #121a24; }
+  .seg button:focus-visible, .open:focus-visible { outline: 2px solid #5fb4ff; outline-offset: 1px; }
+  .open { color: #e8edf3; text-decoration: none; padding: 7px 10px; border: 1px solid #2c3b4d; border-radius: 8px; }
+  .open:hover { background: #1e2a38; }
+  @media (max-width: 760px) { .bar strong, .size { display: none; } .seg { margin-left: 0 !important; } .bar { overflow-x: auto; } }
+  .stage { flex: 1 1 auto; position: relative; overflow: hidden; display: flex; justify-content: center; }
+  .frame { position: relative; overflow: hidden; background: #fff; }
+  .frame iframe { position: absolute; top: 0; left: 0; border: 0; display: block; transform-origin: 0 0; }
+</style>
+</head>
+<body>
+  <div class="bar">
+    <strong>Frontdesk preview</strong>
+    <span class="size" id="size"></span>
+    <div class="seg" role="group" aria-label="Which side" style="margin-left:auto">
+      <button type="button" data-app="/dashboard" aria-pressed="true">Staff &amp; admin login</button>
+      <button type="button" data-app="/hotel" aria-pressed="false">Guest website</button>
+    </div>
+    <div class="seg" role="group" aria-label="Screen size" style="margin-left:0">
+      <button type="button" data-mode="desktop" aria-pressed="true">Desktop</button>
+      <button type="button" data-mode="768" aria-pressed="false">Tablet</button>
+      <button type="button" data-mode="375" aria-pressed="false">Mobile</button>
+    </div>
+    <a class="open" href="/dashboard" target="_blank" rel="noopener">Open without bar</a>
+  </div>
+  <div class="stage" id="stage">
+    <div class="frame" id="frame"><iframe id="site" src="/dashboard" title="Frontdesk website"></iframe></div>
+  </div>
+<script>
+/* Shows the website at a real Desktop / Tablet / Mobile width. When the panel is
+ * narrower than that width, the page is scaled down to fit instead of reflowing,
+ * so a small preview panel still shows the full desktop layout. */
+(function () {
+  // Opened inside our own preview frame (e.g. a link to "/"): show the app, not a second bar.
+  try {
+    if (window.parent !== window && window.parent.document.getElementById('site')) {
+      window.location.replace('/dashboard');
+      return;
+    }
+  } catch (e) {
+    /* framed by another site, such as a preview panel: keep the bar */
+  }
+  var DESKTOP_WIDTH = 1366;   // a common laptop screen
+  var stage = document.getElementById('stage');
+  var frame = document.getElementById('frame');
+  var site = document.getElementById('site');
+  var label = document.getElementById('size');
+  var buttons = Array.prototype.slice.call(document.querySelectorAll('[data-mode]'));
+  var mode = 'desktop';
+
+  function fit() {
+    var available = stage.clientWidth;
+    var height = stage.clientHeight;
+    // Desktop uses the full panel when it is already desktop-sized (1200px+).
+    var width = mode === 'desktop' ? (available >= 1200 ? available : DESKTOP_WIDTH) : Number(mode);
+    var scale = Math.min(1, available / width);
+    site.style.width = width + 'px';
+    site.style.height = Math.ceil(height / scale) + 'px';
+    site.style.transform = scale < 1 ? 'scale(' + scale + ')' : 'none';
+    frame.style.width = Math.floor(width * scale) + 'px';
+    frame.style.height = height + 'px';
+    label.textContent = width + ' px wide' + (scale < 1 ? ' · shown at ' + Math.round(scale * 100) + '%' : '');
+  }
+
+  // Staff app or guest website inside the frame.
+  var apps = Array.prototype.slice.call(document.querySelectorAll('[data-app]'));
+  var open = document.querySelector('.open');
+  apps.forEach(function (button) {
+    button.addEventListener('click', function () {
+      var target = button.getAttribute('data-app');
+      apps.forEach(function (b) { b.setAttribute('aria-pressed', String(b === button)); });
+      site.src = target;
+      open.href = target;
+    });
+  });
+
+  buttons.forEach(function (button) {
+    button.addEventListener('click', function () {
+      mode = button.getAttribute('data-mode');
+      buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b === button)); });
+      fit();
+    });
+  });
+  window.addEventListener('resize', fit);
+  fit();
+})();
+</script>
+</body>
+</html>

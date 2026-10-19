@@ -1,0 +1,34 @@
+<%- include('../partials/shell-top') %>
+        <div class="page-header">
+          <div>
+            <p class="kicker">Your account</p>
+            <h1 class="page-header__title">Change password</h1>
+            <p class="page-header__lead">Use at least 8 characters. Changing it signs you out on every other device.</p>
+          </div>
+        </div>
+<% if (mustChange && !done) { -%>
+        <div class="notice" role="status"><%- icon('info') %><p>Please choose your own password before you continue.</p></div>
+<% } -%>
+<% if (done) { -%>
+        <div class="notice notice--ok" role="status"><%- icon('check') %><p>Your password was changed. <a href="<%= shell.home %>">Continue</a></p></div>
+<% } -%>
+        <form class="card" method="post" action="/account" novalidate style="max-width:560px">
+          <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+          <div class="form-grid">
+            <div class="form-grid__col"><label class="field-label" for="a-current">Current password</label><input class="input<%= errors.current ? ' is-invalid' : '' %>" id="a-current" name="current" type="password" autocomplete="current-password"><p class="field-error"><%= errors.current || '' %></p></div>
+            <div class="form-grid__col"><label class="field-label" for="a-new">New password</label><input class="input<%= errors.password ? ' is-invalid' : '' %>" id="a-new" name="password" type="password" autocomplete="new-password" minlength="8"><p class="field-error"><%= errors.password || '' %></p></div>
+            <div class="form-grid__col"><label class="field-label" for="a-confirm">New password again</label><input class="input<%= errors.confirm ? ' is-invalid' : '' %>" id="a-confirm" name="confirm" type="password" autocomplete="new-password"><p class="field-error"><%= errors.confirm || '' %></p></div>
+          </div>
+          <div class="form-actions"><button class="button button--primary" type="submit">Change password</button></div>
+        </form>
+        <section class="card" aria-labelledby="install-title" style="max-width:560px;margin-top:20px" data-install-card>
+          <div class="card__head"><div><h2 class="card__title" id="install-title">Frontdesk as an app</h2><p class="card__subtitle">An icon on your phone’s home screen or your computer’s desktop that opens Frontdesk in its own window.</p></div></div>
+          <p class="notice notice--ok" data-install-done hidden>You are using the installed app on this device.</p>
+          <div class="form-actions" data-install-offer hidden><button class="button button--primary" type="button" data-install>Install on this device</button></div>
+          <ul class="install-steps">
+            <li><strong>Android (Chrome):</strong> menu ⋮ → <em>Install app</em> or <em>Add to Home screen</em>.</li>
+            <li><strong>iPhone or iPad (Safari):</strong> Share → <em>Add to Home Screen</em>.</li>
+            <li><strong>Windows or Mac (Edge, Chrome):</strong> the install icon at the right of the address bar, or menu → <em>Apps</em> → <em>Install this site as an app</em>.</li>
+          </ul>
+        </section>
+<%- include('../partials/shell-bottom') %>

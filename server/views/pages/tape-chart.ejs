@@ -1,0 +1,57 @@
+<%- include('../partials/shell-top') %>
+        <div class="page-header">
+          <div>
+            <p class="kicker">Rooms by night</p>
+            <h1 class="page-header__title">Tape chart</h1>
+            <p class="page-header__lead">Fourteen nights at a glance. Select a stay to see the booking.</p>
+          </div>
+          <div class="page-header__actions">
+            <a class="button button--secondary" href="/rooms"><%- icon('bed') %>Room status</a>
+            <a class="button button--primary" href="/reservations#new-booking"><%- icon('plus') %>New booking</a>
+          </div>
+        </div>
+        <section class="card card--tape" aria-labelledby="tape-title">
+          <div class="tape-toolbar">
+            <div class="tape-toolbar__nav">
+              <button class="icon-button icon-button--outlined" type="button" data-tape-nav="prev" aria-label="Previous 7 nights"><%- icon('chevron-left') %></button>
+              <button class="button button--secondary button--sm" type="button" data-tape-nav="today">Today</button>
+              <button class="icon-button icon-button--outlined" type="button" data-tape-nav="next" aria-label="Next 7 nights"><%- icon('chevron-right') %></button>
+              <h2 class="tape-toolbar__range" id="tape-title" data-tape-label aria-live="polite"><%= t.range %></h2>
+            </div>
+            <div class="tape-toolbar__filters">
+              <div class="field field--inline">
+                <label class="field-label" for="tape-floor">Floor</label>
+                <select class="select select--sm" id="tape-floor" data-tape-filter="floor">
+                  <option value="">All floors</option>
+<% for (const floor of t.floors) { -%>
+                  <option value="<%= floor %>">Floor <%= floor %></option>
+<% } -%>
+                </select>
+              </div>
+              <div class="field field--inline">
+                <label class="field-label" for="tape-type">Room type</label>
+                <select class="select select--sm" id="tape-type" data-tape-filter="type">
+                  <option value="">All types</option>
+<% for (const [code, name] of Object.entries(t.data.types)) { -%>
+                  <option value="<%= code %>"><%= name %></option>
+<% } -%>
+                </select>
+              </div>
+            </div>
+          </div>
+          <ul class="chart-legend chart-legend--tape" aria-label="Legend">
+            <li><span class="tape-key tape-key--in"></span>In house</li>
+            <li><span class="tape-key tape-key--arr"></span>Arriving today</li>
+            <li><span class="tape-key tape-key--conf"></span>Confirmed</li>
+            <li><span class="tape-key tape-key--tent"></span>Tentative</li>
+            <li><span class="tape-key tape-key--out"></span>Departed</li>
+            <li><span class="tape-key tape-key--ooo"></span>Out of order</li>
+          </ul>
+          <p class="tape-hint">Swipe the chart sideways to see all 14 nights.</p>
+          <div class="tape-scroll" data-tape-scroll tabindex="0" role="region" aria-label="Tape chart, scrolls sideways on small screens">
+            <div class="tape" data-tape-grid>
+              <p class="tape__fallback">The tape chart is drawn with JavaScript from the booking data on this page. The <a href="/reservations">reservations list</a> shows the same stays.</p>
+            </div>
+          </div>
+        </section>
+<%- include('../partials/shell-bottom') %>

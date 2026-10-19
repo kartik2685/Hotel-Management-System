@@ -1,0 +1,9 @@
+<%- include('_top', { title, preview: false }) %>
+    <section class="section">
+      <div class="site-wrap narrow">
+        <h1 class="page-title"><%= title %></h1>
+        <p class="page-lead"><%= text %></p>
+        <a class="button button--primary" href="<%= typeof link !== 'undefined' && link ? link.href : '/hotel' %>"><%= typeof link !== 'undefined' && link ? link.label : 'Back to the hotel' %></a>
+      </div>
+    </section>
+<%- include('_bottom') %>

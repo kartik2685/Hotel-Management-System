@@ -1,0 +1,237 @@
+'use strict';
+/* Booking page (view, change, take payment, check in/out, cancel), handover notes and guest profile editing. */
+const express = require('express');
+const { requireAbility, can } = require('../lib/security');
+const { Form } = require('../lib/forms');
+const activity = require('../lib/activity');
+const clock = require('../lib/clock');
+const f = require('../lib/format');
+const shellService = require('../services/shell');
+const reservations = require('../services/reservations');
+const billing = require('../services/billing');
+const registration = require('../services/registration');
+const guests = require('../services/guests');
+const website = require('../services/website');
+const whatsapp = require('../services/whatsapp');
+const folio = require('../services/folio');
+const feedback = require('../services/feedback');
+
+const router = express.Router();
+const FLASH = {
+  saved: 'Booking saved.', created: 'Booking created and saved.', 'check-in': 'Checked in. The room now shows as occupied.', 'check-out': 'Checked out. The room is marked dirty for housekeeping.',
+  'check-out-early': 'Checked out early: the bill now covers the nights stayed. The room is marked dirty for housekeeping.',
+  cancel: 'Booking cancelled. The room is free again.', confirm: 'Booking confirmed.', payment: 'Payment recorded.', refund: 'Refund recorded.',
+  charge: 'Charge added to the bill.', 'charge-void': 'Charge taken off the bill.',
+  grc: 'Registration card saved and complete.', 'grc-partial': 'Registration card saved. Some details are still missing.', form3: 'Form III acknowledgement saved.',
+};
+
+/* Address of the guest's copy of an invoice, for WhatsApp. */
+const invoiceUrl = (req, inv) => `${website.siteUrl(req, req.settings)}/invoice/${inv.id}?t=${billing.invoiceToken(req.db, inv)}`;
+
+/* "WhatsApp the guest": what fits the booking now, with the links the guest can open themselves. */
+function whatsappFor(req, b, invoices) {
+  const s = req.settings;
+  const manageUrl = s.site_enabled && b.email
+    ? `${website.siteUrl(req, s)}/hotel/booking/${encodeURIComponent(b.confirmation)}?t=${website.token(req.db, b.confirmation, b.email)}` : '';
+  const latest = invoices.find((i) => i.status !== 'cancelled');
+  const feedbackUrl = b.status === 'checked_out' ? website.siteUrl(req, s) + feedback.pathOf(req.db, b.confirmation) : '';
+  const text = whatsapp.bookingText(s, b, { manageUrl, invoice: latest ? { ...latest, url: invoiceUrl(req, latest) } : null, feedbackUrl });
+  return text ? whatsapp.link(whatsapp.phoneDigits(b.phone, s.country), text) : '';
+}
+
+function renderBooking(req, res, next, extra = {}, status = 200) {
+  const db = req.db;
+  const shell = shellService.build(db, req, 'reservations');
+  const d = reservations.detail(db, req.params.confirmation, shell.bd);
+  if (!d) return next();
+  const invoices = billing.forReservation(db, d.b.id);
+  const group = d.b.group_id ? db.get('SELECT id, code, name FROM booking_groups WHERE id = ?', d.b.group_id) : null;
+  const guestFeedback = db.get('SELECT * FROM feedback WHERE reservation_id = ?', d.b.id) || null;
+  res.status(status).render('pages/reservation', {
+    group, guestFeedback, stars: feedback.stars,
+    title: `${d.b.confirmation} · ${d.b.name} · Frontdesk Hotel Management`, description: `Booking ${d.b.confirmation} for ${d.b.name}.`,
+    page: 'reservation', css: ['pages/admin'], scripts: [], shell, d, flash: FLASH[req.query.ok] || '',
+    errors: {}, values: {}, payErrors: {}, payValues: {}, grcErrors: {}, grcValues: {}, invErrors: {}, invValues: {}, f3Errors: {}, actionError: '',
+    canBook: can(req.user, 'bookings'), canRefund: can(req.user, 'manage'),
+    payments: billing.payments(db, d.b.id), invoices, methods: billing.METHODS, whatsapp: whatsappFor(req, d.b, invoices),
+    charges: folio.list(db, d.b.id), chargeKinds: folio.kinds(db, req.settings), chargeRates: folio.rates(req.settings), chargeErrors: {}, chargeValues: {},
+    reg: registration.view(db, d.b), countries: registration.COUNTRIES, idTypes: registration.ID_TYPES, visaTypes: registration.VISA_TYPES, purposes: registration.PURPOSES,
+    gst: req.settings.tax_mode === 'gst_india', ...extra,
+  });
+}
+
+router.get('/reservations/:confirmation', requireAbility('frontOffice'), (req, res, next) => renderBooking(req, res, next));
+
+router.post('/reservations/:confirmation', requireAbility('bookings'), (req, res, next) => {
+  try {
+    const b = reservations.update(req.db, req, req.params.confirmation, req.body);
+    res.redirect(303, `/reservations/${encodeURIComponent(b.confirmation)}?ok=saved`);
+  } catch (error) {
+    if (error instanceof reservations.FormError) return renderBooking(req, res, next, { errors: error.errors, values: error.values }, 422);
+    next(error);
+  }
+});
+
+router.post('/reservations/:confirmation/payment', requireAbility('bookings'), (req, res, next) => {
+  try {
+    const b = billing.addPayment(req.db, req, req.params.confirmation, req.body);
+    res.redirect(303, `/reservations/${encodeURIComponent(b.confirmation)}?ok=payment`);
+  } catch (error) {
+    if (error instanceof reservations.FormError) return renderBooking(req, res, next, { payErrors: error.errors, payValues: error.values }, 422);
+    next(error);
+  }
+});
+
+router.post('/reservations/:confirmation/action', requireAbility('bookings'), (req, res, next) => {
+  const conf = req.params.confirmation;
+  const action = String(req.body.action || '');
+  try {
+    let done = action;
+    if (action === 'check-in') reservations.checkIn(req.db, req, conf);
+    else if (action === 'check-out') done = reservations.checkOut(req.db, req, conf, { settle: req.body.settle === 'on', method: req.body.method }).early ? 'check-out-early' : action;
+    else if (action === 'confirm') reservations.confirm(req.db, req, conf);
+    else if (action === 'cancel') {
+      if (req.body.sure !== 'on') throw Object.assign(new Error('Tick “Yes, cancel this booking” to cancel it.'), { status: 422 });
+      reservations.cancel(req.db, req, conf);
+    } else throw Object.assign(new Error('Unknown action.'), { status: 422 });
+    res.redirect(303, `/reservations/${encodeURIComponent(conf)}?ok=${done}`);
+  } catch (error) {
+    if (error.status === 422) return renderBooking(req, res, next, { actionError: error.message }, 422);
+    next(error);
+  }
+});
+
+router.post('/reservations/:confirmation/refund', requireAbility('manage'), (req, res, next) => {
+  try {
+    const b = billing.refund(req.db, req, req.params.confirmation, req.body);
+    res.redirect(303, `/reservations/${encodeURIComponent(b.confirmation)}?ok=refund`);
+  } catch (error) {
+    if (error instanceof reservations.FormError) return renderBooking(req, res, next, { payErrors: error.errors, payValues: error.values }, 422);
+    next(error);
+  }
+});
+
+/* Registration card (GRC) and Form III. */
+router.post('/reservations/:confirmation/grc', requireAbility('bookings'), (req, res, next) => {
+  try {
+    const complete = registration.saveGrc(req.db, req, req.params.confirmation, req.body);
+    res.redirect(303, `/reservations/${encodeURIComponent(req.params.confirmation)}?ok=${complete ? 'grc' : 'grc-partial'}#grc`);
+  } catch (error) {
+    if (error instanceof reservations.FormError) return renderBooking(req, res, next, { grcErrors: error.errors, grcValues: error.values }, 422);
+    next(error);
+  }
+});
+router.get('/reservations/:confirmation/grc', requireAbility('frontOffice'), (req, res, next) => {
+  const b = reservations.byConfirmation(req.db, req.params.confirmation);
+  if (!b) return next();
+  res.render('pages/grc-print', { s: req.settings, b, reg: registration.view(req.db, b), today: require('../services/settings').businessDate(req.db) });
+});
+router.post('/reservations/:confirmation/form3', requireAbility('bookings'), (req, res, next) => {
+  try {
+    registration.recordForm3(req.db, req, req.params.confirmation, req.body);
+    res.redirect(303, `/reservations/${encodeURIComponent(req.params.confirmation)}?ok=form3#form3`);
+  } catch (error) {
+    if (error instanceof reservations.FormError) return renderBooking(req, res, next, { f3Errors: error.errors }, 422);
+    next(error);
+  }
+});
+
+/* Charges during the stay (room service, laundry…): front desk posts them, managers take them off. */
+router.post('/reservations/:confirmation/charges', requireAbility('bookings'), (req, res, next) => {
+  try {
+    folio.post(req.db, req, req.params.confirmation, req.body);
+    res.redirect(303, `/reservations/${encodeURIComponent(req.params.confirmation)}?ok=charge#charges`);
+  } catch (error) {
+    if (error instanceof reservations.FormError) return renderBooking(req, res, next, { chargeErrors: error.errors, chargeValues: error.values }, 422);
+    if (error.status === 422) return renderBooking(req, res, next, { actionError: error.message }, 422);
+    next(error);
+  }
+});
+router.post('/reservations/:confirmation/charges/:id/void', requireAbility('manage'), (req, res, next) => {
+  try {
+    if (!folio.voidCharge(req.db, req, req.params.confirmation, Number.parseInt(req.params.id, 10) || 0)) return next();
+    res.redirect(303, `/reservations/${encodeURIComponent(req.params.confirmation)}?ok=charge-void#charges`);
+  } catch (error) {
+    if (error.status === 422) return renderBooking(req, res, next, { actionError: error.message }, 422);
+    next(error);
+  }
+});
+
+/* Invoices. */
+router.post('/reservations/:confirmation/invoice', requireAbility('bookings'), (req, res, next) => {
+  try {
+    const id = billing.createInvoice(req.db, req, req.params.confirmation, req.body);
+    res.redirect(303, `/invoices/${id}`);
+  } catch (error) {
+    if (error instanceof reservations.FormError) return renderBooking(req, res, next, { invErrors: error.errors, invValues: error.values }, 422);
+    if (error.status === 422) return renderBooking(req, res, next, { actionError: error.message }, 422);
+    next(error);
+  }
+});
+router.get('/invoices/:id', requireAbility('frontOffice'), (req, res, next) => {
+  const inv = billing.invoice(req.db, Number.parseInt(req.params.id, 10) || 0);
+  if (!inv) return next();
+  f.setCurrency(inv.data.currency.symbol, inv.data.currency.locale); // amounts as issued
+  const guest = req.db.get('SELECT g.first_name, g.phone FROM reservations r JOIN guests g ON g.id = r.guest_id WHERE r.id = ?', inv.reservation_id);
+  const text = whatsapp.invoiceText(req.settings, guest.first_name, inv, invoiceUrl(req, inv));
+  res.render('pages/invoice', { inv, d: inv.data, guestCopy: false, whatsapp: whatsapp.link(whatsapp.phoneDigits(guest.phone, req.settings.country), text) });
+});
+
+/* The guest's copy of an invoice: the signed link staff send on WhatsApp. No sign-in, and it opens even when
+   the website is switched off. */
+router.get('/invoice/:id', (req, res, next) => {
+  const inv = billing.invoice(req.db, Number.parseInt(req.params.id, 10) || 0);
+  if (!inv || !billing.invoiceTokenOk(req.db, inv, req.query.t)) return next();
+  f.setCurrency(inv.data.currency.symbol, inv.data.currency.locale);
+  res.render('pages/invoice', { inv, d: inv.data, guestCopy: true, whatsapp: '' });
+});
+
+/* ------------------------------------------------------------------ handover notes */
+function renderHandover(req, res, extra = {}, status = 200) {
+  const db = req.db;
+  const shell = shellService.build(db, req, 'handover');
+  const notes = db.all('SELECT h.*, u.avatar_tone FROM handover_notes h LEFT JOIN users u ON u.id = h.author_id ORDER BY h.created_at DESC, h.id DESC LIMIT 40')
+    .map((n) => ({ ...n, initials: f.initials(n.author_name), when: `${f.formatDay(n.created_at)} · ${f.clock(n.created_at)}` }));
+  res.status(status).render('pages/handover', {
+    title: 'Shift handover · Frontdesk Hotel Management', description: 'Notes for the next shift.', page: 'handover', css: ['pages/admin'], scripts: [],
+    shell, notes, flash: req.query.ok === 'created' ? 'Note added. It shows on the dashboard for the next shift.' : '', errors: {}, values: {}, ...extra,
+  });
+}
+router.get('/handover', requireAbility('frontOffice'), (req, res) => renderHandover(req, res));
+router.post('/handover', requireAbility('frontOffice'), (req, res) => {
+  const form = new Form(req.body);
+  const lead = form.text('lead', { label: 'Headline', max: 120, required: true });
+  const body = form.longText('body', { label: 'Details', max: 600 });
+  if (!form.ok) return renderHandover(req, res, { errors: form.errors, values: form.values }, 422);
+  const user = req.db.get('SELECT department FROM users WHERE id = ?', req.user.id);
+  req.db.run('INSERT INTO handover_notes (author_id, author_name, department, lead, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    req.user.id, req.user.name, (user && user.department) || req.user.title || 'Front office', lead, body, clock.stamp(req.settings.timezone));
+  activity.log(req.db, req, 'handover.create', `Handover note: ${lead}`);
+  res.redirect(303, '/handover?ok=created');
+});
+
+/* ------------------------------------------------------------------ guest profile editing */
+const PREFS = guests.PREF_GROUPS;
+
+function renderGuest(req, res, next, extra = {}, status = 200) {
+  const db = req.db;
+  const g = db.get('SELECT * FROM guests WHERE id = ?', Number.parseInt(req.params.id, 10) || 0);
+  if (!g) return next();
+  const shell = shellService.build(db, req, 'guests');
+  res.status(status).render('pages/guest-edit', {
+    title: `Edit ${g.first_name} ${g.last_name} · Frontdesk Hotel Management`, description: 'Edit a guest profile.', page: 'guest-edit', css: ['pages/admin'], scripts: [],
+    shell, g, prefs: JSON.parse(g.preferences || '{}'), PREFS, errors: {}, values: {},
+    notes: db.all('SELECT * FROM guest_notes WHERE guest_id = ? ORDER BY created_at DESC, id DESC', g.id).map((n) => ({ ...n, when: f.formatDay(n.created_at) })),
+    ...extra,
+  });
+}
+router.get('/guests/:id/edit', requireAbility('frontOffice'), (req, res, next) => renderGuest(req, res, next));
+router.post('/guests/:id/edit', requireAbility('frontOffice'), (req, res, next) => {
+  const id = Number.parseInt(req.params.id, 10) || 0;
+  const result = guests.saveProfile(req.db, req, id, req.body);
+  if (!result) return next();
+  if (result.errors) return renderGuest(req, res, next, { errors: result.errors, values: result.values }, 422);
+  res.redirect(303, `/guests?guest=${id}&saved=1`);
+});
+
+module.exports = router;

@@ -1,0 +1,28 @@
+  <dialog class="booking-dialog" id="booking-dialog" aria-labelledby="bd-title">
+    <div class="booking-dialog__head">
+      <span class="avatar avatar--lg" data-detail="avatar" aria-hidden="true"></span>
+      <div>
+        <p class="booking-dialog__conf" data-detail="conf"></p>
+        <h2 class="booking-dialog__title" id="bd-title" data-detail="name"></h2>
+        <p data-detail="status"></p>
+      </div>
+      <button class="icon-button booking-dialog__close" type="button" data-dialog-close aria-label="Close booking details"><%- icon('close') %></button>
+    </div>
+    <dl class="booking-dialog__facts">
+      <div><dt>Room</dt><dd data-detail="room"></dd></div>
+      <div><dt>Guests</dt><dd data-detail="guests"></dd></div>
+      <div><dt>Arrival</dt><dd data-detail="in"></dd></div>
+      <div><dt>Departure</dt><dd data-detail="out"></dd></div>
+      <div><dt>Nightly rate</dt><dd data-detail="rate"></dd></div>
+      <div><dt>Stay total</dt><dd data-detail="total"></dd></div>
+      <div><dt>Source</dt><dd data-detail="source"></dd></div>
+      <div><dt>Nights</dt><dd data-detail="nights"></dd></div>
+    </dl>
+    <p class="booking-dialog__notes" data-detail="notes"></p>
+    <div class="booking-dialog__actions">
+      <p class="booking-dialog__done" data-detail="done" role="status"></p>
+      <a class="button button--secondary" href="/reservations" data-detail-link>Open booking</a>
+      <button class="button button--secondary" type="button" data-dialog-close>Close</button>
+      <button class="button button--primary" type="button" data-detail-action hidden>Check in</button>
+    </div>
+  </dialog>

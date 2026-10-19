@@ -1,0 +1,292 @@
+/* =====================================================================
+   Frontdesk HMS · pages/dashboard.css
+   Key metrics, revenue chart, arrivals, room status, handover, departures
+   ===================================================================== */
+
+/* ---------------------------------------------------------------------
+   Key metrics row
+   --------------------------------------------------------------------- */
+.metrics { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 575.98px) {
+  /* Phones: the first two metrics span the row, the money metrics get compact. */
+  .metric:nth-child(-n+2) { grid-column: 1 / -1; }
+  .metric:nth-child(n+3) { padding: 16px; }
+  .metric:nth-child(n+3) .metric__value { font-size: 1.7rem; }
+  .metric:nth-child(n+3) .metric__hint,
+  .metric:nth-child(n+3) .metric__compare { display: none; }
+}
+@media (min-width: 576px) { .metrics { gap: 14px; } }
+@media (min-width: 1200px) { .metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; } }
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 18px 20px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+.metric__top { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 34px; }
+.metric__label { margin: 0; font-family: var(--font-sans); font-size: .82rem; font-weight: 700; color: var(--text-2); }
+.metric__icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--brass-soft);
+  color: var(--brass-strong);
+}
+.metric__icon .icon { width: 18px; height: 18px; }
+.metric__hint { font-size: .7rem; color: var(--muted); text-align: right; line-height: 1.25; max-width: 12ch; }
+.metric__value {
+  margin: 0;
+  font-size: 2.05rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -.03em;
+  font-variant-numeric: proportional-nums lining-nums;
+}
+.metric__unit { font-size: 1.05rem; font-weight: 700; color: var(--muted); letter-spacing: 0; margin-left: 1px; }
+.metric__sub { margin: 6px 0 10px; font-size: .76rem; color: var(--muted); }
+.metric__split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.metric__split .metric__value { font-size: 1.8rem; }
+.metric__split .metric__sub { margin: 4px 0 8px; }
+.metric__mini { margin: 7px 0 0; font-size: .74rem; color: var(--muted); }
+.metric__mini strong { color: var(--text); }
+.metric__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin: auto 0 0;
+  font-size: .76rem;
+  color: var(--muted);
+}
+
+.trend { display: inline-flex; align-items: center; gap: 4px; font-weight: 800; }
+.trend .icon { width: 14px; height: 14px; stroke-width: 2.2; }
+.trend--up { color: var(--clean-text); }
+.trend--down { color: var(--ooo-text); }
+
+/* Sparklines are drawn by dashboard.js from data-sparkline="1,2,3" */
+.sparkline { display: block; width: 100%; height: 38px; overflow: visible; }
+.sparkline__area { fill: var(--brass); opacity: .12; }
+.sparkline__line {
+  fill: none;
+  stroke: var(--brass);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* ---------------------------------------------------------------------
+   Two-column board
+   --------------------------------------------------------------------- */
+.dashboard { display: grid; gap: 16px; margin-top: 16px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+.dashboard__col { display: grid; gap: 16px; min-width: 0; }
+@media (min-width: 1200px) { .dashboard { grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr); } }
+
+/* ---------------------------------------------------------------------
+   Revenue by week (stacked bar chart)
+   --------------------------------------------------------------------- */
+.revenue-total { text-align: right; }
+.revenue-total__label {
+  display: block;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.revenue-total__value { font-size: 1.45rem; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: proportional-nums; }
+
+.chart-legend__swatch { width: 10px; height: 10px; border-radius: 3px; }
+.chart-legend__swatch--rooms { background: var(--series-1); }
+.chart-legend__swatch--fnb { background: var(--series-2); }
+.chart-legend__swatch--spa { background: var(--series-3); }
+
+.bar-chart { position: relative; height: 270px; }
+.bar-chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.bar-chart__fallback { margin: 0; padding-top: 100px; text-align: center; font-size: .85rem; color: var(--muted); }
+.js .bar-chart__fallback { display: none; }
+.bar-chart__grid { stroke: var(--line); stroke-width: 1; shape-rendering: crispEdges; }
+.bar-chart__axis { fill: var(--muted); font-size: 11px; font-family: var(--font-sans); font-variant-numeric: tabular-nums; }
+.bar-chart__hit { fill: transparent; cursor: pointer; }
+.bar-chart__hit:focus { outline: none; }
+.bar-chart__col.is-hover .bar-chart__bg,
+.bar-chart__col:focus-within .bar-chart__bg { fill: var(--surface-2); }
+.bar-chart .series-1 { fill: var(--series-1); }
+.bar-chart .series-2 { fill: var(--series-2); }
+.bar-chart .series-3 { fill: var(--series-3); }
+.bar-chart__bg { fill: transparent; }
+.bar-chart__col:focus-visible { outline: none; }
+.bar-chart__col:focus-visible .bar-chart__bg { stroke: var(--brass); stroke-width: 1.5; }
+
+.chart-tooltip {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  min-width: 190px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-lg);
+  font-size: .78rem;
+  transform: translate(-50%, -100%);
+  transition: opacity .12s var(--ease);
+}
+/* Keep the tooltip in the layout while hidden so it can fade. */
+.chart-tooltip[hidden] { display: block !important; opacity: 0; visibility: hidden; }
+.chart-tooltip__title {
+  margin: 0 0 6px;
+  font-weight: 700;
+  color: var(--muted);
+  font-size: .72rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.chart-tooltip__row { display: grid; grid-template-columns: 14px 1fr auto; align-items: center; gap: 8px; }
+.chart-tooltip__row + .chart-tooltip__row { margin-top: 3px; }
+.chart-tooltip__swatch { width: 12px; height: 2px; border-radius: 2px; }
+.chart-tooltip__row span { color: var(--text-2); }
+.chart-tooltip__row strong { font-weight: 800; }
+.chart-tooltip__row--total { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+
+.chart-data { margin-top: 10px; }
+.chart-data summary { display: inline-block; cursor: pointer; font-size: .8rem; font-weight: 700; color: var(--brass-strong); }
+.chart-data[open] summary { margin-bottom: 10px; }
+.chart-data .table { font-size: .8rem; }
+
+/* ---------------------------------------------------------------------
+   Room status summary
+   --------------------------------------------------------------------- */
+.status-strip { display: flex; gap: 2px; height: 14px; margin-bottom: 14px; }
+.status-strip__seg { min-width: 4px; border-radius: 3px; background: var(--tone); }
+.status-strip__seg:first-child { border-radius: 7px 3px 3px 7px; }
+.status-strip__seg:last-child { border-radius: 3px 7px 7px 3px; }
+
+.status-list { list-style: none; margin: 0; padding: 0; }
+.status-list__item {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.status-list__item:first-child { border-top: 0; }
+.status-list__text { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+.status-list__text strong { font-size: .875rem; }
+.status-list__text small { font-size: .75rem; color: var(--muted); }
+.status-list__num { font-size: 1.3rem; font-weight: 800; }
+
+.hk-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 12px 14px 12px 16px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  transition: border-color .15s var(--ease);
+}
+.hk-summary:hover { border-color: var(--brass-line); color: var(--text); }
+.hk-summary__text { display: flex; flex-direction: column; line-height: 1.35; }
+.hk-summary__text strong { font-size: .875rem; }
+.hk-summary__text small { font-size: .75rem; color: var(--muted); }
+
+/* ---------------------------------------------------------------------
+   Today's arrivals
+   --------------------------------------------------------------------- */
+.arrival-list { list-style: none; margin: 0; padding: 0; }
+.arrival {
+  display: grid;
+  align-items: center;
+  gap: 6px 12px;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+.arrival:first-child { border-top: 0; padding-top: 4px; }
+.arrival > .avatar { grid-column: 1; grid-row: 1 / span 2; align-self: start; }
+.arrival__guest { grid-column: 2; grid-row: 1; min-width: 0; }
+.arrival__eta { grid-column: 3; grid-row: 1; align-self: start; display: flex; align-items: baseline; gap: 6px; justify-content: flex-end; }
+.arrival__room { grid-column: 2; grid-row: 2; display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.arrival__action { grid-column: 2 / 4; grid-row: 2; justify-self: end; }
+@media (min-width: 768px) {
+  .arrival {
+    grid-template-columns: 40px minmax(0, 1.9fr) minmax(88px, .8fr) 56px 136px;
+    grid-template-areas: "av guest room eta action";
+    gap: 14px;
+  }
+  .arrival > .avatar { grid-area: av; align-self: center; }
+  .arrival__guest { grid-area: guest; }
+  .arrival__room { grid-area: room; }
+  .arrival__eta { grid-area: eta; align-self: center; }
+  .arrival__action { grid-area: action; }
+  .arrival__room, .arrival__eta { flex-direction: column; gap: 0; align-items: flex-start; justify-content: center; }
+  .arrival__action .button { width: 100%; }
+}
+.arrival__action .room-state { width: 100%; justify-content: center; padding: 6px 10px; }
+.arrival__action .button .icon { width: 15px; height: 15px; }
+.arrival__name { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 0; }
+.arrival__name strong { font-size: .9rem; margin-right: 2px; }
+.arrival__meta { margin: 2px 0 0; font-size: .75rem; color: var(--muted); }
+.arrival__room-no { font-weight: 800; font-size: .95rem; }
+.arrival__room small, .arrival__eta small { font-size: .72rem; color: var(--muted); }
+.arrival__eta strong { font-size: .9rem; }
+
+/* ---------------------------------------------------------------------
+   Shift handover notes
+   --------------------------------------------------------------------- */
+.handover-list { list-style: none; margin: 0; padding: 0; }
+.handover-list li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+.handover-list li:first-child { border-top: 0; padding-top: 0; }
+.handover-list p { margin: 0; font-size: .85rem; color: var(--text-2); }
+.handover-list p strong { color: var(--text); }
+.handover-list .handover-list__by { margin-top: 4px; font-size: .72rem; color: var(--muted); }
+
+/* ---------------------------------------------------------------------
+   Departures
+   --------------------------------------------------------------------- */
+.departure-list { list-style: none; margin: 0; padding: 0; }
+.departure {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.departure:first-child { border-top: 0; padding-top: 0; }
+.departure__room {
+  display: grid;
+  place-items: center;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  font-weight: 800;
+  font-size: .8rem;
+}
+.departure--due .departure__room { background: var(--occupied-soft); border-color: transparent; color: var(--occupied-text); }
+.departure__guest { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+.departure__guest strong { font-size: .84rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.departure__guest small { font-size: .72rem; color: var(--muted); }
+.departure__right { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.3; }
+.departure__when { font-size: .78rem; font-weight: 700; }
+.departure__balance { font-size: .72rem; color: var(--muted); }
+.departure__balance--owing { color: var(--dirty-text); font-weight: 700; }
+
+@media print {
+  .metric { box-shadow: none; break-inside: avoid; }
+}

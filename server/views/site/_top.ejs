@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-currency="<%= s.currency_symbol %>" data-locale="<%= s.currency_locale || 'en-US' %>">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title === s.hotel_name ? s.hotel_name + (s.hotel_city ? ' · ' + s.hotel_city : '') : title + ' · ' + s.hotel_name %></title>
+  <meta name="description" content="<%= s.site_tagline || 'Book a room at ' + s.hotel_name %>">
+  <meta name="theme-color" content="#1c1b19">
+  <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <script src="/assets/js/theme-init.js"></script>
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/site.css">
+</head>
+<body class="site" data-page="site">
+<%- include('../partials/sprite') -%>
+  <a class="skip-link" href="#main">Skip to main content</a>
+<% if (typeof preview !== 'undefined' && preview) { -%>
+  <p class="site-preview">The website is switched off, so only signed-in staff can see this preview. <a href="/admin/website">Turn it on</a></p>
+<% } -%>
+  <header class="site-header">
+    <div class="site-wrap site-header__inner">
+      <a class="site-brand" href="/hotel"><span class="site-brand__mark" aria-hidden="true"><%- icon('cloche') %></span><span class="site-brand__name"><%= s.hotel_name %></span></a>
+      <nav class="site-nav" aria-label="Website">
+        <a href="/hotel#rooms">Rooms</a>
+        <a href="/hotel#about">About</a>
+        <a href="/hotel#location">Location</a>
+        <a href="/hotel/manage">Manage booking</a>
+      </nav>
+      <button class="icon-button theme-switch js-only" type="button" aria-label="Dark theme" aria-pressed="false" data-theme-toggle>
+        <span class="theme-switch__moon"><%- icon('moon') %></span>
+        <span class="theme-switch__sun"><%- icon('sun') %></span>
+      </button>
+      <a class="button button--secondary button--sm site-login" href="/login" title="Staff and admin sign-in"><%- icon('user') %><span class="site-login__text">Staff login</span></a>
+      <a class="button button--primary button--sm" href="/hotel/book">Book now</a>
+    </div>
+  </header>
+  <main id="main" tabindex="-1">

@@ -1,0 +1,50 @@
+# Render Blueprint: the whole hotel system on Render, data included. Nothing else is needed.
+#
+#   Render → New → Blueprint → connect this repository → pick the branch → fill in three values → Deploy Blueprint
+#
+# It creates two resources in Singapore and connects them (DATABASE_URL is filled in automatically):
+#   hotel-management-system  the website and backend (Node.js), free plan
+#   hotel-db                 the PostgreSQL database that keeps all the data; the app creates its tables itself
+# Render asks once, while creating the Blueprint, for the values marked "sync: false" (they never go into Git):
+#   ADMIN_EMAIL     your sign-in email: the app starts as an empty hotel with this admin account
+#   ADMIN_PASSWORD  your sign-in password, 8 characters or more
+#   HOTEL_NAME      the hotel's name (can be changed later in Admin → Hotel settings)
+# Leave ADMIN_EMAIL empty to load the demo hotel instead; its staff password is then printed once in the Logs.
+#
+# After that every push to the branch deploys by itself; the data stays in hotel-db.
+# Render's free database expires 30 days after it is created and is deleted 14 days later. Before then, upgrade
+# hotel-db in the Render Dashboard (0.1c-256mb, about $6 a month; the data stays) and change its plan below to match.
+# Step by step, in Hinglish: docs/SETUP-RENDER.md
+databases:
+  - name: hotel-db
+    plan: free
+    region: singapore # must be the web service's region: it connects over Render's private network
+    postgresMajorVersion: "18"
+    databaseName: frontdesk
+    user: frontdesk
+
+services:
+  - type: web
+    name: hotel-management-system
+    runtime: node
+    plan: free
+    region: singapore
+    branch: arena/dfe46868-hotel-management-system # the branch with this code (main, once it is merged)
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /login
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "1"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: hotel-db
+          property: connectionString # the private (internal) address
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: HOTEL_NAME
+        sync: false

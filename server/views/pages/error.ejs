@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> · Frontdesk Hotel Management</title>
+  <meta name="theme-color" content="#1c1b19">
+  <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <script src="/assets/js/theme-init.js"></script>
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/pages/admin.css">
+</head>
+<body class="auth-page error-page">
+<%- include('../partials/sprite') %>
+  <main id="main" class="error-page__card card" tabindex="-1">
+    <a class="logo" href="<%= locals.start ? start.href : '/login' %>" aria-label="Frontdesk, go to the start page">
+      <span class="logo__mark"><%- icon('cloche') %></span>
+      <span class="logo__word">Frontdesk</span>
+    </a>
+    <p class="kicker">Error <%= status %></p>
+    <h1 class="page-header__title"><%= title %></h1>
+    <p class="page-header__lead"><%= message %></p>
+    <p class="error-page__actions"><a class="button button--primary" href="<%= locals.start ? start.href : '/login' %>"><%= locals.start ? start.label : 'Go to sign in' %></a></p>
+  </main>
+</body>
+</html>
