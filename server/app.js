@@ -25,7 +25,15 @@ function createApp(db) {
   app.locals.fmt = f;
 
   app.use(security.headers);
-  app.use('/assets', express.static(path.join(config.root, 'assets'), { index: false, maxAge: config.production ? '7d' : 0 }));
+  app.use('/assets', express.static(path.join(config.root, 'assets'), {
+    index: false,
+    maxAge: config.production ? '7d' : 0,
+    // Styles and scripts change with updates: browsers check them on every visit (a quick 304 when unchanged),
+    // so a deploy shows at once instead of after a week. Images and fonts keep the week-long cache.
+    setHeaders: (res, file) => {
+      if (/\.(css|js)$/.test(file)) res.setHeader('Cache-Control', 'no-cache');
+    },
+  }));
   app.get('/favicon.ico', (req, res) => res.redirect(301, '/assets/img/favicon.svg'));
   app.use(express.urlencoded({ extended: false, limit: '100kb' }));
   app.use(express.json({ limit: '100kb' }));

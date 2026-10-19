@@ -71,6 +71,17 @@ describe('signing in', () => {
 });
 
 describe('security', () => {
+  test('styles and scripts are checked on every visit, so an update shows at once', async () => {
+    const c = hotel.client();
+    for (const file of ['/assets/css/components.css', '/assets/js/core.js']) {
+      const r = await c.get(file);
+      assert.equal(r.status, 200, file);
+      assert.equal(r.headers.get('cache-control'), 'no-cache', file);
+      assert.ok(r.headers.get('etag'), file); // so the check is a quick 304 when nothing changed
+    }
+    assert.notEqual((await c.get('/assets/img/favicon.svg')).headers.get('cache-control'), 'no-cache'); // images keep their cache
+  });
+
   test('state changes without the CSRF token are refused', async () => {
     const c = hotel.client();
     await c.login();

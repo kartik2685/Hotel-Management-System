@@ -486,6 +486,13 @@ textarea.input { min-height: calc(1.5em + .75rem + 2px); }
   .form-grid__col--wide { grid-column: span 6; }
   .form-grid__col--narrow { grid-column: span 3; }
 }
+/* Fields side by side keep their boxes on one line, even when one label wraps onto two lines:
+   every field (label, box, message) shares the grid's rows. The 1rem between rows of fields moves
+   from row-gap into each field's bottom padding, and the last row's 1rem is given back below. */
+@supports (grid-template-rows: subgrid) {
+  .form-grid { row-gap: 0; margin-bottom: -1rem; }
+  .form-grid__col { display: grid; grid-row: span 3; grid-template-rows: subgrid; align-items: start; padding-bottom: 1rem; }
+}
 
 /* ---------------------------------------------------------------------
    9. Tables
