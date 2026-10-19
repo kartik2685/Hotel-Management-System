@@ -12,6 +12,9 @@ npm start
 npm test
 ```
 
+Use npm only. The repository ships `package-lock.json` (no `yarn.lock`), and `npm ci` installs exactly the
+versions in it. Running `yarn` warns that a `package-lock.json` was found and resolves its own tree instead.
+
 The app listens on port 3000 by default. A fresh local database starts with the demo hotel. Set `DB_PATH` to choose a SQLite file, or set `DATABASE_URL` for PostgreSQL. See `.env.example` for the optional settings.
 
 ## How a request travels through the app
