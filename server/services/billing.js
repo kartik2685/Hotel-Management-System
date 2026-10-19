@@ -9,6 +9,7 @@ const { Form } = require('../lib/forms');
 const settingsService = require('./settings');
 const reservations = require('./reservations');
 const taxKinds = require('./tax-kinds');
+const seasons = require('./seasons');
 
 const METHODS = ['Card', 'Cash', 'UPI', 'Bank transfer'];
 const actor = (req) => (req.user ? { id: req.user.id, name: req.user.name } : { id: null, name: 'Website' });
@@ -129,7 +130,18 @@ function createInvoice(db, req, confirmation, body) {
   const extras = db.all('SELECT x.name, x.per, re.amount_cents, re.gst_kind, re.tax_bp, re.tax_cents FROM reservation_extras re JOIN extras x ON x.id = re.extra_id WHERE re.reservation_id = ?', r.id);
   const charges = db.all('SELECT * FROM folio_charges WHERE reservation_id = ? AND voided_at IS NULL ORDER BY posted_at, id', r.id);
   const gst = isGst(settings);
-  const percent = pricing.taxPercent(settings, r.nightly_rate_cents);
+  // The room: one line for each nightly rate (seasons and weekends), each with its GST band. A booking whose room
+  // total is not its nights at their rates (older data) keeps one line for the total, as before.
+  let roomLines = seasons.groups(r).map((g) => {
+    const amount = g.rate * g.nights;
+    const rate = pricing.taxPercent(settings, g.rate);
+    return { ...g, amount, percent: rate, tax: Math.round((amount * rate) / 100) };
+  });
+  if (roomLines.reduce((n, l) => n + l.amount, 0) !== r.room_total_cents) {
+    const rate = pricing.taxPercent(settings, r.nightly_rate_cents);
+    roomLines = [{ rate: r.nightly_rate_cents, nights: r.nights, amount: r.room_total_cents, percent: rate, tax: 0 }];
+  }
+  const percent = roomLines.length ? roomLines[0].percent : pricing.taxPercent(settings, r.nightly_rate_cents);
   // Tax per rate: the room's, then each rate the charges use (one line per rate).
   const byRate = new Map();
   const addTax = (bp, taxable, amount) => {
@@ -139,7 +151,9 @@ function createInvoice(db, req, confirmation, body) {
     byRate.set(bp, t);
   };
   const roomTax = r.tax_cents - extras.reduce((n, x) => n + x.tax_cents, 0); // tax_cents holds the extras' GST too
-  addTax(Math.round(percent * 100), r.room_total_cents, roomTax);
+  // the lines add up to what was charged, to the paisa
+  if (roomLines.length) roomLines[roomLines.length - 1].tax += roomTax - roomLines.reduce((n, l) => n + l.tax, 0);
+  for (const l of roomLines) addTax(Math.round(l.percent * 100), l.amount, l.tax);
   for (const x of extras) if (x.tax_bp > 0) addTax(x.tax_bp, x.amount_cents, x.tax_cents);
   for (const c of charges) if (c.tax_bp > 0) addTax(c.tax_bp, c.amount_cents, c.tax_cents);
   const taxes = [...byRate.values()].map((t) => {
@@ -160,7 +174,10 @@ function createInvoice(db, req, confirmation, body) {
       guest: { name: r.name, email: r.email || '', phone: r.phone || '' },
       stay: { confirmation: r.confirmation, room: r.room_number || '', type: r.type_name, arrival: r.arrival, departure: r.departure, nights: r.nights, guests: f.guestCount(r.adults, r.children, ', '), plan: r.plan_name || '' },
       lines: [
-        { text: `Room ${r.room_number || ''} · ${r.type_name} · ${f.plural(r.nights, 'night', 'nights')} × ${f.money(r.nightly_rate_cents)}`.replace('Room  · ', 'Room · '), sac: gst ? '996311' : '', amount: r.room_total_cents, taxed: true, rate: percent, tax: roomTax },
+        ...roomLines.map((l) => ({
+          text: `Room ${r.room_number || ''} · ${r.type_name} · ${f.plural(l.nights, 'night', 'nights')} × ${f.money(l.rate)}`.replace('Room  · ', 'Room · '),
+          sac: gst ? '996311' : '', amount: l.amount, taxed: true, rate: l.percent, tax: l.tax,
+        })),
         ...extras.map((x) => ({
           text: x.name + (x.per === 'night' ? ` · ${f.plural(r.nights, 'night', 'nights')}` : '') + (x.tax_bp > 0 ? ` · ${Number((x.tax_bp / 100).toFixed(2))}%` : ''),
           sac: gst && x.tax_bp > 0 ? taxKinds.sacOf(x.gst_kind) : '', amount: x.amount_cents, taxed: x.tax_bp > 0, rate: x.tax_bp / 100, tax: x.tax_cents,

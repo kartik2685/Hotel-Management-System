@@ -32,7 +32,7 @@
           <div class="admin-stack">
           <form class="card" method="post" action="/reservations/<%= b.confirmation %>" novalidate>
             <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
-            <div class="card__head"><div><h2 class="card__title">Stay</h2><p class="card__subtitle"><%= locked ? (canBook ? 'This booking is closed; only the notes can change.' : 'Your account can view bookings but not change them.') : 'Change the dates, room or rate. Totals are worked out again when you save.' %></p></div></div>
+            <div class="card__head"><div><h2 class="card__title">Stay</h2><p class="card__subtitle"><%= locked ? (canBook ? 'This booking is closed; only the notes can change.' : 'Your account can view bookings but not change them.') : 'Change the dates, room or rate. Totals are worked out again when you save.' + (d.nightGroups.length > 1 ? ' Nights are priced by season and weekday; a rate you type counts for every night.' : '') %></p></div></div>
             <fieldset<%- locked ? ' disabled' : '' %> style="border:0;margin:0;padding:0;min-width:0">
             <div class="form-grid">
               <div class="form-grid__col form-grid__col--half"><label class="field-label" for="b-arr">Arrival</label><input class="input<%= inv('arrival') %>" id="b-arr" name="arrival" type="date" value="<%= v('arrival') %>"><p class="field-error"><%= err('arrival') %></p></div>
@@ -46,7 +46,7 @@
               <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="b-eta">ETA</label><input class="input<%= inv('eta') %>" id="b-eta" name="eta" type="time" value="<%= v('eta') %>"><p class="field-error"><%= err('eta') %></p></div>
               <div class="form-grid__col form-grid__col--half"><label class="field-label" for="b-plan">Rate plan</label>
                 <select class="select" id="b-plan" name="rate_plan_id"><option value="">None</option><% for (const p of d.plans) { %><option value="<%= p.id %>"<%- String(v('rate_plan_id')) === String(p.id) ? ' selected' : '' %>><%= p.name %></option><% } %></select></div>
-              <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="b-rate">Nightly rate (<%= fmt.symbol() %>)</label><input class="input<%= inv('nightly_rate') %>" id="b-rate" name="nightly_rate" inputmode="decimal" value="<%= v('nightly_rate') %>"><p class="field-error"><%= err('nightly_rate') %></p></div>
+              <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="b-rate">Nightly rate (<%= fmt.symbol() %>)<% if (d.nightGroups.length > 1) { %> <span class="field-label__hint">average</span><% } %></label><input class="input<%= inv('nightly_rate') %>" id="b-rate" name="nightly_rate" inputmode="decimal" value="<%= v('nightly_rate') %>"><p class="field-error"><%= err('nightly_rate') %></p></div>
               <div class="form-grid__col form-grid__col--half"><label class="field-label" for="b-source">Source</label>
                 <select class="select" id="b-source" name="source_id"><option value="">Unknown</option><% for (const s of d.sources) { %><option value="<%= s.id %>"<%- String(v('source_id')) === String(s.id) ? ' selected' : '' %>><%= s.name %></option><% } %></select></div>
             </div>
@@ -154,7 +154,9 @@
             <section class="card" aria-labelledby="money-title">
               <div class="card__head"><div><h2 class="card__title" id="money-title">Money</h2></div></div>
               <dl class="money-lines">
-                <div><dt><%= fmt.plural(b.nights, 'night', 'nights') %> × <%= fmt.money(b.nightly_rate_cents) %></dt><dd><%= fmt.money(b.room_total_cents) %></dd></div>
+<% for (const g of d.nightGroups) { -%>
+                <div><dt><%= fmt.plural(g.nights, 'night', 'nights') %> × <%= fmt.money(g.rate) %></dt><dd><%= fmt.money(g.amount) %></dd></div>
+<% } -%>
                 <div><dt>Tax</dt><dd><%= fmt.money(b.tax_cents) %></dd></div>
 <% for (const x of d.extras) { -%>
                 <div><dt><%= x.name %><% if (x.tax_bp > 0) { %> <small class="cell-note">+ GST <%= Number((x.tax_bp / 100).toFixed(2)) %>%</small><% } %></dt><dd><%= fmt.money(x.amount_cents) %></dd></div>

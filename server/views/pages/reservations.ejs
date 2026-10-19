@@ -97,6 +97,9 @@
             </div>
           </div>
           <form class="booking-form" method="post" action="/reservations" data-booking-form novalidate>
+<% if (r.form.seasons && r.form.seasons.length) { -%>
+                <script type="application/json" id="rate-seasons"><%- JSON.stringify(r.form.seasons).replace(/</g, '\\u003c') %></script>
+<% } -%>
             <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
             <div class="booking-form__grid">
               <div class="booking-form__fields">

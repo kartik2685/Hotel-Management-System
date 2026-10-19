@@ -9,6 +9,7 @@ const mail = require('../lib/mail');
 const { Form } = require('../lib/forms');
 const settingsService = require('./settings');
 const taxKinds = require('./tax-kinds');
+const seasons = require('./seasons');
 const reservations = require('./reservations');
 const registration = require('./registration');
 const emails = require('./emails');
@@ -79,13 +80,15 @@ function search(db, query) {
   const bd = settingsService.businessDate(db);
   const stay = readStay(query, bd);
   const plans = onlinePlans(db);
+  const rules = seasons.active(db);
+  const rates = (type, plan) => (stay.nights > 0 && !Object.keys(stay.errors).length ? seasons.nightRates(rules, type, plan, stay.arrival, stay.nights) : null);
   const results = onlineTypes(db).map((type) => {
     const fits = stay.adults + stay.children <= type.max_guests;
     const left = Object.keys(stay.errors).length ? 0 : roomsLeft(db, type.id, stay.arrival, stay.departure);
     return {
       type: { ...type, photoUrl: photoUrl(type) }, fits, left,
       plans: plans.map((plan) => {
-        const q = pricing.quote({ settings, baseCents: type.base_rate_cents, plan, nights: stay.nights });
+        const q = pricing.quote({ settings, baseCents: type.base_rate_cents, plan, nights: stay.nights, nightRates: rates(type, plan) });
         return { plan, quote: q, policy: policyText(plan, stay.arrival), cancellable: cancellable(plan, stay.arrival, bd) };
       }),
     };
@@ -100,8 +103,11 @@ function offer(db, query) {
   const type = db.get('SELECT * FROM room_types WHERE code = ? AND active = 1 AND online = 1', String(query.type || ''));
   const plan = db.get('SELECT * FROM rate_plans WHERE code = ? AND active = 1 AND online = 1', String(query.plan || ''));
   if (!type || !plan || Object.keys(stay.errors).length) return null;
-  const quote = pricing.quote({ settings, baseCents: type.base_rate_cents, plan, nights: stay.nights });
+  const quote = pricing.quote({ settings, baseCents: type.base_rate_cents, plan, nights: stay.nights, nightRates: seasons.nightRates(seasons.active(db), type, plan, stay.arrival, stay.nights) });
+  const groups = seasons.groups({ night_rates: JSON.stringify(quote.nightRates), nights: stay.nights, nightly_rate_cents: quote.rate });
+  const bands = [...new Set(groups.map((g) => pricing.taxPercent(settings, g.rate)))];
   return {
+    groups, taxBand: bands.length === 1 ? bands[0] : null, // one GST band for the stay, or several
     stay, type: { ...type, photoUrl: photoUrl(type) }, plan, quote, policy: policyText(plan, stay.arrival),
     fits: stay.adults + stay.children <= type.max_guests, left: roomsLeft(db, type.id, stay.arrival, stay.departure),
     extras: db.all('SELECT * FROM extras WHERE active = 1 ORDER BY sort, name').map((x) => ({

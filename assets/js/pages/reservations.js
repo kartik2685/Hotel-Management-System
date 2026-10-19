@@ -149,6 +149,16 @@
     const roomTypeName = () => f.type.selectedOptions[0].textContent.split('·')[0].trim();
     const stayLabel = () => formatDay(parseDate(f.arrival.value)) + ' → ' + formatDay(parseDate(f.departure.value));
 
+    // Seasons and weekends (Admin → Rates & extras): one rule a night, as on the server (services/seasons.js).
+    const island = $('#rate-seasons');
+    const SEASONS = island ? JSON.parse(island.textContent || '[]') : [];
+    const seasonRate = (base, type, iso) => {
+      const day = String(new Date(iso + 'T00:00:00Z').getUTCDay());
+      const rule = SEASONS.find((s) => (!s.type || s.type === type) && (!s.from || (iso >= s.from && iso <= s.to)) && (!s.days || s.days.includes(day)));
+      if (!rule) return base;
+      return Math.max(0, rule.kind === 'percent' ? Math.round(base * (1 + rule.value / 100) * 100) / 100 : base + rule.value);
+    };
+
     /* Price for the current form values. Rate plan adjustments are either a
        fixed amount per night ("32") or a percentage ("-12%"). */
     function quote() {
@@ -156,10 +166,18 @@
       const baseRate = Number(f.type.selectedOptions[0].dataset.rate);
       const plan = $('input[name="plan"]:checked', form);
       const adjust = plan.dataset.adjust;
-      let rate = adjust.endsWith('%') ? baseRate * (1 + parseFloat(adjust) / 100) : baseRate + parseFloat(adjust);
-      rate = Math.round(rate * 100) / 100;
-      const roomTotal = rate * nights;
-      let tax = Math.round(roomTotal * taxPercent(rate)) / 100;
+      const planRate = (base) => Math.round((adjust.endsWith('%') ? base * (1 + parseFloat(adjust) / 100) : base + parseFloat(adjust)) * 100) / 100;
+      const rates = [];
+      for (let i = 0; i < nights; i++) {
+        rates.push(planRate(seasonRate(baseRate, f.type.value, new Date(Date.parse(f.arrival.value) + i * DAY_MS).toISOString().slice(0, 10))));
+      }
+      const roomTotal = Math.round(rates.reduce((sum, r) => sum + r, 0) * 100) / 100;
+      const rate = nights ? Math.round((roomTotal / nights) * 100) / 100 : planRate(baseRate);
+      // GST bands go by the night's rate: the nights at one rate are taxed together, like on the server
+      const nightsAt = new Map();
+      rates.forEach((r) => nightsAt.set(r, (nightsAt.get(r) || 0) + 1));
+      let tax = 0;
+      nightsAt.forEach((n, r) => { tax += Math.round(r * n * taxPercent(r)) / 100; });
       // GST on extras (India): a percentage, or "room" for extras that are part of the stay
       const extras = $$('input[name="extra"]:checked', form).reduce((sum, box) => {
         const amount = Number(box.dataset.price) * (box.dataset.per === 'night' ? nights : 1);
@@ -170,6 +188,8 @@
       return {
         nights,
         rate,
+        rates,
+        varies: nightsAt.size > 1,
         roomTotal,
         tax,
         extras,
@@ -185,7 +205,7 @@
       output('room').textContent = q.typeName + ' · ' + q.planName;
       output('dates').textContent =
         q.nights > 0 ? stayLabel() + ' · ' + plural(q.nights, 'night', 'nights') : 'Choose a departure after the arrival date';
-      output('rate-label').textContent = plural(q.nights, 'night', 'nights') + ' × ' + money(q.rate);
+      output('rate-label').textContent = plural(q.nights, 'night', 'nights') + ' × ' + money(q.rate) + (q.varies ? ' avg' : '');
       output('room-total').textContent = money(q.roomTotal);
       output('tax').textContent = money(q.tax);
       output('extras').textContent = money(q.extras);
@@ -193,7 +213,7 @@
       output('deposit').textContent =
         q.planCode === 'ADV'
           ? 'Advance purchase: ' + money(q.total) + ' is charged today.'
-          : 'Deposit today: first night with tax, ' + money(q.nights ? Math.round(q.rate * (100 + taxPercent(q.rate))) / 100 : 0) + '.';
+          : 'Deposit today: first night with tax, ' + money(q.nights ? Math.round(q.rates[0] * (100 + taxPercent(q.rates[0]))) / 100 : 0) + '.';
     }
 
     /* Returns the fields that failed, in form order. */

@@ -19,16 +19,28 @@ function taxPercent(settings, rateCents) {
   return Number(settings.tax_rate) || 0;
 }
 
-/**
- * @param {object} p  { settings, baseCents, plan, nights, extras: [{price_cents, per}] }
- * @returns {{rate:number, nights:number, roomTotal:number, tax:number, extras:number, total:number}} cents
- */
-function quote({ settings, baseCents, plan, nights, extras = [] }) {
-  const rate = planRate(baseCents, plan);
-  const roomTotal = rate * nights;
-  const tax = Math.round((roomTotal * taxPercent(settings, rate)) / 100);
-  const extrasTotal = extras.reduce((sum, x) => sum + (x.per === 'night' ? x.price_cents * nights : x.price_cents), 0);
-  return { rate, nights, roomTotal, tax, extras: extrasTotal, total: roomTotal + tax + extrasTotal };
+/** Tax on the room for these nightly rates: the nights at one rate together (GST bands go by the night's rate). */
+function roomTax(settings, rates) {
+  const nightsAt = new Map();
+  for (const rate of rates) nightsAt.set(rate, (nightsAt.get(rate) || 0) + 1);
+  let tax = 0;
+  for (const [rate, n] of nightsAt) tax += Math.round((rate * n * taxPercent(settings, rate)) / 100);
+  return tax;
 }
 
-module.exports = { planRate, taxPercent, quote };
+/**
+ * @param {object} p  { settings, baseCents, plan, nights, extras: [{price_cents, per}], nightRates? }
+ *   nightRates: each night's rate when they differ (seasons and weekends, services/seasons.js).
+ * @returns {{rate:number, nights:number, roomTotal:number, tax:number, extras:number, total:number, nightRates:number[]}}
+ *   cents; rate is the average when the nights differ.
+ */
+function quote({ settings, baseCents, plan, nights, extras = [], nightRates = null }) {
+  const rates = nightRates || Array.from({ length: nights }, () => planRate(baseCents, plan));
+  const roomTotal = rates.reduce((sum, r) => sum + r, 0);
+  const rate = nights ? Math.round(roomTotal / nights) : planRate(baseCents, plan);
+  const tax = roomTax(settings, rates);
+  const extrasTotal = extras.reduce((sum, x) => sum + (x.per === 'night' ? x.price_cents * nights : x.price_cents), 0);
+  return { rate, nights, roomTotal, tax, extras: extrasTotal, total: roomTotal + tax + extrasTotal, nightRates: rates };
+}
+
+module.exports = { planRate, taxPercent, roomTax, quote };

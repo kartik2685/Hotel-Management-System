@@ -4,6 +4,9 @@
    const prec = editPlan ? (plans.find((p) => p.id === editPlan.id) || {}) : {}; const xrec = editExtra ? (extras.find((x) => x.id === editExtra.id) || {}) : {};
    const pval = (k, d) => (pv[k] !== undefined ? pv[k] : prec[k] !== undefined && prec[k] !== null ? prec[k] : d ?? '');
    const xval = (k, d) => (xv[k] !== undefined ? xv[k] : xrec[k] !== undefined && xrec[k] !== null ? xrec[k] : d ?? '');
+   const se = typeof seasonErrors !== 'undefined' ? seasonErrors : {}; const sv = typeof seasonValues !== 'undefined' ? seasonValues : {};
+   const srec = editSeason ? (seasons.find((x) => x.id === editSeason.id) || {}) : {};
+   const sval = (k, d) => (sv[k] !== undefined ? sv[k] : srec[k] !== undefined && srec[k] !== null ? srec[k] : d ?? '');
    const adjust = (p) => (p.adjust_type === 'percent' ? (p.adjust_value > 0 ? '+' : '') + p.adjust_value + '%' : (p.adjust_value >= 0 ? '+' : '−') + fmt.money(Math.abs(p.adjust_value)) + ' / night'); -%>
         <div class="admin-grid">
           <div class="admin-stack">
@@ -28,6 +31,22 @@
                   <tbody>
 <% for (const x of extras) { -%>
                     <tr<%- x.active ? '' : ' class="is-inactive"' %>><td class="mono"><%= x.code %></td><td><strong><%= x.name %></strong></td><td class="numeric"><%= fmt.money(x.price_cents) %></td><td><%= x.per === 'night' ? 'Per night' : 'Per stay' %><%= x.active ? '' : ' · inactive' %></td><% if (gst) { const k = gstKinds.find((g) => g.value === x.gst_kind) || gstKinds[gstKinds.length - 1]; %><td><%= k.label %><%= k.rate !== null ? ' · ' + k.rate + '%' : '' %></td><% } %><td class="actions"><a class="button button--secondary button--sm" href="/admin/rates?extra=<%= x.id %>">Edit</a></td></tr>
+<% } -%>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+            <section class="card card--flush" aria-labelledby="seasons-title">
+              <div class="card__head" style="padding:20px 24px 0"><div><h2 class="card__title" id="seasons-title">Seasons &amp; weekends</h2><p class="card__subtitle">A different room rate on some nights: festivals, weekends. One rule counts for a night: one with dates before a weekday one. The rate plan then applies as usual.</p></div></div>
+              <div class="table-scroll">
+                <table class="table admin-table">
+                  <thead><tr><th scope="col">Name</th><th scope="col">Nights</th><th scope="col">Rooms</th><th scope="col" class="numeric">Change</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+                  <tbody>
+<% for (const x of seasons) { -%>
+                    <tr<%- x.active ? '' : ' class="is-inactive"' %>><td><strong><%= x.name %></strong><%= x.active ? '' : ' · inactive' %></td><td><%= x.text.when %></td><td><%= x.text.who %></td><td class="numeric"><%= x.text.change %></td><td class="actions"><a class="button button--secondary button--sm" href="/admin/rates?season=<%= x.id %>#season-form">Edit</a></td></tr>
+<% } -%>
+<% if (!seasons.length) { -%>
+                    <tr><td colspan="5" class="cell-note">No seasons yet: every night costs the room type’s rate.</td></tr>
 <% } -%>
                   </tbody>
                 </table>
@@ -68,6 +87,22 @@
               </div>
               <div class="check-row"><label><input type="checkbox" name="active"<%- (xv.active !== undefined ? xv.active : xrec.active !== 0) ? ' checked' : '' %>> Active</label></div>
               <div class="form-actions"><button class="button button--primary" type="submit"><%= editExtra ? 'Save changes' : 'Add extra' %></button><% if (editExtra) { %><a class="button button--secondary" href="/admin/rates">Cancel</a><% } %></div>
+            </form>
+<% const sdays = sv.start_date !== undefined || Object.keys(sv).length ? [0, 1, 2, 3, 4, 5, 6].filter((d) => sv['day_' + d]).join('') : (srec.weekdays || ''); -%>
+            <form class="card" id="season-form" method="post" action="/admin/seasons<%= editSeason ? '/' + editSeason.id : '' %>" novalidate>
+              <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+              <div class="card__head"><div><h2 class="card__title"><%= editSeason ? 'Edit ' + (srec.name || 'season') : 'Add a season or weekend rate' %></h2><p class="card__subtitle">Dates for a festival, days of the week for a weekend, or both.</p></div></div>
+              <div class="form-grid">
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-name">Name</label><input class="input<%= se.name ? ' is-invalid' : '' %>" id="s-name" name="name" value="<%= sval('name') %>" placeholder="e.g. Durga Puja, Weekend"><p class="field-error"><%= se.name || '' %></p></div>
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-type">Room types</label><select class="select<%= se.room_type_id ? ' is-invalid' : '' %>" id="s-type" name="room_type_id"><option value="">Every room type</option><% for (const t of types) { %><option value="<%= t.id %>"<%- String(sval('room_type_id')) === String(t.id) ? ' selected' : '' %>><%= t.name %></option><% } %></select><p class="field-error"><%= se.room_type_id || '' %></p></div>
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-from">First night <span class="field-label__hint">optional</span></label><input class="input<%= se.start_date ? ' is-invalid' : '' %>" id="s-from" name="start_date" type="date" value="<%= sval('start_date') %>"><p class="field-error"><%= se.start_date || '' %></p></div>
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-to">Last night</label><input class="input<%= se.end_date ? ' is-invalid' : '' %>" id="s-to" name="end_date" type="date" value="<%= sval('end_date') %>"><p class="field-error"><%= se.end_date || '' %></p></div>
+                <div class="form-grid__col"><span class="field-label">Days of the week <span class="field-label__hint">none = every day</span></span><div class="check-days"><% days.forEach((name, d) => { %><label><input type="checkbox" name="day_<%= d %>"<%- sdays.includes(String(d)) ? ' checked' : '' %>> <%= name %></label><% }) %></div></div>
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-kind">Change</label><select class="select" id="s-kind" name="adjust_type"><option value="percent"<%- sval('adjust_type', 'percent') === 'percent' ? ' selected' : '' %>>Percentage</option><option value="amount"<%- sval('adjust_type') === 'amount' ? ' selected' : '' %>>Amount per night (<%= fmt.symbol() %>)</option></select></div>
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="s-value">By <span class="field-label__hint">e.g. 25 or −10</span></label><input class="input<%= se.adjust_value ? ' is-invalid' : '' %>" id="s-value" name="adjust_value" inputmode="decimal" value="<%= sv.adjust_value !== undefined ? sv.adjust_value : srec.adjust_value !== undefined ? (srec.adjust_type === 'amount' ? srec.adjust_value / 100 : srec.adjust_value) : '' %>"><p class="field-error"><%= se.adjust_value || '' %></p></div>
+              </div>
+              <div class="check-row"><label><input type="checkbox" name="active"<%- (sv.active !== undefined ? sv.active : srec.active !== 0) ? ' checked' : '' %>> Active</label></div>
+              <div class="form-actions"><button class="button button--primary" type="submit"><%= editSeason ? 'Save changes' : 'Add' %></button><% if (editSeason) { %><a class="button button--secondary" href="/admin/rates">Cancel</a><% } %></div>
             </form>
           </div>
         </div>

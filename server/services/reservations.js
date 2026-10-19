@@ -6,6 +6,7 @@ const pricing = require('../lib/pricing');
 const activity = require('../lib/activity');
 const settingsService = require('./settings');
 const taxKinds = require('./tax-kinds');
+const seasons = require('./seasons');
 
 const STATUS = {
   tentative: { css: 'tentative', label: 'Tentative' },
@@ -179,7 +180,10 @@ function insertBooking(db, req, v, { createdBy = null, actor, online = false } =
       if (v.nationality && !guest.nationality) db.run('UPDATE guests SET nationality = ?, updated_at = ? WHERE id = ?', v.nationality, stamp, guest.id);
     }
     const tags = guestStays(db, guest.id) === 0 ? ['first-stay'] : [];
-    const q = pricing.quote({ settings, baseCents: v.type.base_rate_cents, plan: v.plan, nights: v.nights, extras: v.extras });
+    const q = pricing.quote({
+      settings, baseCents: v.type.base_rate_cents, plan: v.plan, nights: v.nights, extras: v.extras,
+      nightRates: seasons.nightRates(seasons.active(db), v.type, v.plan, v.arrival, v.nights), // seasons and weekends
+    });
     // GST on each extra (none outside GST): its kind, rate and tax are kept with the booking
     const high = taxKinds.premium(db);
     const extraLines = v.extras.map((x) => {
@@ -191,9 +195,9 @@ function insertBooking(db, req, v, { createdBy = null, actor, online = false } =
     const confirmation = nextConfirmation(db, settings);
     const { id: reservationId } = db.get(
       `INSERT INTO reservations (confirmation, guest_id, room_type_id, room_id, arrival, departure, adults, children, rate_plan_id, nightly_rate_cents,
-         source_id, status, tags, requests, room_total_cents, tax_cents, extras_cents, total_cents, created_by, created_at, booked_online)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
-      confirmation, guest.id, v.type.id, room ? room.id : null, v.arrival, v.departure, v.adults, v.children, v.plan.id, q.rate,
+         night_rates, source_id, status, tags, requests, room_total_cents, tax_cents, extras_cents, total_cents, created_by, created_at, booked_online)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+      confirmation, guest.id, v.type.id, room ? room.id : null, v.arrival, v.departure, v.adults, v.children, v.plan.id, q.rate, seasons.stored(q.nightRates),
       v.source ? v.source.id : null, JSON.stringify(tags), v.requests, q.roomTotal, q.tax + extrasTax, q.extras, q.total + extrasTax, createdBy, stamp, online ? 1 : 0,
     );
     for (const l of extraLines) {
@@ -249,23 +253,42 @@ function checkIn(db, req, confirmation) {
 /* Room, tax and extras for a stay of `nights` nights at `rate`: per-night extras follow the number of nights
    (their stored amounts and GST are updated); posted charges are kept. tax is the room's and the extras'.
    Runs inside the caller's transaction. */
-function reprice(db, settings, r, { rate = r.nightly_rate_cents, nights }) {
+function reprice(db, settings, r, { rate = r.nightly_rate_cents, nights, arrival = r.arrival, typeId = r.room_type_id, planId = r.rate_plan_id }) {
   const oldNights = f.daysBetween(r.arrival, r.departure);
+  // Each night's rate. A rate typed by staff counts for every night. Otherwise a booking with nights at different
+  // rates (seasons, weekends) keeps them: a shorter stay keeps its first nights, a longer one prices the nights
+  // added, and new dates, room type or plan are priced again. One rate for every night stays one rate.
+  const old = r.night_rates ? JSON.parse(r.night_rates) : null;
+  let rates = Array.from({ length: nights }, () => rate);
+  if (old && rate === r.nightly_rate_cents) {
+    const type = db.get('SELECT * FROM room_types WHERE id = ?', typeId);
+    const plan = planId ? db.get('SELECT * FROM rate_plans WHERE id = ?', planId) : null;
+    const rules = seasons.active(db);
+    if (arrival === r.arrival && typeId === r.room_type_id && planId === r.rate_plan_id) {
+      rates = nights <= old.length ? old.slice(0, nights) : old.concat(seasons.nightRates(rules, type, plan, f.addDays(arrival, old.length), nights - old.length));
+    } else {
+      rates = seasons.nightRates(rules, type, plan, arrival, nights);
+    }
+  }
+  const roomTotal = rates.reduce((sum, x) => sum + x, 0);
+  const average = nights ? Math.round(roomTotal / nights) : rate;
   let extras = 0;
   let extrasTax = 0;
   for (const x of db.all('SELECT re.*, ex.per FROM reservation_extras re JOIN extras ex ON ex.id = re.extra_id WHERE re.reservation_id = ?', r.id)) {
     const amount = x.per === 'night' ? Math.round((x.amount_cents / oldNights) * nights) : x.amount_cents;
     // an extra keeps the GST it was booked with; one that is part of the stay follows the room's rate
-    const bp = x.gst_kind === 'room' ? Math.round(taxKinds.extraTax(settings, 'room', rate).rate * 100) : x.tax_bp;
+    const bp = x.gst_kind === 'room' ? Math.round(taxKinds.extraTax(settings, 'room', average).rate * 100) : x.tax_bp;
     const tax = Math.round((amount * bp) / 10000);
     db.run('UPDATE reservation_extras SET amount_cents = ?, tax_bp = ?, tax_cents = ? WHERE reservation_id = ? AND extra_id = ?', amount, bp, tax, r.id, x.extra_id);
     extras += amount;
     extrasTax += tax;
   }
-  const roomTotal = rate * nights;
-  const roomTax = Math.round((roomTotal * pricing.taxPercent(settings, rate)) / 100);
+  const roomTax = pricing.roomTax(settings, rates);
   // charges posted during the stay (services/folio.js) stay on the bill
-  return { roomTotal, tax: roomTax + extrasTax, extras, total: roomTotal + roomTax + extras + extrasTax + (r.charges_cents || 0) };
+  return {
+    roomTotal, tax: roomTax + extrasTax, extras, total: roomTotal + roomTax + extras + extrasTax + (r.charges_cents || 0),
+    rate: average, nightRates: seasons.stored(rates),
+  };
 }
 
 function checkOut(db, req, confirmation, { settle = false, method = 'Card' } = {}) {
@@ -280,7 +303,8 @@ function checkOut(db, req, confirmation, { settle = false, method = 'Card' } = {
     let total = r.total_cents;
     if (departure !== r.departure) {
       const bill = reprice(db, settings, r, { nights: f.daysBetween(r.arrival, departure) });
-      db.run('UPDATE reservations SET room_total_cents = ?, tax_cents = ?, extras_cents = ?, total_cents = ? WHERE id = ?', bill.roomTotal, bill.tax, bill.extras, bill.total, r.id);
+      db.run('UPDATE reservations SET room_total_cents = ?, tax_cents = ?, extras_cents = ?, total_cents = ?, nightly_rate_cents = ?, night_rates = ? WHERE id = ?',
+        bill.roomTotal, bill.tax, bill.extras, bill.total, bill.rate, bill.nightRates, r.id);
       total = bill.total;
     }
     const owing = total - r.paid_cents;
@@ -341,6 +365,7 @@ function bookingForm(db, settings, bd) {
     extras: db.all('SELECT * FROM extras WHERE active = 1 ORDER BY sort, name').map((x) => ({
       ...x, tax: x.gst_kind === 'room' && taxKinds.isGst(settings) ? 'room' : taxKinds.extraTax(settings, x.gst_kind, 0, taxKinds.premium(db)).rate,
     })),
+    seasons: seasons.forBrowser(seasons.active(db), types), // the form's own quote prices each night like the server
     arrival: bd, departure: f.addDays(bd, 2), minDeparture: f.addDays(bd, 1),
     maxGuests: Math.max(1, ...types.map((t) => t.max_guests)),
     deposit: Math.round(quote.rate * (1 + pricing.taxPercent(settings, quote.rate) / 100)),
@@ -397,6 +422,12 @@ class FormError extends Error {
   }
 }
 
+/* The room's nights by rate for the booking page, with what they come to (older data: the total as one line). */
+function nightGroups(b) {
+  const groups = seasons.groups(b).map((g) => ({ ...g, amount: g.rate * g.nights }));
+  return groups.reduce((n, g) => n + g.amount, 0) === b.room_total_cents ? groups : [{ rate: b.nightly_rate_cents, nights: b.nights, amount: b.room_total_cents }];
+}
+
 function detail(db, confirmation, bd) {
   const b = byConfirmation(db, confirmation);
   if (!b) return null;
@@ -407,7 +438,7 @@ function detail(db, confirmation, bd) {
   const room = b.room_id ? db.get('SELECT hk_status FROM rooms WHERE id = ?', b.room_id) : null;
   const open = ['tentative', 'confirmed', 'checked_in'].includes(b.status);
   return {
-    b, extras, rooms, owing, open,
+    b, extras, rooms, owing, open, nightGroups: nightGroups(b),
     tags: JSON.parse(b.tags || '[]'),
     guestStays: guestStays(db, b.guest_id, b.id),
     types: db.all('SELECT id, name, max_guests FROM room_types WHERE active = 1 OR id = ? ORDER BY sort, name', b.room_type_id),
@@ -487,13 +518,15 @@ function update(db, req, confirmation, body) {
   if (!form.ok) throw new FormError(form.errors, form.values);
 
   return db.tx(() => {
-    const { roomTotal, tax, extras, total } = reprice(db, settings, r, { rate: v.rate, nights: f.daysBetween(v.arrival, v.departure) });
+    const { roomTotal, tax, extras, total, rate, nightRates } = reprice(db, settings, r, {
+      rate: v.rate, nights: f.daysBetween(v.arrival, v.departure), arrival: v.arrival, typeId: type.id, planId: v.planId,
+    });
     const keep = JSON.parse(r.tags || '[]').filter((t) => t === 'first-stay');
     db.run(
       `UPDATE reservations SET arrival = ?, departure = ?, room_type_id = ?, room_id = ?, adults = ?, children = ?, rate_plan_id = ?, nightly_rate_cents = ?,
-         source_id = ?, eta = ?, tags = ?, notes = ?, requests = ?, room_total_cents = ?, tax_cents = ?, extras_cents = ?, total_cents = ?, updated_at = ?
-       WHERE id = ?`,
-      v.arrival, v.departure, type.id, room ? room.id : null, v.adults, v.children, v.planId, v.rate, v.sourceId, v.eta || null,
+         night_rates = ?, source_id = ?, eta = ?, tags = ?, notes = ?, requests = ?, room_total_cents = ?, tax_cents = ?, extras_cents = ?, total_cents = ?,
+         updated_at = ? WHERE id = ?`,
+      v.arrival, v.departure, type.id, room ? room.id : null, v.adults, v.children, v.planId, rate, nightRates, v.sourceId, v.eta || null,
       JSON.stringify([...keep, ...tags]), v.notes, v.requests, roomTotal, tax, extras, total, stamp, r.id,
     );
     db.run('UPDATE guests SET first_name = ?, last_name = ?, email = ?, phone = ?, updated_at = ? WHERE id = ?', v.first, v.last, v.email || null, v.phone || null, stamp, r.guest_id);

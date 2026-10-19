@@ -130,3 +130,6 @@ textarea.input { min-height: 84px; resize: vertical; }
 .db-lines dd { min-width: 0; text-align: right; overflow-wrap: anywhere; }
 .db-lines + .form-hint { margin-top: 14px; }
 .nowrap { white-space: nowrap; }
+/* Seasons and weekends: the days of the week in one row */
+.check-days { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 6px 0; }
+.check-days label { display: inline-flex; align-items: center; gap: 6px; font-size: .875rem; }

@@ -37,7 +37,7 @@ const DATA = require('./sample-data');
 
 const ZONE = 'Asia/Kolkata';
 const FIRST_AUDIT = -27; // the first business day closed with the system
-const TRACKED = ['users', 'room_types', 'rooms', 'room_blocks', 'rate_plans', 'extras', 'sources', 'guests', 'guest_notes', 'reservations',
+const TRACKED = ['users', 'room_types', 'rooms', 'room_blocks', 'rate_plans', 'rate_seasons', 'extras', 'sources', 'guests', 'guest_notes', 'reservations',
   'folio_charges', 'housekeeping_tasks', 'handover_notes', 'notifications', 'activity_log', 'payments', 'invoices', 'outbox'];
 const PHOTO_DIR = path.join(__dirname, '..', '..', 'assets', 'img', 'rooms');
 
@@ -274,6 +274,7 @@ class Sample {
     this.act(this.at(-34, '10:10'), 'am', (k) => this.saveBar(k), 'rate plan BAR');
     DATA.PLANS.forEach((p, i) => this.act(this.at(-34, hhmm(10, 13 + i * 3)), 'am', (k) => this.addPlan(k, p, i), `rate plan ${p.code}`));
     DATA.EXTRAS.forEach((x, i) => this.act(this.at(-34, hhmm(10, 30 + i * 2)), 'am', (k) => this.addExtra(k, x, i), `extra ${x.code}`));
+    DATA.SEASONS.forEach((x, i) => this.act(this.at(-34, hhmm(10, 45 + i * 2)), 'am', (k) => this.addSeason(k, x), `season ${x.name}`));
     DATA.SOURCES.forEach((x, i) => this.act(this.at(-34, hhmm(11, 5 + i)), 'am', (k) => this.saveSource(k, x, i), `source ${x.name}`));
     this.act(this.at(-34, '16:30'), 'sb', (k) => this.saveWebsite(k), 'website');
   }
@@ -345,6 +346,12 @@ class Sample {
       p.code, p.name, percent ? 'percent' : 'amount', percent ? Number(p.adjust.slice(0, -1)) : p.adjust * 100, p.description, p.bookable ? 1 : 0, i + 2,
       p.active === false ? 0 : 1, p.cancel, p.online ? 1 : 0);
     activity.log(this.db, this.req(key), 'rate-plan.save', `Added rate plan ${p.name}`);
+  }
+
+  addSeason(key, x) {
+    this.db.run('INSERT INTO rate_seasons (name, start_date, end_date, weekdays, adjust_type, adjust_value, active, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?)',
+      x.name, x.from === undefined ? null : this.day(x.from), x.to === undefined ? null : this.day(x.to), x.days || '', x.kind, x.value, clock.stamp(ZONE));
+    activity.log(this.db, this.req(key), 'season.save', `Added rates for ${x.name}`);
   }
 
   addExtra(key, x, i) {
@@ -865,6 +872,7 @@ function remove(db, { by = null } = {}) {
               AND NOT EXISTS (SELECT 1 FROM rooms rm WHERE rm.room_type_id = room_types.id) AND NOT EXISTS (SELECT 1 FROM reservations r WHERE r.room_type_id = room_types.id)`);
     db.run(`DELETE FROM rate_plans WHERE ${among('id', ids('rate_plans'))} AND NOT EXISTS (SELECT 1 FROM reservations r WHERE r.rate_plan_id = rate_plans.id)`);
     db.run(`DELETE FROM extras WHERE ${among('id', ids('extras'))} AND NOT EXISTS (SELECT 1 FROM reservation_extras x WHERE x.extra_id = extras.id)`);
+    db.run(`DELETE FROM rate_seasons WHERE ${among('id', ids('rate_seasons'))}`);
     db.run(`DELETE FROM sources WHERE ${among('id', ids('sources'))} AND NOT EXISTS (SELECT 1 FROM reservations r WHERE r.source_id = sources.id)`);
     db.run(`DELETE FROM users WHERE ${among('id', ids('users'))}`);
     const now = Object.fromEntries(db.all('SELECT key, value FROM settings').map((r) => [r.key, r.value]));

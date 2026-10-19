@@ -77,6 +77,13 @@ const EXTRAS = [
   { code: 'decor', name: 'Room decoration (flowers & cake)', price: 2500, per: 'stay', gst: 'other' },
 ];
 
+/* Seasons and weekends (services/seasons.js): Friday and Saturday nights cost 10% more; a festive fortnight ahead
+   (days from today) 25% more. */
+const SEASONS = [
+  { name: 'Weekend', days: '56', kind: 'percent', value: 10 },
+  { name: 'Festive season', from: 12, to: 21, kind: 'percent', value: 25 },
+];
+
 /* Booking sources. The empty hotel's Walk-in, Phone and Website are kept and put in this order. */
 const SOURCES = [
   { name: 'Walk-in', kind: 'walk_in', form: 1 }, { name: 'Phone', kind: 'direct', form: 2 }, { name: 'Website', kind: 'direct', form: 3 },
@@ -470,4 +477,4 @@ const CHANGES = [
 /* Maintenance jobs on today’s housekeeping sheet: [room, job, minutes, done at]. */
 const MAINTENANCE = [['106', 'Fix the bathroom tap', 20, '10:20'], ['305', 'AC compressor replacement', 90, null]];
 
-module.exports = { INDIA, FILL, WEBSITE, ROOM_TYPES, ROOMS, PLANS, BAR, EXTRAS, SOURCES, STAFF, GUESTS, STAYS, BLOCKS, HANDOVER, CHANGES, MAINTENANCE };
+module.exports = { INDIA, FILL, WEBSITE, ROOM_TYPES, ROOMS, PLANS, BAR, EXTRAS, SEASONS, SOURCES, STAFF, GUESTS, STAYS, BLOCKS, HANDOVER, CHANGES, MAINTENANCE };

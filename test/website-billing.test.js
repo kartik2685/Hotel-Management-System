@@ -322,7 +322,7 @@ describe('database upgrades', () => {
     raw.exec("INSERT INTO guests (first_name, last_name, created_at) VALUES ('Old', 'Guest', '2026-01-01 10:00')");
     raw.close();
     const db = require('../server/db').open(file);
-    assert.equal(db.get('PRAGMA user_version').user_version, 5);
+    assert.equal(db.get('PRAGMA user_version').user_version, 6);
     assert.equal(db.get("SELECT nationality FROM guests WHERE last_name = 'Guest'").nationality, null);
     assert.ok(db.get("SELECT name FROM sqlite_master WHERE name = 'invoices'"));
     // links made before version 3 read as sign-in page resets

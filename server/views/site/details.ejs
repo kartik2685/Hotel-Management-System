@@ -46,8 +46,10 @@
               <p class="room__meta"><%= o.plan.name %> · <%= fmt.guestCount(stay.adults, stay.children, ', ') %></p>
               <p class="summary__note"><strong><%= fmt.formatDay(stay.arrival) %></strong> from <%= s.check_in_time %> → <strong><%= fmt.formatDay(stay.departure) %></strong> by <%= s.check_out_time %></p>
               <dl class="summary__lines">
-                <div><dt><%= fmt.plural(stay.nights, 'night', 'nights') %> × <%= fmt.money(o.quote.rate) %></dt><dd><%= fmt.money(o.quote.roomTotal) %></dd></div>
-                <div><dt><%= s.tax_mode === 'gst_india' ? 'GST ' + o.taxPercent + '%' : (s.tax_label || 'Tax') + ' ' + o.taxPercent + '%' %></dt><dd><%= fmt.money(o.quote.tax) %></dd></div>
+<% for (const g of o.groups) { -%>
+                <div><dt><%= fmt.plural(g.nights, 'night', 'nights') %> × <%= fmt.money(g.rate) %></dt><dd><%= fmt.money(g.rate * g.nights) %></dd></div>
+<% } -%>
+                <div><dt><%= (s.tax_mode === 'gst_india' ? 'GST' : (s.tax_label || 'Tax')) + (o.taxBand !== null ? ' ' + o.taxBand + '%' : '') %></dt><dd><%= fmt.money(o.quote.tax) %></dd></div>
                 <div><dt><%= o.extras.some((x) => x.taxPercent) ? 'Extras (incl. GST)' : 'Extras' %></dt><dd data-sum-extras><%= fmt.money(0) %></dd></div>
               </dl>
               <p class="summary__total"><span>Total</span><span data-sum-total><%= fmt.money(o.quote.total) %></span></p>

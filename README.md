@@ -56,7 +56,8 @@ Add sample data** (admins only), or `npm run sample` on the command line.
 - Four weeks of hotel life up to the minute it is added: bookings by phone, email, walk-in, travel sites and the
   website, registration cards, check-ins and check-outs, room moves and an upgrade, payments and refunds, GST
   invoices, housekeeping tasks, handover notes, outlet revenue and a night audit every day; and 13 charges during
-  stays (room service, minibar, laundry, spa, a taxi) on bills and GST invoices.
+  stays (room service, minibar, laundry, spa, a taxi) on bills and GST invoices. Weekend nights cost 10% more and a
+  festive fortnight ahead 25% more.
 
 Nothing is pasted into the tables: everything is made through the same code as the screens, by the member of staff
 on duty, at the time it happened, so every record can be opened and changed. All sample staff sign in with one
@@ -108,6 +109,11 @@ there). It is also in the account menu (click your name, top right), and at `/ad
   On GST, each extra says how it is taxed: *Same as the room* (extra bed, late check-out: the room's rate, SAC 996311),
   transport 5%, food, spa or other services, or *No GST*. Bookings keep the GST they were made with; the booking form,
   the website and the invoice show it.
+  **Seasons & weekends** change the room rate on some nights: dates for a festival (Durga Puja +30%), days of the week
+  for a weekend (Fri and Sat +10%), or both, for every room type or one. A booking prices each night on its own (GST
+  by the night's band), keeps those rates when the stay is shortened, prices only the nights added when it is extended,
+  and shows them night by night on the booking page, the website and the invoice. A rate typed by staff counts for
+  every night.
 - **Booking sources:** walk-in, phone, website, OTAs; choose which appear on the booking form.
 - **Staff accounts** (admins): add people with a role, then either
   - leave the password blank to get an **invite link** (works once, for 7 days): copy it or press **Send on WhatsApp**,
@@ -295,7 +301,7 @@ the service's **Environment** instead.
 npm test
 ```
 
-123 tests run against a fresh demo hotel or the sample hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
+131 tests run against a fresh demo hotel or the sample hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
 copy, nothing to install), and `TEST_DATABASE=postgres://user:pass@host/postgres npm test` on a real server.
 They cover:
 - sign-in, lockout, CSRF and redirect safety;
@@ -311,6 +317,7 @@ They cover:
 - charges during the stay (tax rate per charge, SAC codes and GST per rate on the invoice, managers take charges off);
 - GST returns (GSTR-1 tables that add up to the invoices, the offline tool's CSV columns and dates, managers only);
 - GST on extras (the room's rate or the extra's own, kept by each booking; quotes on the form and the website match the saved total);
+- seasons and weekends (one rule a night, GST by the night, edits keep the nights' rates, website and invoice night by night);
 - the installable app (manifest, icons, service worker and offline page, also for an account that must change its password);
 - database upgrades, and what a new database starts with on a live server;
 - the sample hotel: made through the services, in rupees everywhere, admins only, and removed without a trace;

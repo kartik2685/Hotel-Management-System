@@ -21,6 +21,7 @@ const links = require('../services/signin-links');
 const emails = require('../services/emails');
 const gstReturn = require('../services/gst-return');
 const taxKinds = require('../services/tax-kinds');
+const seasons = require('../services/seasons');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -359,9 +360,13 @@ function ratesPage(req, res, extra = {}, status = 200) {
   const extras = db.all('SELECT * FROM extras ORDER BY sort, name');
   const gst = taxKinds.isGst(req.settings);
   const gstKinds = gst ? taxKinds.extraKinds(db, req.settings) : [];
+  const types = db.all('SELECT id, code, name FROM room_types ORDER BY sort, name');
+  const seasonRows = db.all('SELECT * FROM rate_seasons ORDER BY active DESC, (start_date IS NULL), start_date, id')
+    .map((r) => ({ ...r, text: seasons.describe(r, (types.find((t) => t.id === r.room_type_id) || {}).name) }));
   render(req, res, 'rates', 'rates', {
-    heading: 'Rates & extras', lead: 'Rate plans change the room type’s base rate. Extras are added to a booking per stay or per night.',
-    plans, extras, gst, gstKinds,
+    heading: 'Rates & extras', lead: 'Rate plans change the room type’s base rate; seasons and weekends change it on some nights. Extras are added to a booking per stay or per night.',
+    plans, extras, gst, gstKinds, types, seasons: seasonRows, days: seasons.DAYS,
+    editSeason: extra.editSeason !== undefined ? extra.editSeason : (req.query.season ? seasonRows.find((r) => r.id === toInt(req.query.season)) : null),
     editPlan: extra.editPlan !== undefined ? extra.editPlan : (req.query.plan ? plans.find((p) => p.id === toInt(req.query.plan)) : null),
     editExtra: extra.editExtra !== undefined ? extra.editExtra : (req.query.extra ? extras.find((x) => x.id === toInt(req.query.extra)) : null),
     ...extra,
@@ -417,6 +422,35 @@ router.post(['/extras', '/extras/:id'], (req, res) => {
   if (id) db.run('UPDATE extras SET code = ?, name = ?, price_cents = ?, per = ?, sort = ?, active = ?, gst_kind = COALESCE(?, gst_kind) WHERE id = ?', v.code, v.name, v.price, v.per, v.sort, v.active ? 1 : 0, v.gstKind, id);
   else db.run('INSERT INTO extras (code, name, price_cents, per, sort, active, gst_kind) VALUES (?, ?, ?, ?, ?, ?, ?)', v.code, v.name, v.price, v.per, v.sort, v.active ? 1 : 0, v.gstKind || 'none');
   activity.log(db, req, 'extra.save', `${id ? 'Updated' : 'Added'} extra ${v.name}`);
+  back(res, '/admin/rates', id ? 'saved' : 'created');
+});
+
+/* ------------------------------------------------------------------ seasons and weekends */
+router.post(['/seasons', '/seasons/:id'], (req, res) => {
+  const db = req.db;
+  const id = req.params.id ? toInt(req.params.id) : null;
+  const form = new Form(req.body);
+  const v = {
+    name: form.text('name', { label: 'Name', max: 40, required: true }),
+    from: form.date('start_date', { label: 'From', required: false }),
+    to: form.date('end_date', { label: 'To', required: false }),
+    weekdays: [0, 1, 2, 3, 4, 5, 6].filter((d) => form.bool(`day_${d}`)).join(''),
+    typeId: form.int('room_type_id', { label: 'Room type', min: 1, required: false }),
+    type: form.oneOf('adjust_type', ['percent', 'amount'], { label: 'Change' }),
+    active: form.bool('active'),
+  };
+  v.value = v.type === 'amount' ? form.money('adjust_value', { label: 'Amount', min: -100000, max: 100000 }) : form.int('adjust_value', { label: 'Percentage', min: -90, max: 300 });
+  if (Boolean(v.from) !== Boolean(v.to)) form.fail(v.from ? 'end_date' : 'start_date', 'Give both dates, or neither for every week.');
+  else if (v.from && v.to < v.from) form.fail('end_date', 'The last night comes after the first.');
+  else if (v.from && f.daysBetween(v.from, v.to) > 366) form.fail('end_date', 'A season lasts at most a year.');
+  if (!v.from && !v.weekdays) form.fail('start_date', 'Choose dates, days of the week, or both.');
+  if (v.value === 0) form.fail('adjust_value', 'A change of 0 changes nothing.');
+  if (v.typeId && !db.get('SELECT 1 FROM room_types WHERE id = ?', v.typeId)) form.fail('room_type_id', 'Choose a room type.');
+  if (!form.ok) return ratesPage(req, res, { seasonErrors: form.errors, seasonValues: form.values, editSeason: id ? { id } : null }, 422);
+  const args = [v.name, v.from || null, v.to || null, v.weekdays, v.typeId || null, v.type, v.value, v.active ? 1 : 0];
+  if (id) db.run('UPDATE rate_seasons SET name = ?, start_date = ?, end_date = ?, weekdays = ?, room_type_id = ?, adjust_type = ?, adjust_value = ?, active = ? WHERE id = ?', ...args, id);
+  else db.run('INSERT INTO rate_seasons (name, start_date, end_date, weekdays, room_type_id, adjust_type, adjust_value, active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', ...args, stamp(req));
+  activity.log(db, req, 'season.save', `${id ? 'Updated' : 'Added'} rates for ${v.name}`);
   back(res, '/admin/rates', id ? 'saved' : 'created');
 });
 
