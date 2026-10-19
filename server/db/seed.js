@@ -179,7 +179,7 @@ async function createEmptyHotel(db, { email, name, hotelName, password: chosen }
             VALUES (?, ?, ?, 'admin', 'Administrator', 'Management', 'morning', 'ad', 'gold', ?, ?)`, name || 'Administrator', email, hash, chosen ? 0 : 1,
       new Date().toISOString().slice(0, 19).replace('T', ' '));
     db.run("INSERT INTO sources (name, kind, sort, form_sort) VALUES ('Walk-in', 'walk_in', 1, 1), ('Phone', 'direct', 2, 2), ('Website', 'direct', 3, 3)");
-    db.run("INSERT INTO rate_plans (code, name, adjust_type, adjust_value, description, sort) VALUES ('BAR', 'Best available', 'amount', 0, 'Flexible rate', 1)");
+    db.run("INSERT INTO rate_plans (code, name, adjust_type, adjust_value, description, sort, free_cancel_days) VALUES ('BAR', 'Best available', 'amount', 0, 'Flexible rate, free cancellation until 48 hours before arrival', 1, 2)");
   });
   settingsService.reset();
   return { email, password };

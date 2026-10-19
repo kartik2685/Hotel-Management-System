@@ -1,5 +1,5 @@
 <%- include('../partials/shell-top') %>
-<% const rec = { first: g.first_name, last: g.last_name, email: g.email || '', phone: g.phone || '', city: g.city || '', company: g.company || '' };
+<% const rec = { first: g.first_name, last: g.last_name, email: g.email || '', phone: g.phone || '', city: g.city || '', company: g.company || '', gstin: g.gstin || '' };
    const v = (k) => (values[k] !== undefined ? values[k] : rec[k] ?? ''); const err = (k) => errors[k] || ''; const inv = (k) => (errors[k] ? ' is-invalid' : ''); -%>
         <div class="page-header">
           <div>
@@ -21,6 +21,7 @@
                 <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-phone">Phone</label><input class="input" id="g-phone" name="phone" value="<%= v('phone') %>"></div>
                 <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-city">City</label><input class="input" id="g-city" name="city" value="<%= v('city') %>"></div>
                 <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-company">Company</label><input class="input" id="g-company" name="company" value="<%= v('company') %>"></div>
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-gstin">Company GSTIN <span class="field-label__hint">filled in on invoices</span></label><input class="input<%= inv('gstin') %>" id="g-gstin" name="gstin" value="<%= v('gstin') %>" maxlength="15" autocapitalize="characters"><p class="field-error"><%= err('gstin') %></p></div>
               </div>
               <div class="check-row"><label><input type="checkbox" name="vip"<%- (values.vip !== undefined ? values.vip : g.vip) ? ' checked' : '' %>> VIP</label><label><input type="checkbox" name="corporate"<%- (values.corporate !== undefined ? values.corporate : g.corporate) ? ' checked' : '' %>> Books on a company account</label></div>
             </div>

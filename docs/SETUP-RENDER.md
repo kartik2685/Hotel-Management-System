@@ -95,7 +95,15 @@ Admin panel me 30 din ki ginti dikhti hai (Part 2), aur Render bhi email bhejta 
 
 ## Part 3: Apna hotel set karo
 
-**Admin panel** me is order me:
+**Pehle sab kuch chala ke dekhna hai?** Naye (khali) hotel me **Admin panel → Overview → Sample data → Add sample data**
+dabao. Kuch second me poora sample hotel ban jaata hai, sab rupee me: Kolkata ka *The Hooghly Residency*, 7 type ke
+25 rooms, har role ke 18 staff, alag-alag type ke 50 guests (company wale GSTIN ke saath, family, VIP, walk-in, videshi
+guest Form III ke saath, no-show, cancellation) aur 4 hafte ki bookings, check-in/out, payment, refund, GST invoice,
+housekeeping aur night audit. Sab kuch normal screens ke code se bana hai, isliye har cheez khol ke edit kar sakte ho.
+Staff ka ek hi password **sirf ek baar** dikhta hai, likh lo (bhool gaye to **Staff accounts** me naya password set
+kar do). Asli kaam shuru karne se pehle usi card me **Remove sample data** dabao: sample ka sab hat jaata hai.
+
+Apna hotel set karne ke liye **Admin panel** me is order me:
 1. **Hotel settings:** naam, city, address, phone, GSTIN, **State** (GST invoice par chhapta hai), check-in/out time,
    aur **Confirmation / Invoice number prefix** me `HTL` / `INV` ki jagah apne hotel ke letters (jaise `GVH`).
    *Website address* khali chhod sakte ho: email ke links Render ka address khud le lete hain. Apna domain lo, tab bharna.

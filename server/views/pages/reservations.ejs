@@ -160,7 +160,7 @@
                     </div>
                     <div class="form-grid__col form-grid__col--wide">
                       <label class="field-label" for="nb-phone">Phone <span class="field-label__hint">optional</span></label>
-                      <input class="input" id="nb-phone" name="phone" type="tel" autocomplete="tel" placeholder="(312) 555-0142">
+                      <input class="input" id="nb-phone" name="phone" type="tel" autocomplete="tel" placeholder="<%= shell.settings.country === 'IN' ? '+91 98765 43210' : '(312) 555-0142' %>">
                     </div>
                     <div class="form-grid__col form-grid__col--wide">
                       <label class="field-label" for="nb-source">Booking source</label>

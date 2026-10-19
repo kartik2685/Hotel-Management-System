@@ -15,6 +15,8 @@ const registration = require('../services/registration');
 const mail = require('../lib/mail');
 const system = require('../services/system');
 const { backupTo } = require('../db/backup');
+const sample = require('../db/sample');
+const website = require('../services/website');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -51,6 +53,7 @@ const TABS = [
 const FLASH = {
   saved: 'Changes saved.', created: 'Added.', removed: 'Removed.', closed: 'The day is closed. The business date has moved on and today’s housekeeping tasks were created.',
   password: 'Password set. The person must choose a new one when they next sign in.', 'back-in-service': 'The room is back in service.', revenue: 'Outlet revenue saved.',
+  'sample-removed': 'The sample data has been removed.',
 };
 
 function render(req, res, view, tab, data, status = 200) {
@@ -66,7 +69,7 @@ const stamp = (req) => clock.stamp(req.settings.timezone);
 const toInt = (value) => Number.parseInt(value, 10) || 0;
 
 /* ------------------------------------------------------------------ overview */
-router.get('/', (req, res) => {
+function overview(req, res, extra = {}, status = 200) {
   const db = req.db;
   const bd = settingsService.businessDate(db);
   const count = (sql, ...args) => db.get(sql, ...args).n;
@@ -88,7 +91,35 @@ router.get('/', (req, res) => {
     // Where the data is kept (admins only): lets the owner check the Supabase connection from the browser.
     database: admin ? system.databaseInfo(db, { today: clock.hotelNow(req.settings.timezone).date }) : null,
     lastBackup: admin ? db.get("SELECT created_at, user_name FROM activity_log WHERE action = 'database.backup' ORDER BY id DESC LIMIT 1") || null : null,
-  });
+    // Sample hotel (admins only): offered while the hotel has no rooms or guests of its own, removable once added.
+    sample: admin ? { info: sample.info(db), blocker: sample.blocker(db) } : null,
+    sampleAdded: null, sampleError: '',
+    ...extra,
+  }, status);
+}
+router.get('/', (req, res) => overview(req, res));
+
+/* ------------------------------------------------------------------ sample data */
+// Fills an empty hotel with a sample one (db/sample.js). The sample staff password is shown once, on this page.
+router.post('/sample-data', requireAbility('administer'), async (req, res, next) => {
+  try {
+    const result = await sample.add(req.db, { by: req.user, siteUrl: website.siteUrl(req, req.settings) });
+    overview(req, res, { sampleAdded: result });
+  } catch (error) {
+    if (error.status !== 422) return next(error);
+    overview(req, res, { sampleError: error.message }, 422);
+  }
+});
+
+router.post('/sample-data/remove', requireAbility('administer'), (req, res, next) => {
+  if (req.body.sure !== 'on') return overview(req, res, { sampleError: 'Tick “Yes, remove the sample data” to remove it.' }, 422);
+  try {
+    sample.remove(req.db, { by: req.user });
+  } catch (error) {
+    if (error.status !== 422) return next(error);
+    return overview(req, res, { sampleError: error.message }, 422);
+  }
+  back(res, '/admin', 'sample-removed');
 });
 
 /* ------------------------------------------------------------------ backup */

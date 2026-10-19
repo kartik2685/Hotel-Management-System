@@ -42,10 +42,11 @@ function freshDatabase() {
   };
 }
 
-async function startHotel() {
+/* A running app on a fresh database. load(db) fills it: the demo hotel by default. */
+async function startHotel({ load = (db) => seed.loadDemo(db, { password: 'harlow-demo' }) } = {}) {
   const { db, drop } = freshDatabase();
   settingsService.reset();
-  await seed.loadDemo(db, { password: 'harlow-demo' });
+  await load(db);
   const server = await new Promise((resolve) => {
     const s = createApp(db).listen(0, '127.0.0.1', () => resolve(s));
   });

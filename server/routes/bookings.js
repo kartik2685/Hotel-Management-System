@@ -10,6 +10,7 @@ const shellService = require('../services/shell');
 const reservations = require('../services/reservations');
 const billing = require('../services/billing');
 const registration = require('../services/registration');
+const guests = require('../services/guests');
 
 const router = express.Router();
 const FLASH = {
@@ -152,7 +153,7 @@ router.post('/handover', requireAbility('frontOffice'), (req, res) => {
 });
 
 /* ------------------------------------------------------------------ guest profile editing */
-const PREFS = [['room', 'Room'], ['comfort', 'Comfort'], ['dining', 'Dining'], ['service', 'Service']];
+const PREFS = guests.PREF_GROUPS;
 
 function renderGuest(req, res, next, extra = {}, status = 200) {
   const db = req.db;
@@ -168,33 +169,11 @@ function renderGuest(req, res, next, extra = {}, status = 200) {
 }
 router.get('/guests/:id/edit', requireAbility('frontOffice'), (req, res, next) => renderGuest(req, res, next));
 router.post('/guests/:id/edit', requireAbility('frontOffice'), (req, res, next) => {
-  const db = req.db;
-  const g = db.get('SELECT * FROM guests WHERE id = ?', Number.parseInt(req.params.id, 10) || 0);
-  if (!g) return next();
-  const form = new Form(req.body);
-  const v = {
-    first: form.text('first', { label: 'First name', max: 60, required: true }),
-    last: form.text('last', { label: 'Last name', max: 60, required: true }),
-    email: form.email('email', { required: false }),
-    phone: form.text('phone', { label: 'Phone', max: 40 }),
-    city: form.text('city', { label: 'City', max: 80 }),
-    company: form.text('company', { label: 'Company', max: 80 }),
-    vip: form.bool('vip'),
-    corporate: form.bool('corporate'),
-    note: form.longText('note', { label: 'Note', max: 500 }),
-  };
-  const prefs = {};
-  for (const [key] of PREFS) prefs[key] = form.list(`pref_${key}`);
-  if (!form.ok) return renderGuest(req, res, next, { errors: form.errors, values: form.values }, 422);
-  const stamp = clock.stamp(req.settings.timezone);
-  db.tx(() => {
-    db.run('UPDATE guests SET first_name = ?, last_name = ?, email = ?, phone = ?, city = ?, company = ?, vip = ?, corporate = ?, preferences = ?, updated_at = ? WHERE id = ?',
-      v.first, v.last, v.email || null, v.phone || null, v.city || null, v.company || null, v.vip ? 1 : 0, v.corporate ? 1 : 0,
-      JSON.stringify(Object.fromEntries(Object.entries(prefs).filter(([, list]) => list.length))), stamp, g.id);
-    if (v.note) db.run('INSERT INTO guest_notes (guest_id, author_id, author_name, body, created_at) VALUES (?, ?, ?, ?, ?)', g.id, req.user.id, req.user.name, v.note, stamp);
-  });
-  activity.log(db, req, 'guest.update', `Updated guest profile ${v.first} ${v.last}${v.note ? ' and added a note' : ''}`);
-  res.redirect(303, `/guests?guest=${g.id}`);
+  const id = Number.parseInt(req.params.id, 10) || 0;
+  const result = guests.saveProfile(req.db, req, id, req.body);
+  if (!result) return next();
+  if (result.errors) return renderGuest(req, res, next, { errors: result.errors, values: result.values }, 422);
+  res.redirect(303, `/guests?guest=${id}`);
 });
 
 module.exports = router;

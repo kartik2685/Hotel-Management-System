@@ -116,7 +116,9 @@
       .map((line) => line.map((v) => '"' + safe(v).replace(/"/g, '""') + '"').join(','))
       .join('\r\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    const link = h('a', { href: url, download: 'harlow-reservations.csv' });
+    const hotel = ($('[data-current-hotel]') || {}).textContent || '';
+    const slug = hotel.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const link = h('a', { href: url, download: (slug ? slug + '-' : '') + 'reservations.csv' });
     document.body.append(link);
     link.click();
     link.remove();

@@ -15,6 +15,7 @@
     "seed": "node --disable-warning=ExperimentalWarning server/db/seed.js",
     "backup": "node --disable-warning=ExperimentalWarning server/db/backup.js",
     "db:copy": "node --disable-warning=ExperimentalWarning server/db/copy.js",
+    "sample": "node --disable-warning=ExperimentalWarning server/db/sample.js",
     "test": "node --disable-warning=ExperimentalWarning --test --test-reporter=spec \"test/**/*.test.js\"",
     "test:pg": "node --disable-warning=ExperimentalWarning --env-file=test/pglite.env --test --test-reporter=spec \"test/**/*.test.js\""
   },

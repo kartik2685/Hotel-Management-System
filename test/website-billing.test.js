@@ -243,6 +243,25 @@ describe('payments and invoices', () => {
     setSetting('country', 'US');
   });
 
+  test('a company GSTIN on the guest profile is filled in on the invoice form', async () => {
+    const c = hotel.client();
+    await c.login();
+    const g = hotel.db.get("SELECT g.* FROM reservations r JOIN guests g ON g.id = r.guest_id WHERE r.confirmation = 'HLW-41671'");
+    const form = { first: g.first_name, last: g.last_name, email: g.email || '', phone: g.phone || '', city: g.city || '', company: 'Ferreira Studio' };
+    assert.match((await c.get(`/guests/${g.id}/edit`)).text, /Company GSTIN/);
+    let r = await c.post(`/guests/${g.id}/edit`, { ...form, gstin: '19ABC' });
+    assert.equal(r.status, 422);
+    assert.match(r.text, /A GSTIN has 15 characters/);
+    r = await c.post(`/guests/${g.id}/edit`, { ...form, gstin: '19abcde1234f1z5' });
+    assert.equal(r.status, 303);
+    assert.equal(hotel.db.get('SELECT gstin FROM guests WHERE id = ?', g.id).gstin, '19ABCDE1234F1Z5');
+    setSetting('tax_mode', 'gst_india'); // the GSTIN field is on GST invoices
+    const page = await c.get('/reservations/HLW-41671');
+    setSetting('tax_mode', 'flat');
+    assert.match(page.text, /name="gstin" value="19ABCDE1234F1Z5"/);
+    assert.match(page.text, /name="bill_to" value="Ferreira Studio"/);
+  });
+
   test('amounts in words follow Indian and international numbering', () => {
     assert.equal(billing.indianWords(1234567), 'Twelve Lakh Thirty-Four Thousand Five Hundred Sixty-Seven');
     assert.equal(billing.amountInWords(130766, { currency_code: 'INR' }), 'Rupees One Thousand Three Hundred Seven and Sixty-Six Paise Only');

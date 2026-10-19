@@ -22,6 +22,38 @@
             </div>
           </section>
           <div class="admin-stack">
+<% if (sample && (sample.info || !sample.blocker || sampleError)) { const c = sample.info && sample.info.counts; -%>
+            <section class="card" aria-labelledby="sample-title" id="sample-data">
+              <div class="card__head"><div><h2 class="card__title" id="sample-title">Sample data</h2><p class="card__subtitle"><%= sample.info ? `Added ${sample.info.addedAt} by ${sample.info.addedBy}` : 'See every screen working with a full hotel' %></p></div></div>
+<% if (sampleAdded) { const first = sampleAdded.staff.find((p) => p.role === 'frontdesk'); -%>
+              <div class="notice" role="status"><%- icon('check') %><p><strong>Sample data added.</strong> Every sample staff account signs in with its email and the password <code class="nowrap"><%= sampleAdded.password %></code> — for example <span class="nowrap"><%= first.email %></span>. Write the password down now: it is shown only this once. You can give anyone a new password in <a href="/admin/staff">Staff accounts</a>.</p></div>
+<% } -%>
+<% if (sampleError) { -%>
+              <div class="notice notice--error" role="alert"><%- icon('info') %><p><%= sampleError %></p></div>
+<% } -%>
+<% if (c) { -%>
+              <dl class="money-lines db-lines">
+                <div><dt>Guests</dt><dd><%= c.guests %></dd></div>
+                <div><dt>Bookings</dt><dd><%= c.bookings %></dd></div>
+                <div><dt>Staff accounts</dt><dd><%= c.staff %></dd></div>
+                <div><dt>Rooms</dt><dd><%= c.rooms %> in <%= c.roomTypes %> types</dd></div>
+                <div><dt>Payments · invoices</dt><dd><%= c.payments %> · <%= c.invoices %></dd></div>
+              </dl>
+              <p class="form-hint">All of it was made through the normal screens, so open and change anything. Before you take real bookings, remove it: the sample guests, bookings, payments, invoices, staff accounts and their log lines go, and the settings it changed are put back. Rooms, rates and sources stay only if a real booking uses them.</p>
+              <form method="post" action="/admin/sample-data/remove">
+                <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+                <div class="check-row"><label><input type="checkbox" name="sure"> Yes, remove the sample data</label></div>
+                <div class="form-actions"><button class="button button--secondary" type="submit"><%- icon('close') %>Remove sample data</button></div>
+              </form>
+<% } else if (!sample.blocker) { -%>
+              <p class="form-hint">Fill this hotel with a realistic sample, all in rupees: 25 rooms in 7 types, 18 staff in every role, 50 guests (business travellers, families, VIPs, walk-ins, foreign guests with Form III) and four weeks of bookings, check-ins, payments, GST invoices, housekeeping and night audits. It is made through the same screens your team uses, so you can open and change any of it, and remove it again with one click.</p>
+              <form class="form-actions" method="post" action="/admin/sample-data">
+                <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+                <button class="button button--primary" type="submit"><%- icon('plus') %>Add sample data</button>
+              </form>
+<% } -%>
+            </section>
+<% } -%>
             <section class="card" aria-labelledby="day-title">
               <div class="card__head"><div><h2 class="card__title" id="day-title">Business date</h2><p class="card__subtitle"><%= businessDate %></p></div></div>
               <p class="form-hint">At the end of each day, run the night audit. It records the day’s figures, marks no-shows if you choose, moves the business date on and creates the next day’s housekeeping tasks.</p>
@@ -34,7 +66,7 @@
               <div class="notice notice--error" role="alert"><%- icon('info') %><p><strong>The data is in a temporary file.</strong> Render’s free plan deletes it on every restart and redeploy and after 15 minutes without visitors. Connect a PostgreSQL database through <code>DATABASE_URL</code>: the Blueprint in <code>render.yaml</code> creates one and connects it for you.</p></div>
 <% } -%>
 <% if (database.freePlan) { const p = database.freePlan; -%>
-              <div class="notice<%= p.urgent ? ' notice--error' : '' %>"<%- p.urgent ? ' role="alert"' : '' %>><%- icon('info') %><p><strong><%= p.daysLeft === 0 ? 'Last day' : p.daysLeft + (p.daysLeft === 1 ? ' day' : ' days') + ' left' %> on Render’s free database, if it is still on the free plan.</strong> It stops on <%= p.stops %> and is deleted on <%= p.deleted %>. Upgrade it before then in Render → <strong>hotel-db</strong> → <strong>Upgrade</strong> (<span class="nowrap">0.1c-256mb</span>, about $6 a month): the data stays.</p></div>
+              <div class="notice<%= p.urgent ? ' notice--error' : '' %>"<%- p.urgent ? ' role="alert"' : '' %>><%- icon('info') %><p><strong><%= p.daysLeft === 0 ? 'Last day' : p.daysLeft + (p.daysLeft === 1 ? ' day' : ' days') + ' left' %> on Render’s free database, if it is still on the free plan.</strong> It stops on <%= p.stops %> and is deleted on <%= p.deleted %>. Upgrade it before then in Render → <strong>hotel-db</strong> → <strong>Upgrade</strong> (<span class="nowrap">0.1c-256mb</span>, about US$6 — roughly ₹500 — a month): the data stays.</p></div>
 <% } -%>
               <dl class="money-lines db-lines">
                 <div><dt>Where</dt><dd class="mono"><%= database.where %></dd></div>

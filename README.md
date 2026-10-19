@@ -43,6 +43,26 @@ hotel (The Harlow Hotel, 48 rooms, about 560 bookings).
 All demo accounts share the password `harlow-demo` (change it with `DEMO_PASSWORD`).
 **Change these passwords before real use** (see below).
 
+### Sample hotel in rupees (try every screen)
+
+An empty hotel can be filled with a realistic Indian sample in one click: **Admin panel → Overview → Sample data →
+Add sample data** (admins only), or `npm run sample` on the command line.
+
+- *The Hooghly Residency*, Kolkata: 25 rooms in 7 types (Standard to Presidential Suite), INR, GST, `Asia/Kolkata`.
+- 18 staff in every role: general manager, managers, front desk, reservations, night auditors, housekeeping,
+  engineering, and one who has left.
+- 50 guests of every kind: business travellers billed to companies with GSTINs, families, VIPs, walk-ins, a wedding
+  group, medical stays, foreign guests (Form III; Nepal and Bhutan exempt), a no-show and cancellations.
+- Four weeks of hotel life up to the minute it is added: bookings by phone, email, walk-in, travel sites and the
+  website, registration cards, check-ins and check-outs, room moves and an upgrade, payments and refunds, GST
+  invoices, housekeeping tasks, handover notes, outlet revenue and a night audit every day.
+
+Nothing is pasted into the tables: everything is made through the same code as the screens, by the member of staff
+on duty, at the time it happened, so every record can be opened and changed. All sample staff sign in with one
+password, shown once when the sample is added. **Remove sample data** (same card, or `npm run sample -- --remove`)
+takes it all out again before real use. Names, companies, GSTINs and ID numbers are made up; the emails use
+`example.com`, so nothing is ever sent to them.
+
 ## What the system does
 
 | Page | What you can do |
@@ -259,7 +279,7 @@ the service's **Environment** instead.
 npm test
 ```
 
-74 tests run against a fresh demo hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
+85 tests run against a fresh demo hotel or the sample hotel (one of them only on PostgreSQL). `npm run test:pg` runs all of them on PostgreSQL instead (an embedded
 copy, nothing to install), and `TEST_DATABASE=postgres://user:pass@host/postgres npm test` on a real server.
 They cover:
 - sign-in, lockout, CSRF and redirect safety;
@@ -271,6 +291,7 @@ They cover:
 - GST invoice numbering and tax splits;
 - password reset, reports and CSV safety;
 - database upgrades, and what a new database starts with on a live server;
+- the sample hotel: made through the services, in rupees everywhere, admins only, and removed without a trace;
 - PostgreSQL: the same tables and answers as SQLite, row level security, copying between the two;
 - the admin's database card (Render and Supabase recognised, the free-plan countdown) and backup downloads
   (who may, and that the file holds every row); waiting for a database that is still starting.
@@ -283,7 +304,8 @@ server/
   app.js              Express app: security headers, sessions, routes, error pages
   config.js           environment settings
   db/                 index.js (SQLite) and postgres.js (PostgreSQL: Render, Supabase…) behind one API; schema.sql + migrations/
-                      and schema.pg.sql (applied automatically); seed.js (demo or empty hotel), copy.js, backup.js, demo-data.json
+                      and schema.pg.sql (applied automatically); seed.js (demo or empty hotel), sample.js + sample-data.js
+                      (the sample hotel in rupees), copy.js, backup.js, demo-data.json
   lib/                auth (passwords, sessions), security (CSP, CSRF, roles), forms, pricing, formatting, clock, activity log
   services/           business logic: reservations, rooms, guests, housekeeping, dashboard, stats, night audit, billing,
                       registration (GRC, Form III), website, emails, settings, system (the admin's database card)
@@ -311,7 +333,7 @@ render.yaml           Render Blueprint: the web service and its PostgreSQL datab
 - Fonts: [Manrope](https://github.com/sharanda/manrope) and
   [Cormorant Garamond](https://github.com/CatharsisFonts/Cormorant), SIL Open Font License 1.1, self-hosted.
 - Photo: "Hotel Lobby", CC0 1.0, via [rawpixel](https://www.rawpixel.com/image/5969494/hotel-lobby).
-- Room and restaurant photos in `assets/img/rooms/` are AI-generated placeholders for the fictional demo hotel. Replace them with real photos of your hotel.
+- Room and restaurant photos in `assets/img/rooms/` are AI-generated placeholders for the fictional demo and sample hotels. Replace them with real photos of your hotel.
 - Demo data is fictional.
 
 ## License

@@ -9,7 +9,7 @@
         <form class="card" method="post" action="/hotel/manage" novalidate>
           <input type="hidden" name="_csrf" value="<%= siteToken %>">
           <div class="form-grid">
-            <div class="form-grid__col"><label class="field-label" for="m-conf">Booking number</label><input class="input" id="m-conf" name="confirmation" value="<%= values.confirmation || '' %>" placeholder="e.g. HLW-52418" autocomplete="off" required></div>
+            <div class="form-grid__col"><label class="field-label" for="m-conf">Booking number</label><input class="input" id="m-conf" name="confirmation" value="<%= values.confirmation || '' %>" placeholder="e.g. <%= s.confirmation_prefix || 'HTL' %>-52418" autocomplete="off" required></div>
             <div class="form-grid__col"><label class="field-label" for="m-email">Email</label><input class="input" id="m-email" name="email" type="email" value="<%= values.email || '' %>" autocomplete="email" required></div>
           </div>
           <div class="form-actions"><button class="button button--primary" type="submit">Find booking</button></div>

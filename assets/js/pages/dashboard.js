@@ -52,9 +52,26 @@
     }));
     if (!weeks.length) return;
 
-    const dollars = (n) => '$' + n.toLocaleString('en-US');
-    const axisLabel = (n) => (n >= 1000 ? '$' + Math.round(n / 1000) + 'k' : '$' + n);
+    // Amounts in the hotel's currency (set on <html> by the server): "₹1,23,456" or "$12,345".
+    const CURRENCY = document.documentElement.dataset.currency || '$';
+    const LOCALE = document.documentElement.dataset.locale || 'en-US';
+    const amount = (n) => CURRENCY + Math.round(n).toLocaleString(LOCALE);
+    const short = (n) => String(Math.round(n * 10) / 10);
+    // Axis labels: ₹2L and ₹1.5Cr in Indian numbering, otherwise $25k and $1.2M.
+    const axisLabel = (n) => {
+      if (LOCALE === 'en-IN' && n >= 1e7) return CURRENCY + short(n / 1e7) + 'Cr';
+      if (LOCALE === 'en-IN' && n >= 1e5) return CURRENCY + short(n / 1e5) + 'L';
+      if (n >= 1e6) return CURRENCY + short(n / 1e6) + 'M';
+      return n >= 1000 ? CURRENCY + short(n / 1000) + 'k' : CURRENCY + n;
+    };
     const sum = (list) => list.reduce((a, b) => a + b, 0);
+    // Grid lines every 1, 2, 2.5 or 5 × a power of ten, about four of them up to the busiest week.
+    const gridStep = (max) => {
+      if (!(max > 0)) return 1000;
+      const rough = max / 4;
+      const power = Math.pow(10, Math.floor(Math.log10(rough)));
+      return [1, 2, 2.5, 5, 10].find((m) => m * power >= rough) * power;
+    };
 
     const tooltip = h('div', { class: 'chart-tooltip', hidden: true });
     let focusIndex = 0;
@@ -74,13 +91,13 @@
         tooltip.append(h('div', { class: 'chart-tooltip__row' }, [
           h('i', { class: 'chart-tooltip__swatch', style: 'background:var(--series-' + (s + 1) + ')' }),
           h('span', { text: series[s] }),
-          h('strong', { text: dollars(week.values[s]) }),
+          h('strong', { text: amount(week.values[s]) }),
         ]));
       });
       tooltip.append(h('div', { class: 'chart-tooltip__row chart-tooltip__row--total' }, [
         h('i', { class: 'chart-tooltip__swatch' }),
         h('span', { text: 'Total' }),
-        h('strong', { text: dollars(sum(week.values)) }),
+        h('strong', { text: amount(sum(week.values)) }),
       ]));
 
       const box = column.querySelector('.bar-chart__stack').getBBox();
@@ -103,8 +120,9 @@
       const margin = { t: 10, r: 6, b: 28, l: 46 };
       const plotW = W - margin.l - margin.r;
       const plotH = H - margin.t - margin.b;
-      const step = 25000;
-      const top = Math.ceil(Math.max(...weeks.map((w) => sum(w.values))) / step) * step;
+      const busiest = Math.max(...weeks.map((w) => sum(w.values)));
+      const step = gridStep(busiest);
+      const top = Math.max(step, Math.ceil(busiest / step) * step);
       const band = plotW / weeks.length;
       const barW = Math.min(24, band * 0.56);
       const y = (value) => margin.t + plotH - (value / top) * plotH;
@@ -115,7 +133,7 @@
         'aria-label': 'Revenue by week, stacked by outlet. Use the arrow keys to move between weeks.',
       });
 
-      // Horizontal grid lines with dollar labels
+      // Horizontal grid lines with amount labels
       for (let v = 0; v <= top; v += step) {
         chart.append(svg('line', { x1: margin.l, x2: W - margin.r, y1: y(v), y2: y(v), class: 'bar-chart__grid' }));
         const label = svg('text', { x: margin.l - 10, y: y(v) + 4, 'text-anchor': 'end', class: 'bar-chart__axis' });
@@ -132,7 +150,7 @@
           tabindex: i === focusIndex ? '0' : '-1',
           role: 'img',
           'aria-label': 'Week of ' + week.label + ': ' +
-            series.map((name, s) => name + ' ' + dollars(week.values[s])).join(', ') + ', total ' + dollars(total),
+            series.map((name, s) => name + ' ' + amount(week.values[s])).join(', ') + ', total ' + amount(total),
         });
         column.append(svg('rect', { x: margin.l + band * i + 1, y: margin.t, width: band - 2, height: plotH, rx: 6, class: 'bar-chart__bg' }));
 

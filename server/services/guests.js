@@ -169,4 +169,45 @@ function page(db, bd, { query = '', selected = null } = {}) {
   return { people, active, query };
 }
 
-module.exports = { page, profile, idFromSlug, slugFor, situation };
+/* ---------------------------------------------------------------- editing a profile */
+const { Form } = require('../lib/forms');
+const clock = require('../lib/clock');
+const activity = require('../lib/activity');
+
+const GSTIN = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+
+/* Saves the guest profile form (contact details, company and GSTIN, VIP, preferences, a new note).
+   Returns { errors, values } when something needs fixing, otherwise { ok: true }. */
+function saveProfile(db, req, guestId, body) {
+  const g = db.get('SELECT * FROM guests WHERE id = ?', guestId);
+  if (!g) return null;
+  const form = new Form(body);
+  const v = {
+    first: form.text('first', { label: 'First name', max: 60, required: true }),
+    last: form.text('last', { label: 'Last name', max: 60, required: true }),
+    email: form.email('email', { required: false }),
+    phone: form.text('phone', { label: 'Phone', max: 40 }),
+    city: form.text('city', { label: 'City', max: 80 }),
+    company: form.text('company', { label: 'Company', max: 80 }),
+    gstin: (form.text('gstin', { label: 'GSTIN', max: 15 }) || '').toUpperCase(),
+    vip: form.bool('vip'),
+    corporate: form.bool('corporate'),
+    note: form.longText('note', { label: 'Note', max: 500 }),
+  };
+  if (v.gstin && !GSTIN.test(v.gstin)) form.fail('gstin', 'A GSTIN has 15 characters, e.g. 19ABCDE1234F1Z5.');
+  const prefs = {};
+  for (const [key] of PREF_GROUPS) prefs[key] = form.list(`pref_${key}`);
+  if (!form.ok) return { errors: form.errors, values: form.values };
+  const stamp = clock.stamp(req.settings && req.settings.timezone);
+  db.tx(() => {
+    db.run(`UPDATE guests SET first_name = ?, last_name = ?, email = ?, phone = ?, city = ?, company = ?, gstin = ?, vip = ?, corporate = ?, preferences = ?, updated_at = ?
+             WHERE id = ?`,
+    v.first, v.last, v.email || null, v.phone || null, v.city || null, v.company || null, v.gstin || null, v.vip ? 1 : 0, v.corporate ? 1 : 0,
+    JSON.stringify(Object.fromEntries(Object.entries(prefs).filter(([, list]) => list.length))), stamp, g.id);
+    if (v.note) db.run('INSERT INTO guest_notes (guest_id, author_id, author_name, body, created_at) VALUES (?, ?, ?, ?, ?)', g.id, req.user.id, req.user.name, v.note, stamp);
+  });
+  activity.log(db, req, 'guest.update', `Updated guest profile ${v.first} ${v.last}${v.note ? ' and added a note' : ''}`);
+  return { ok: true };
+}
+
+module.exports = { page, profile, idFromSlug, slugFor, situation, saveProfile, PREF_GROUPS, GSTIN };

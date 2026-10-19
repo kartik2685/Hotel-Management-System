@@ -54,7 +54,9 @@ function page(db, shell) {
     const list = tasks.filter((t) => t.floor === number);
     const lead = people.find((a) => a.floor === number);
     const floaters = people.filter((a) => a.floor === null && list.some((t) => t.attendant_id === a.id));
-    const names = [lead ? lead.name : null, ...floaters.map((a) => `${a.name} on rush`)].filter(Boolean);
+    // Attendants whose home floor is another one but who look after rooms here (e.g. "Floors 4–5").
+    const covering = people.filter((a) => a.floor !== null && a.floor !== number && list.some((t) => t.attendant_id === a.id));
+    const names = [lead ? lead.name : null, ...covering.map((a) => a.name), ...floaters.map((a) => `${a.name} on rush`)].filter(Boolean);
     const floorDone = list.filter((t) => t.done).length;
     return { number, subtitle: names.join(' · ') || 'Unassigned', tasks: list, done: floorDone, total: list.length, pct: pct(floorDone, list.length) };
   });
