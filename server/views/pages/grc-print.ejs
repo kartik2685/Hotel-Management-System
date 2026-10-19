@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Registration card · <%= b.name %> · <%= s.hotel_name %></title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/pages/print.css">
+</head>
+<body class="print-page">
+<% const g = reg.guest; const field = (label, value) => value ? `<div class="sheet__field"><dt>${label}</dt><dd>${value}</dd></div>` : ''; const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); -%>
+  <div class="print-toolbar">
+    <a class="button button--secondary" href="/reservations/<%= b.confirmation %>#grc">Back to the booking</a>
+    <button class="button button--primary" type="button" data-print>Print</button>
+  </div>
+  <article class="sheet">
+    <header class="sheet__head">
+      <div class="sheet__hotel"><h1><%= s.hotel_name %></h1><% if (s.hotel_address) { %><p><%= s.hotel_address %></p><% } %><p class="sheet__muted"><%= [s.hotel_phone, s.hotel_email].filter(Boolean).join(' · ') %></p></div>
+      <div class="sheet__meta"><p><strong>Guest registration card</strong></p><p>Booking <%= b.confirmation %></p><p>Room <%= b.room_number || '—' %></p><% if (!reg.complete) { %><p><span class="sheet__stamp">Incomplete</span></p><% } %></div>
+    </header>
+    <h2>Guest</h2>
+    <dl class="sheet__grid">
+      <%- field('Name', esc(b.name)) %><%- field('Nationality', esc(reg.country)) %><%- field('Date of birth', esc(g.date_of_birth)) %><%- field('Phone', esc(g.phone)) %>
+      <%- field('Email', esc(g.email)) %><%- field('Company', esc(g.company)) %>
+    </dl>
+    <dl><%- field('Address', esc(g.address)) %></dl>
+    <h2>Identity</h2>
+    <dl class="sheet__grid">
+<% if (reg.foreign) { -%>
+      <%- field('Passport no.', esc(g.passport_number)) %><%- field(esc(g.visa_type || 'Visa') + ' no.', esc(g.visa_number)) %><%- field('Valid until', esc(g.visa_valid_until)) %>
+      <%- field('Arrived in India', esc(g.arrived_in_india)) %><%- field('Port of arrival', esc(g.port_of_arrival)) %>
+<% } else { -%>
+      <%- field('ID proof', esc(g.id_type)) %><%- field('ID number', esc(g.id_number)) %>
+<% } -%>
+    </dl>
+    <h2>Stay</h2>
+    <dl class="sheet__grid">
+      <%- field('Arrival', esc(fmt.formatDay(b.arrival) + (b.checked_in_at ? ', ' + b.checked_in_at.slice(11) : ''))) %><%- field('Departure', esc(fmt.formatDay(b.departure))) %>
+      <%- field('Guests', esc(fmt.guestCount(b.adults, b.children, ', '))) %><%- field('Room type', esc(b.type_name)) %>
+      <%- field('Purpose of visit', esc(b.purpose)) %><%- field('Arriving from', esc(b.arriving_from)) %><%- field('Going to', esc(b.going_to)) %>
+    </dl>
+    <p class="sheet__foot">I confirm these details are correct and agree to the hotel’s terms. Check-out is by <%= s.check_out_time %>.</p>
+    <div class="sheet__sign"><p>Guest signature · <%= fmt.formatDay(today) %></p><p>Front desk · <%= reg.complete ? 'checked ' + reg.when(b.grc_at) : '' %></p></div>
+  </article>
+  <script src="/assets/js/pages/print.js"></script>
+</body>
+</html>

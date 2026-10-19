@@ -1,0 +1,41 @@
+<%- include('_top') %>
+<% const stay = r.stay; const q = (extra) => new URLSearchParams({ arrival: stay.arrival, departure: stay.departure, adults: stay.adults, children: stay.children, ...extra }).toString(); -%>
+    <section class="section">
+      <div class="site-wrap">
+        <%- include('_steps', { step: 1 }) %>
+        <h1 class="page-title">Choose your room</h1>
+        <p class="page-lead"><%= fmt.formatDay(stay.arrival) %> → <%= fmt.formatDay(stay.departure) %> · <%= fmt.plural(stay.nights, 'night', 'nights') %> · <%= fmt.guestCount(stay.adults, stay.children, ', ') %>. Totals include tax; you pay at the hotel.</p>
+        <%- include('_search', { stay, minDate: r.bd, inline: true }) %>
+<% for (const message of Object.values(stay.errors)) { -%>
+        <div class="alert" role="alert" style="margin-top:16px"><%- icon('info') %><p><%= message %></p></div>
+<% } -%>
+        <div class="results">
+<% for (const x of r.results) { -%>
+          <article class="result">
+            <%- include('_carousel', { images: x.type.galleryUrls, alt: x.type.name, imageClass: '', carouselClass: 'result__img result__gallery', width: 1200, height: 670 }) %>
+            <div class="result__body">
+              <div class="result__top"><h2 class="room__name"><%= x.type.name %></h2><% if (x.fits && x.left > 0 && x.left <= 3) { %><span class="chip chip--amber">Only <%= x.left %> left</span><% } %></div>
+              <p class="room__meta"><%= [x.type.bed, x.type.size_sqm ? x.type.size_sqm + ' m²' : '', 'Sleeps ' + x.type.max_guests].filter(Boolean).join(' · ') %></p>
+              <% if (x.type.description) { %><p class="room__text"><%= x.type.description %></p><% } %>
+<% if (!x.fits) { -%>
+              <p class="result__unavailable">Sleeps up to <%= x.type.max_guests %>. Choose fewer guests or another room.</p>
+<% } else if (x.left < 1) { -%>
+              <p class="result__unavailable">Fully booked for these dates. Try other dates.</p>
+<% } else { -%>
+              <ul class="offers">
+<% for (const o of x.plans) { -%>
+                <li class="offer">
+                  <div><p class="offer__name"><%= o.plan.name %></p><% if (o.plan.description) { %><p class="offer__text"><%= o.plan.description %></p><% } %><p class="offer__policy<%= o.cancellable ? '' : ' is-strict' %>"><%= o.policy %></p></div>
+                  <p class="offer__price"><strong><%= fmt.money(o.quote.total) %></strong><%= fmt.plural(stay.nights, 'night', 'nights') %> incl. tax</p>
+                  <a class="button button--primary" href="/hotel/book/details?<%= q({ type: x.type.code, plan: o.plan.code }) %>">Book</a>
+                </li>
+<% } -%>
+              </ul>
+<% } -%>
+            </div>
+          </article>
+<% } -%>
+        </div>
+      </div>
+    </section>
+<%- include('_bottom') %>

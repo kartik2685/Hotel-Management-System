@@ -1,0 +1,53 @@
+<%- include('_top') %>
+<% const rec = editing ? (staff.find((s) => s.id === editing.id) || {}) : {};
+   const v = (k, d) => (values[k] !== undefined ? values[k] : rec[k] !== undefined && rec[k] !== null ? rec[k] : d ?? '');
+   const err = (k) => errors[k] || ''; const inv = (k) => (errors[k] ? ' is-invalid' : '');
+   const ROLE = { admin: 'Admin', manager: 'Manager', frontdesk: 'Front desk', housekeeping: 'Housekeeping' }; -%>
+<% if (locals.linkMade) { const l = linkMade; const first = l.name.split(' ')[0]; -%>
+        <div class="notice notice--ok" role="status"><%- icon('check') %><div class="link-made">
+          <p><strong><%= l.kind === 'invite' ? 'Invite link' : 'Password link' %> for <%= l.name %> is ready.</strong> Send it to <%= first %>: it works once, for <%= l.lasts %><%= l.kind === 'invite' ? ', and they choose their own password.' : '. Their current password keeps working until they use it.' %></p>
+          <div class="link-made__row"><label class="sr-only" for="made-link">Link for <%= l.name %></label><input class="input mono" id="made-link" value="<%= l.link %>" readonly><button class="button button--secondary" type="button" data-copy-link aria-controls="made-link">Copy link</button><a class="button button--secondary" href="<%= l.whatsapp %>" target="_blank" rel="noopener">Send on WhatsApp</a></div>
+          <p class="form-hint"><%= l.emailed ? `It was also emailed to ${l.email}.` : 'Email isn’t set up, so nothing was emailed (a copy is in Admin panel → Emails): send it yourself.' %> The link is shown only this once.</p>
+        </div></div>
+<% } -%>
+<% if (locals.linkError) { -%>
+        <div class="notice notice--error" role="alert"><%- icon('info') %><p><%= linkError %></p></div>
+<% } -%>
+        <div class="admin-grid">
+          <section class="card card--flush" aria-labelledby="staff-title">
+            <h2 class="sr-only" id="staff-title">Staff accounts</h2>
+            <div class="table-scroll">
+              <table class="table admin-table">
+                <thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Shift</th><th scope="col">Last sign-in</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+                <tbody>
+<% for (const s of staff) { -%>
+                  <tr<%- s.active ? '' : ' class="is-inactive"' %>><td><strong><%= s.name %></strong><br><small class="cell-note"><% const [local, domain] = s.email.split('@'); %><%= local %>@<wbr><%= domain %><%= s.title ? ' · ' + s.title : '' %></small></td><td><%= ROLE[s.role] %><% if (!s.active) { %> <span class="chip">Inactive</span><% } else if (s.invite === 'sent') { %> <span class="chip chip--blue">Invite sent</span><br><small class="cell-note">open until <%= s.inviteUntil %></small><% } else if (s.invite === 'expired') { %> <span class="chip chip--rose">Invite expired</span><% } else if (s.must_change_password) { %> <span class="chip chip--amber">New password due</span><% } %></td><td><%= s.shift %></td><td class="mono"><%= s.last_login_at || 'Never' %></td><td class="actions"><a class="button button--secondary button--sm" href="/admin/staff?edit=<%= s.id %>">Edit</a></td></tr>
+<% } -%>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <form class="card" method="post" action="/admin/staff<%= editing ? '/' + editing.id : '' %>" novalidate autocomplete="off">
+            <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+            <div class="card__head"><div><h2 class="card__title"><%= editing ? 'Edit ' + (rec.name || 'account') : 'Add a staff account' %></h2><p class="card__subtitle"><%= editing ? 'Set a temporary password, or send a link so they choose a new one themselves.' : 'Leave the password blank to get an invite link (for WhatsApp or email): they choose their own password.' %></p></div></div>
+            <div class="form-grid">
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="u-name">Name</label><input class="input<%= inv('name') %>" id="u-name" name="name" value="<%= v('name') %>"><p class="field-error"><%= err('name') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="u-email">Email (used to sign in)</label><input class="input<%= inv('email') %>" id="u-email" name="email" type="email" value="<%= v('email') %>"><p class="field-error"><%= err('email') %></p></div>
+              <div class="form-grid__col"><label class="field-label" for="u-role">Role</label>
+                <select class="select<%= inv('role') %>" id="u-role" name="role">
+<% for (const r of roles) { -%>
+                  <option value="<%= r.value %>"<%- v('role', 'frontdesk') === r.value ? ' selected' : '' %>><%= r.label %></option>
+<% } -%>
+                </select><p class="field-error"><%= err('role') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="u-title">Job title</label><input class="input" id="u-title" name="title" value="<%= v('title') %>" placeholder="e.g. Receptionist"></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="u-dept">Department</label><input class="input" id="u-dept" name="department" value="<%= v('department') %>" placeholder="e.g. Front office"></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="u-shift">Usual shift</label><select class="select" id="u-shift" name="shift"><% for (const [k, l] of [['morning', 'Morning'], ['evening', 'Evening'], ['night', 'Night audit']]) { %><option value="<%= k %>"<%- v('shift', 'morning') === k ? ' selected' : '' %>><%= l %></option><% } %></select></div>
+              <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="u-floor">Home floor <span class="field-label__hint">housekeeping</span></label><input class="input<%= inv('floor') %>" id="u-floor" name="floor" type="number" value="<%= v('floor') %>"><p class="field-error"><%= err('floor') %></p></div>
+              <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="u-area">Area label</label><input class="input" id="u-area" name="area" value="<%= v('area') %>" placeholder="Floor 2"></div>
+              <div class="form-grid__col"><label class="field-label" for="u-pass"><%= editing ? 'Set a new temporary password' : 'Temporary password' %> <span class="field-label__hint"><%= editing ? 'leave blank to keep the current one' : 'optional: blank sends an invite link' %></span></label><input class="input<%= inv('password') %>" id="u-pass" name="password" type="password" autocomplete="new-password"><p class="field-error"><%= err('password') %></p></div>
+            </div>
+            <div class="check-row"><label><input type="checkbox" name="active"<%- (values.active !== undefined ? values.active : rec.active !== 0) ? ' checked' : '' %>> Can sign in</label></div>
+            <div class="form-actions"><button class="button button--primary" type="submit"><%= editing ? 'Save changes' : 'Add account' %></button><% if (editing) { %><a class="button button--secondary" href="/admin/staff">Cancel</a><% } %><% if (editing && rec.active && rec.id !== me) { %><button class="button button--secondary" type="submit" formaction="/admin/staff/<%= editing.id %>/link"><%= rec.invite ? 'Send a new invite link' : 'Send a password link' %></button><% } %></div>
+          </form>
+        </div>
+<%- include('_bottom') %>

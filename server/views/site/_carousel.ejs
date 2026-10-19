@@ -1,0 +1,8 @@
+<div class="site-carousel <%= carouselClass || '' %>" data-site-carousel aria-label="<%= alt %> photos">
+  <% for (let i = 0; i < images.length; i++) { %><img class="site-carousel__slide <%= imageClass || '' %><%= i === 0 ? ' is-active' : '' %>" src="<%= images[i] %>" alt="<%= alt %> photo <%= i + 1 %>" width="<%= width || 1200 %>" height="<%= height || 670 %>"<%= i === 0 ? '' : ' loading="lazy"' %>><% } %>
+  <% if (images.length > 1) { %>
+    <button class="site-carousel__arrow site-carousel__arrow--prev" type="button" data-carousel-prev aria-label="Previous <%= alt %> photo"><%- icon('chevron-left') %></button>
+    <button class="site-carousel__arrow site-carousel__arrow--next" type="button" data-carousel-next aria-label="Next <%= alt %> photo"><%- icon('chevron-right') %></button>
+    <span class="site-carousel__count" aria-live="polite">1 / <%= images.length %></span>
+  <% } %>
+</div>

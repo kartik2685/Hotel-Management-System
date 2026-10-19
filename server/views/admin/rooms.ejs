@@ -1,0 +1,76 @@
+<%- include('_top') %>
+<% const rec = editing ? (rooms.find((r) => r.id === editing.id) || {}) : {};
+   const v = (k, d) => (values[k] !== undefined ? values[k] : rec[k] !== undefined && rec[k] !== null ? rec[k] : d ?? '');
+   const err = (k) => errors[k] || ''; const inv = (k) => (errors[k] ? ' is-invalid' : '');
+   const be = typeof blockErrors !== 'undefined' ? blockErrors : {}; const bv = typeof blockValues !== 'undefined' ? blockValues : {}; -%>
+        <div class="admin-grid">
+          <section class="card card--flush" aria-labelledby="rooms-title">
+            <h2 class="sr-only" id="rooms-title">Rooms</h2>
+            <div class="table-scroll">
+              <table class="table admin-table">
+                <thead><tr><th scope="col">Room</th><th scope="col">Floor</th><th scope="col">Type</th><th scope="col">Housekeeper</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+                <tbody>
+<% for (const r of rooms) { -%>
+                  <tr<%- r.active ? '' : ' class="is-inactive"' %>><td><strong><%= r.number %></strong></td><td><%= r.floor %></td><td><%= r.type_name %></td><td><%= r.attendant_name || '—' %></td><td><% if (!r.active) { %><span class="chip">Not in use</span><% } else if (r.block) { %><span class="chip chip--rose">Out of order</span><% } else { %><span class="chip<%= r.hk_status === 'clean' ? '' : ' chip--amber' %>"><%= r.hk_status === 'clean' ? 'Clean' : 'Dirty' %></span><% } %></td><td class="actions"><a class="button button--secondary button--sm" href="/admin/rooms?edit=<%= r.id %>">Edit</a></td></tr>
+<% } -%>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <div class="admin-stack">
+            <form class="card" method="post" action="/admin/rooms<%= editing ? '/' + editing.id : '' %>" novalidate>
+              <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+              <div class="card__head"><div><h2 class="card__title"><%= editing ? 'Edit room ' + (rec.number || '') : 'Add a room' %></h2></div></div>
+              <div class="form-grid">
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="r-number">Room number</label><input class="input<%= inv('number') %>" id="r-number" name="number" value="<%= v('number') %>"><p class="field-error"><%= err('number') %></p></div>
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="r-floor">Floor</label><input class="input<%= inv('floor') %>" id="r-floor" name="floor" type="number" value="<%= v('floor', 1) %>"><p class="field-error"><%= err('floor') %></p></div>
+                <div class="form-grid__col"><label class="field-label" for="r-type">Room type</label>
+                  <select class="select<%= inv('room_type_id') %>" id="r-type" name="room_type_id">
+<% for (const t of types) { -%>
+                    <option value="<%= t.id %>"<%- String(v('room_type_id')) === String(t.id) ? ' selected' : '' %>><%= t.name %></option>
+<% } -%>
+                  </select><p class="field-error"><%= err('room_type_id') %></p></div>
+                <div class="form-grid__col"><label class="field-label" for="r-hk">Usual housekeeper <span class="field-label__hint">optional</span></label>
+                  <select class="select" id="r-hk" name="attendant_id">
+                    <option value="">Unassigned</option>
+<% for (const a of attendants) { -%>
+                    <option value="<%= a.id %>"<%- String(v('attendant_id')) === String(a.id) ? ' selected' : '' %>><%= a.name %></option>
+<% } -%>
+                  </select></div>
+              </div>
+              <div class="check-row"><label><input type="checkbox" name="active"<%- (values.active !== undefined ? values.active : rec.active !== 0) ? ' checked' : '' %>> In use</label></div>
+              <p class="field-error"><%= err('active') %></p>
+              <div class="form-actions"><button class="button button--primary" type="submit"><%= editing ? 'Save changes' : 'Add room' %></button><% if (editing) { %><a class="button button--secondary" href="/admin/rooms">Cancel</a><% } %></div>
+            </form>
+            <section class="card" aria-labelledby="ooo-title">
+              <div class="card__head"><div><h2 class="card__title" id="ooo-title">Out of order</h2><p class="card__subtitle">Rooms off sale now or later. They can’t be booked for those nights.</p></div></div>
+<% if (blocks.length) { -%>
+              <ul class="note-list">
+<% for (const b of blocks) { -%>
+                <li><span class="status-icon tone-ooo" aria-hidden="true"><%- icon('wrench') %></span><div><p><strong>Room <%= b.number %></strong> · <%= b.reason %></p><small><%= b.current ? 'Off sale now' : 'From ' + b.from %> · back <%= b.until %></small>
+                  <form class="inline-form" method="post" action="/admin/blocks/<%= b.id %>/end"><input type="hidden" name="_csrf" value="<%= shell.csrf %>"> <button class="text-button" type="submit">Back in service</button></form></div></li>
+<% } -%>
+              </ul>
+<% } else { -%>
+              <p class="empty-state empty-state--inline">No rooms are out of order.</p>
+<% } -%>
+              <form method="post" action="/admin/blocks" novalidate style="margin-top:18px">
+                <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+                <h3 class="form-section__title">Take a room off sale</h3>
+                <div class="form-grid">
+                  <div class="form-grid__col form-grid__col--half"><label class="field-label" for="b-room">Room</label>
+                    <select class="select<%= be.room_id ? ' is-invalid' : '' %>" id="b-room" name="room_id">
+<% for (const r of rooms.filter((x) => x.active)) { -%>
+                      <option value="<%= r.id %>"<%- String(bv.room_id) === String(r.id) ? ' selected' : '' %>><%= r.number %> · <%= r.type_name %></option>
+<% } -%>
+                    </select><p class="field-error"><%= be.room_id || '' %></p></div>
+                  <div class="form-grid__col form-grid__col--half"><label class="field-label" for="b-reason">Reason</label><input class="input<%= be.reason ? ' is-invalid' : '' %>" id="b-reason" name="reason" value="<%= bv.reason || '' %>" placeholder="e.g. Bathroom resealing"><p class="field-error"><%= be.reason || '' %></p></div>
+                  <div class="form-grid__col form-grid__col--half"><label class="field-label" for="b-start">Off sale from</label><input class="input<%= be.start_date ? ' is-invalid' : '' %>" id="b-start" name="start_date" type="date" value="<%= bv.start_date || bd %>"><p class="field-error"><%= be.start_date || '' %></p></div>
+                  <div class="form-grid__col form-grid__col--half"><label class="field-label" for="b-end">Back in service on</label><input class="input<%= be.end_date ? ' is-invalid' : '' %>" id="b-end" name="end_date" type="date" value="<%= bv.end_date || fmt.addDays(bd, 1) %>"><p class="field-error"><%= be.end_date || '' %></p></div>
+                </div>
+                <div class="form-actions"><button class="button button--primary" type="submit"><%- icon('wrench') %>Mark out of order</button></div>
+              </form>
+            </section>
+          </div>
+        </div>
+<%- include('_bottom') %>

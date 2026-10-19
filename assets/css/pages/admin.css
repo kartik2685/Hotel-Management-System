@@ -1,0 +1,217 @@
+/* =====================================================================
+ * Frontdesk HMS · pages/admin.css
+ * Admin panel, booking page, handover notes and account page.
+ * Built from the same tokens and components as the rest of the app.
+ * ===================================================================== */
+
+/* Admin section tabs */
+.admin-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  margin: 0 0 22px;
+  border-radius: 11px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.admin-tabs a {
+  padding: 7px 12px;
+  border-radius: 8px;
+  color: var(--text-2);
+  font-size: .8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.admin-tabs a:hover { color: var(--text); }
+.admin-tabs a[aria-current="page"] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .08), 0 0 0 1px var(--line);
+}
+
+/* Layout */
+.admin-grid { display: grid; gap: 20px; align-items: start; }
+@media (min-width: 1200px) { .admin-grid { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); } }
+.admin-stack { display: grid; gap: 20px; }
+.admin-cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.admin-card { display: grid; gap: 6px; text-decoration: none; color: inherit; transition: border-color .15s var(--ease), transform .15s var(--ease); }
+.admin-card:hover { border-color: var(--brass-line); transform: translateY(-1px); }
+.admin-card__num { font-size: 1.75rem; font-weight: 800; line-height: 1.1; }
+.admin-card__label { color: var(--text-2); font-size: .85rem; }
+
+/* Forms */
+.form-section + .form-section { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line); }
+.form-section__title { margin: 0 0 12px; font-size: .78rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); }
+.form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 20px; }
+.form-hint { margin: 6px 0 0; color: var(--muted); font-size: .8rem; }
+.inline-form { display: inline; margin: 0; }
+.check-row { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 4px; }
+.check-row label { display: inline-flex; align-items: center; gap: 8px; font-size: .875rem; }
+textarea.input { min-height: 84px; resize: vertical; }
+
+/* Tables */
+.admin-table td, .admin-table th { vertical-align: middle; }
+.admin-table .actions { text-align: right; white-space: nowrap; }
+.admin-table .actions .button + .button, .admin-table .actions form + form, .admin-table .actions .button + form { margin-left: 6px; }
+.admin-table tr.is-inactive td { color: var(--muted); }
+.mono { font-family: var(--font-mono); font-size: .82rem; }
+
+/* Notices */
+.notice {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--brass-soft);
+  border: 1px solid var(--brass-line);
+  font-size: .875rem;
+}
+.notice .icon { flex-shrink: 0; margin-top: 1px; }
+.notice--ok { background: var(--clean-soft); border-color: color-mix(in srgb, var(--clean) 35%, transparent); }
+.notice--error { background: var(--ooo-soft); border-color: color-mix(in srgb, var(--ooo) 35%, transparent); }
+.notice p { margin: 0; }
+/* A sign-in link shown once in Staff accounts, with Copy and WhatsApp beside it */
+.link-made { flex: 1; min-width: 0; display: grid; gap: 10px; }
+.link-made__row { display: flex; flex-wrap: wrap; gap: 8px; }
+.link-made__row .input { flex: 1 1 260px; min-width: 0; }
+.link-made .form-hint { margin: 0; }
+/* Long emails in admin tables wrap (after the @ first) instead of pushing the Edit buttons out of view */
+.admin-table .cell-note { overflow-wrap: anywhere; }
+/* Keeps hidden header text (the "Actions" column) inside the scrolling table, so phones don't scroll sideways */
+.table-scroll { position: relative; }
+/* Account page: how to install Frontdesk as an app */
+.install-steps { margin: 4px 0 0; padding-left: 18px; color: var(--muted); font-size: .875rem; display: grid; gap: 6px; }
+.install-steps strong { color: var(--text); }
+
+/* Booking page */
+.booking-facts { display: grid; gap: 12px 24px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); margin: 0; }
+.booking-facts dt { color: var(--muted); font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.booking-facts dd { margin: 2px 0 0; font-weight: 700; }
+.money-lines { display: grid; gap: 8px; margin: 0; }
+.money-lines div { display: flex; justify-content: space-between; gap: 12px; }
+.money-lines dt { color: var(--text-2); }
+.money-lines dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.money-lines .is-total { padding-top: 8px; border-top: 1px solid var(--line); }
+
+/* Handover notes page */
+.note-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.note-list li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; }
+.note-list p { margin: 0; }
+.note-list small { color: var(--muted); }
+/* Charges during the stay on the booking page */
+.charge-list li { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.charge-list .cell-note { color: var(--muted); font-size: .8rem; }
+.charge-list .is-voided { opacity: .6; }
+.charge-list .is-voided strong { text-decoration: line-through; }
+.charge-add { margin-top: 12px; }
+/* Period filters on admin pages (Reports, GST returns): fields in a row with their buttons beside them.
+   (.filter-bar's own styles belong to the staff Reservations page and are not loaded here.) */
+[data-page="admin"] .filter-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 14px; padding: 18px 20px; }
+[data-page="admin"] .filter-bar .field { display: grid; gap: 6px; flex: 0 1 220px; min-width: 0; }
+[data-page="admin"] .filter-bar .field--reset { flex: 0 0 auto; }
+[data-page="admin"] .filter-bar .field-label { margin: 0; }
+/* GST returns */
+.gst-who { align-self: center; margin: 0; }
+.gst-files { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.gst-files li { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+
+/* Error page */
+.error-page { display: grid; place-items: center; min-height: 100vh; padding: 24px; }
+.error-page__card { max-width: 520px; width: 100%; display: grid; gap: 10px; }
+.error-page__card .logo { margin-bottom: 8px; }
+.error-page__actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 0; }
+
+/* Admin overview: the database card */
+.db-lines dd { min-width: 0; text-align: right; overflow-wrap: anywhere; }
+.db-lines + .form-hint { margin-top: 14px; }
+.nowrap { white-space: nowrap; }
+/* Seasons and weekends: the days of the week in one row */
+.check-days { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 6px 0; }
+.check-days label { display: inline-flex; align-items: center; gap: 6px; font-size: .875rem; }
+/* Rate calendar: room types down the side (they stay in view), 30 nights across */
+.cal-bar { align-items: center; }
+.cal-jump { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.cal-jump .field-label { margin: 0; }
+.cal-jump .input { width: auto; }
+.cal-legend { flex-basis: 100%; margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.cal-key { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--line); vertical-align: -1px; }
+.cal-key--weekend { background: var(--brass-soft); }
+.cal-key--season { background: var(--occupied-soft); }
+.cal-key--full { background: var(--ooo-soft); }
+.rate-cal { border-collapse: separate; border-spacing: 0; }
+.rate-cal th, .rate-cal td { white-space: nowrap; }
+.rate-cal__type { position: sticky; left: 0; z-index: 1; background: var(--surface, #fff); min-width: 170px; text-align: left; box-shadow: 1px 0 0 var(--line); }
+.rate-cal__day { text-align: center; font-weight: 500; min-width: 82px; }
+.rate-cal__day strong { font-size: .95rem; }
+.rate-cal__day.is-today { color: var(--brass-strong); }
+.rate-cal__season { display: inline-block; max-width: 78px; overflow: hidden; text-overflow: ellipsis; font-size: .66rem; color: var(--occupied-text); }
+.rate-cal__cell { text-align: center; font-size: .8rem; }
+.rate-cal__cell span { color: var(--muted); font-size: .72rem; }
+.rate-cal .is-weekend { background: color-mix(in srgb, var(--brass-soft) 55%, transparent); }
+.rate-cal__cell.is-season { background: var(--occupied-soft); }
+.rate-cal__cell.is-season strong { color: var(--occupied-text); }
+.rate-cal__cell.is-full { background: var(--ooo-soft); }
+.rate-cal__cell.is-full span { color: var(--ooo-text, var(--rose-text)); font-weight: 700; }
+.rate-cal tfoot td, .rate-cal tfoot th { border-top: 2px solid var(--line); }
+/* Daily report */
+.daily-bar { align-items: center; }
+.daily-bar .cal-jump { margin-left: 0; margin-right: auto; }
+.daily-note { flex-basis: 100%; margin: 0; }
+.daily-title { font-family: var(--font-display); font-weight: 500; font-size: 1.5rem; margin: 24px 0 12px; }
+.week-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.week-bars li { display: grid; grid-template-columns: 92px minmax(0, 1fr) 44px; align-items: center; gap: 10px; font-size: .85rem; }
+.week-bars strong { text-align: right; }
+.week-bars__bar { height: 10px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+.week-bars__bar span { display: block; height: 100%; background: var(--brass, #b08a4f); border-radius: 999px; }
+.daily-list li { grid-template-columns: minmax(0, 1fr); }
+.daily-list .cell-note { color: var(--muted); font-size: .8rem; }
+.daily-message { margin: 0; white-space: pre-wrap; font-family: var(--font-mono); font-size: .78rem; line-height: 1.55; background: var(--surface-2); padding: 12px 14px; border-radius: 10px; }
+@media print {
+  [data-page="admin"] .sidenav, [data-page="admin"] .appbar, [data-page="admin"] .admin-tabs, .daily-bar, [data-page="admin"] .site-footer { display: none !important; }
+}
+/* Guest feedback page: five stars, chosen right to left so hovering lights the ones before */
+.feedback { max-width: 520px; }
+.feedback .page-header__title { margin-bottom: 6px; }
+.feedback form { display: grid; gap: 10px; margin-top: 14px; }
+.stars { border: 0; padding: 0; margin: 0; }
+.stars__row { display: inline-flex; flex-direction: row-reverse; gap: 4px; }
+.stars__row input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.stars__row label { font-size: 2.2rem; line-height: 1; color: var(--line); cursor: pointer; transition: color .12s; }
+.stars__row input:checked ~ label, .stars__row label:hover, .stars__row label:hover ~ label { color: var(--brass); }
+.stars__row input:focus-visible + label { outline: 2px solid var(--brass); outline-offset: 2px; border-radius: 4px; }
+.feedback__given { font-size: 1.8rem; color: var(--brass); letter-spacing: 2px; margin: 4px 0 10px; }
+.feedback-stars { color: var(--brass); letter-spacing: 1px; }
+
+/* Admin guide and real-time guest-site manual */
+.admin-guide-button { align-self: flex-start; white-space: nowrap; }
+.manual-intro { margin-bottom: 18px; }
+.manual-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.manual-preview { margin-bottom: 18px; }
+.manual-site-frame { display: block; width: 100%; min-height: 700px; border: 1px solid var(--line, #e5e7eb); border-radius: 8px; background: #fff; }
+.manual-content-grid, .manual-tab-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.manual-tab { padding: 16px; border: 1px solid var(--line, #e5e7eb); border-radius: 8px; }
+.manual-tab h3 { margin: 0 0 8px; font-size: 1rem; }
+.manual-tab p { margin: 0; }
+@media (max-width: 700px) {
+  .manual-content-grid, .manual-tab-grid { grid-template-columns: 1fr; }
+  .manual-site-frame { min-height: 560px; }
+  .admin-guide-button { font-size: .82rem; }
+}
+@media print {
+  .admin-tabs, .admin-guide-button, .manual-actions, .manual-intro button, .sidebar, .topbar { display: none !important; }
+  .manual-site-frame { min-height: 900px; }
+}
+.admin-photo-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; font-size: .8rem; }
+.admin-photo-list span { padding: 3px 8px; border: 1px solid var(--line, #e5e7eb); border-radius: 999px; }
+.integration-list { display: grid; }
+.integration-row { display: flex; justify-content: space-between; gap: 20px; padding: 16px 0; border-top: 1px solid var(--line, #e5e7eb); }
+.integration-row h3 { margin: 0 0 5px; font-size: 1rem; }
+.integration-row p { margin: 0; max-width: 70ch; color: var(--muted, #686868); }
+.integration-meta { display: grid; gap: 6px; justify-items: end; align-content: start; white-space: nowrap; }
+.integration-meta small { color: var(--muted, #686868); }
+@media (max-width: 600px) { .integration-row { flex-direction: column; gap: 10px; } .integration-meta { justify-items: start; } }

@@ -1,0 +1,62 @@
+<%- include('_top') %>
+<% const stay = o.stay; const val = (k) => values[k] ?? ''; const err = (k) => errors[k] || ''; const inv = (k) => (errors[k] ? ' is-invalid' : '');
+   const chosen = [].concat(values.extra || []); -%>
+    <section class="section">
+      <div class="site-wrap">
+        <%- include('_steps', { step: 2 }) %>
+        <h1 class="page-title">Your details</h1>
+        <p class="page-lead">We only use these to confirm your stay. Nothing is charged now.</p>
+<% if (errors.stay) { -%>
+        <div class="alert" role="alert"><%- icon('info') %><p><%= errors.stay %> <a href="/hotel/book">Search again</a></p></div>
+<% } -%>
+        <div class="checkout">
+          <form class="card" method="post" action="/hotel/book" novalidate data-checkout data-nights="<%= stay.nights %>" data-base="<%= o.quote.roomTotal + o.quote.tax %>">
+            <input type="hidden" name="_csrf" value="<%= siteToken %>">
+<% for (const k of ['arrival', 'departure', 'adults', 'children']) { -%>
+            <input type="hidden" name="<%= k %>" value="<%= stay[k] %>">
+<% } -%>
+            <input type="hidden" name="type" value="<%= o.type.code %>">
+            <input type="hidden" name="plan" value="<%= o.plan.code %>">
+            <div class="hp" aria-hidden="true"><label for="hp-website">Leave this empty</label><input id="hp-website" name="website" tabindex="-1" autocomplete="off"></div>
+            <div class="form-grid">
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="d-first">First name</label><input class="input<%= inv('first') %>" id="d-first" name="first" autocomplete="given-name" value="<%= val('first') %>" required><p class="field-error"><%= err('first') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="d-last">Last name</label><input class="input<%= inv('last') %>" id="d-last" name="last" autocomplete="family-name" value="<%= val('last') %>" required><p class="field-error"><%= err('last') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="d-email">Email</label><input class="input<%= inv('email') %>" id="d-email" name="email" type="email" autocomplete="email" value="<%= val('email') %>" required><p class="field-error"><%= err('email') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="d-phone">Phone</label><input class="input<%= inv('phone') %>" id="d-phone" name="phone" type="tel" autocomplete="tel" value="<%= val('phone') %>" required><p class="field-error"><%= err('phone') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="d-nat">Nationality <span class="field-label__hint">helps us prepare check-in</span></label>
+                <select class="select<%= inv('nationality') %>" id="d-nat" name="nationality"><option value="">Choose…</option><% for (const c of countries) { %><option value="<%= c.code %>"<%- val('nationality') === c.code ? ' selected' : '' %>><%= c.name %></option><% } %></select><p class="field-error"><%= err('nationality') %></p></div>
+<% if (o.extras.length) { -%>
+              <div class="form-grid__col"><span class="field-label">Add to your stay</span>
+                <div class="extras-list">
+<% for (const x of o.extras) { -%>
+                  <label><input type="checkbox" name="extra" value="<%= x.code %>" data-price="<%= x.price_cents %>" data-per="<%= x.per %>" data-tax="<%= x.taxPercent %>"<%- chosen.includes(x.code) ? ' checked' : '' %>><span><%= x.name %></span><small><%= fmt.money(x.price_cents) %><%= x.per === 'night' ? ' / night' : '' %><%= x.taxPercent ? ' + ' + x.taxPercent + '% GST' : '' %></small></label>
+<% } -%>
+                </div></div>
+<% } -%>
+              <div class="form-grid__col"><label class="field-label" for="d-req">Special requests <span class="field-label__hint">optional</span></label><textarea class="input<%= inv('requests') %>" id="d-req" name="requests" rows="3" placeholder="Arrival time, a high floor, a cot…"><%= val('requests') %></textarea><p class="field-error"><%= err('requests') %></p></div>
+            </div>
+            <div class="checkbox" style="margin-top:16px"><input class="checkbox__input" type="checkbox" id="d-terms" name="terms"<%- values.terms ? ' checked' : '' %>><label class="checkbox__label" for="d-terms">I accept the hotel policies. <%= o.policy %> <%= s.site_policies || '' %></label></div>
+            <p class="field-error"><%= err('terms') %></p>
+            <div class="form-actions"><button class="button button--primary button--lg" type="submit">Confirm booking</button><a class="button button--secondary button--lg" href="/hotel/book?<%= new URLSearchParams({ arrival: stay.arrival, departure: stay.departure, adults: stay.adults, children: stay.children }) %>">Back</a></div>
+          </form>
+          <aside class="card summary" aria-labelledby="sum-title">
+            <%- include('_carousel', { images: o.type.galleryUrls, alt: o.type.name, imageClass: '', carouselClass: 'summary__img summary__gallery', width: 1200, height: 670 }) %>
+            <div class="summary__body">
+              <h2 class="room__name" id="sum-title"><%= o.type.name %></h2>
+              <p class="room__meta"><%= o.plan.name %> · <%= fmt.guestCount(stay.adults, stay.children, ', ') %></p>
+              <p class="summary__note"><strong><%= fmt.formatDay(stay.arrival) %></strong> from <%= s.check_in_time %> → <strong><%= fmt.formatDay(stay.departure) %></strong> by <%= s.check_out_time %></p>
+              <dl class="summary__lines">
+<% for (const g of o.groups) { -%>
+                <div><dt><%= fmt.plural(g.nights, 'night', 'nights') %> × <%= fmt.money(g.rate) %></dt><dd><%= fmt.money(g.rate * g.nights) %></dd></div>
+<% } -%>
+                <div><dt><%= (s.tax_mode === 'gst_india' ? 'GST' : (s.tax_label || 'Tax')) + (o.taxBand !== null ? ' ' + o.taxBand + '%' : '') %></dt><dd><%= fmt.money(o.quote.tax) %></dd></div>
+                <div><dt><%= o.extras.some((x) => x.taxPercent) ? 'Extras (incl. GST)' : 'Extras' %></dt><dd data-sum-extras><%= fmt.money(0) %></dd></div>
+              </dl>
+              <p class="summary__total"><span>Total</span><span data-sum-total><%= fmt.money(o.quote.total) %></span></p>
+              <p class="summary__note"><%= o.policy %> You pay at the hotel.</p>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+<%- include('_bottom') %>

@@ -1,0 +1,27 @@
+  </main>
+  <footer class="site-foot">
+    <div class="site-wrap">
+      <div class="site-foot__grid">
+        <div>
+          <p class="site-foot__name"><%= s.hotel_name %></p>
+          <% if (s.site_tagline) { %><p><%= s.site_tagline %></p><% } %>
+        </div>
+        <div>
+          <p><strong>Visit</strong></p>
+          <% if (s.hotel_address) { %><p><%= s.hotel_address %></p><% } else if (s.hotel_city) { %><p><%= s.hotel_city %></p><% } %>
+          <p>Check-in from <%= s.check_in_time %> · check-out by <%= s.check_out_time %></p>
+        </div>
+        <div>
+          <p><strong>Contact</strong></p>
+          <% if (s.hotel_phone) { %><p><a href="tel:<%= s.hotel_phone.replace(/[^+\d]/g, '') %>"><%= s.hotel_phone %></a></p><% } %>
+          <% if (s.hotel_email) { %><p><a href="mailto:<%= s.hotel_email %>"><%= s.hotel_email %></a></p><% } %>
+          <p><a href="/hotel/manage">Find or cancel a booking</a></p>
+        </div>
+      </div>
+      <div class="site-foot__fine"><span>© <%= s.hotel_name %></span><span><a href="/login">Staff &amp; admin sign-in</a> · Powered by Frontdesk</span></div>
+    </div>
+  </footer>
+  <script src="/assets/js/core.js"></script>
+  <script src="/assets/js/site.js"></script>
+</body>
+</html>

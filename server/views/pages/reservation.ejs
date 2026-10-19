@@ -1,0 +1,273 @@
+<%- include('../partials/shell-top') %>
+<% const b = d.b; const rec = { arrival: b.arrival, departure: b.departure, room_type_id: b.room_type_id, room: b.room_number || '', adults: b.adults, children: b.children,
+     rate_plan_id: b.rate_plan_id, nightly_rate: b.nightly_rate_cents / 100, source_id: b.source_id, eta: b.eta || '', notes: b.notes, requests: b.requests,
+     first: b.first_name, last: b.last_name, email: b.email || '', phone: b.phone || '' };
+   const v = (k) => (values[k] !== undefined ? values[k] : rec[k] ?? '');
+   const err = (k) => errors[k] || ''; const inv = (k) => (errors[k] ? ' is-invalid' : '');
+   const locked = !d.open || !canBook; -%>
+        <div class="page-header">
+          <div>
+            <p class="kicker">Booking <span class="mono"><%= b.confirmation %></span><% if (group) { %> · group <a href="/groups/<%= group.id %>"><%= group.code %> <%= group.name %></a><% } %></p>
+            <h1 class="page-header__title"><%= b.name %></h1>
+            <p class="page-header__lead"><%= b.type_name %><%= b.room_number ? ' ' + b.room_number : ' · room not assigned' %> · <%= b.from %> → <%= b.to %> · <%= fmt.plural(b.nights, 'night', 'nights') %> <span class="status-pill status-pill--<%= b.statusCss %>"><%= b.statusLabel %></span></p>
+          </div>
+          <div class="page-header__actions">
+<% if (whatsapp) { -%>
+            <a class="button button--secondary" href="<%= whatsapp %>" target="_blank" rel="noopener" title="Opens WhatsApp with a message to <%= b.first_name %> about this booking, ready to check and send"><%- icon('phone') %>WhatsApp the guest</a>
+<% } -%>
+            <a class="button button--secondary" href="/guests?guest=<%= b.guest_id %>"><%- icon('users') %>Guest profile</a>
+            <a class="button button--secondary" href="/reservations">Back to reservations</a>
+          </div>
+        </div>
+<% if (flash) { -%>
+        <div class="notice notice--ok" role="status"><%- icon('check') %><p><%= flash %></p></div>
+<% } -%>
+<% if (actionError) { -%>
+        <div class="notice notice--error" role="alert"><%- icon('info') %><p><%= actionError %></p></div>
+<% } -%>
+<% if (Object.keys(errors).length) { -%>
+        <div class="notice notice--error" role="alert"><%- icon('info') %><p>Please fix the highlighted fields. Nothing was saved yet.</p></div>
+<% } -%>
+        <div class="admin-grid">
+          <div class="admin-stack">
+          <form class="card" method="post" action="/reservations/<%= b.confirmation %>" novalidate>
+            <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+            <div class="card__head"><div><h2 class="card__title">Stay</h2><p class="card__subtitle"><%= locked ? (canBook ? 'This booking is closed; only the notes can change.' : 'Your account can view bookings but not change them.') : 'Change the dates, room or rate. Totals are worked out again when you save.' + (d.nightGroups.length > 1 ? ' Nights are priced by season and weekday; a rate you type counts for every night.' : '') %></p></div></div>
+            <fieldset<%- locked ? ' disabled' : '' %> style="border:0;margin:0;padding:0;min-width:0">
+            <div class="form-grid">
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="b-arr">Arrival</label><input class="input<%= inv('arrival') %>" id="b-arr" name="arrival" type="date" value="<%= v('arrival') %>"><p class="field-error"><%= err('arrival') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="b-dep">Departure</label><input class="input<%= inv('departure') %>" id="b-dep" name="departure" type="date" value="<%= v('departure') %>"><p class="field-error"><%= err('departure') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="b-type">Room type</label>
+                <select class="select<%= inv('room_type_id') %>" id="b-type" name="room_type_id"><% for (const t of d.types) { %><option value="<%= t.id %>"<%- String(v('room_type_id')) === String(t.id) ? ' selected' : '' %>><%= t.name %> (sleeps <%= t.max_guests %>)</option><% } %></select><p class="field-error"><%= err('room_type_id') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="b-room">Room <span class="field-label__hint">free rooms for these dates</span></label>
+                <select class="select<%= inv('room') %>" id="b-room" name="room"><option value="">Not assigned yet</option><% for (const r of d.rooms) { %><option<%- String(v('room')) === String(r.number) ? ' selected' : '' %>><%= r.number %></option><% } %></select><p class="field-error"><%= err('room') %></p></div>
+              <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="b-adults">Adults</label><input class="input<%= inv('adults') %>" id="b-adults" name="adults" type="number" min="1" max="12" value="<%= v('adults') %>"><p class="field-error"><%= err('adults') %></p></div>
+              <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="b-children">Children</label><input class="input<%= inv('children') %>" id="b-children" name="children" type="number" min="0" max="12" value="<%= v('children') %>"><p class="field-error"><%= err('children') %></p></div>
+              <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="b-eta">ETA</label><input class="input<%= inv('eta') %>" id="b-eta" name="eta" type="time" value="<%= v('eta') %>"><p class="field-error"><%= err('eta') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="b-plan">Rate plan</label>
+                <select class="select" id="b-plan" name="rate_plan_id"><option value="">None</option><% for (const p of d.plans) { %><option value="<%= p.id %>"<%- String(v('rate_plan_id')) === String(p.id) ? ' selected' : '' %>><%= p.name %></option><% } %></select></div>
+              <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="b-rate">Nightly rate (<%= fmt.symbol() %>)<% if (d.nightGroups.length > 1) { %> <span class="field-label__hint">average</span><% } %></label><input class="input<%= inv('nightly_rate') %>" id="b-rate" name="nightly_rate" inputmode="decimal" value="<%= v('nightly_rate') %>"><p class="field-error"><%= err('nightly_rate') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="b-source">Source</label>
+                <select class="select" id="b-source" name="source_id"><option value="">Unknown</option><% for (const s of d.sources) { %><option value="<%= s.id %>"<%- String(v('source_id')) === String(s.id) ? ' selected' : '' %>><%= s.name %></option><% } %></select></div>
+            </div>
+            <div class="check-row" role="group" aria-label="Tags">
+<% for (const [k, l] of [['early', 'Early arrival'], ['late', 'Late arrival'], ['anniversary', 'Anniversary']]) { const on = values['tag_' + k] !== undefined ? values['tag_' + k] : d.tags.includes(k); -%>
+              <label><input type="checkbox" name="tag_<%= k %>"<%- on ? ' checked' : '' %>> <%= l %></label>
+<% } -%>
+            </div>
+            <h3 class="form-section__title" style="margin-top:20px">Guest</h3>
+            <div class="form-grid">
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="b-first">First name</label><input class="input<%= inv('first') %>" id="b-first" name="first" value="<%= v('first') %>"><p class="field-error"><%= err('first') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="b-last">Last name</label><input class="input<%= inv('last') %>" id="b-last" name="last" value="<%= v('last') %>"><p class="field-error"><%= err('last') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="b-email">Email</label><input class="input<%= inv('email') %>" id="b-email" name="email" type="email" value="<%= v('email') %>"><p class="field-error"><%= err('email') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="b-phone">Phone</label><input class="input<%= inv('phone') %>" id="b-phone" name="phone" type="tel" value="<%= v('phone') %>"><p class="field-error"><%= err('phone') %></p></div>
+            </div>
+            </fieldset>
+            <div class="form-grid" style="margin-top:12px">
+              <div class="form-grid__col"><label class="field-label" for="b-requests">Guest requests</label><textarea class="input<%= inv('requests') %>" id="b-requests" name="requests"<%- canBook ? '' : ' disabled' %>><%= v('requests') %></textarea><p class="field-error"><%= err('requests') %></p></div>
+              <div class="form-grid__col"><label class="field-label" for="b-notes">Internal note <span class="field-label__hint">shown on the tape chart</span></label><textarea class="input<%= inv('notes') %>" id="b-notes" name="notes"<%- canBook ? '' : ' disabled' %>><%= v('notes') %></textarea><p class="field-error"><%= err('notes') %></p></div>
+            </div>
+<% if (canBook) { -%>
+            <div class="form-actions"><button class="button button--primary" type="submit">Save booking</button></div>
+<% } -%>
+          </form>
+<% const g = reg.guest; const gv = (k, d) => (grcValues[k] !== undefined ? grcValues[k] : g[k] ?? d ?? ''); const ge = (k) => grcErrors[k] || ''; const gi = (k) => (grcErrors[k] ? ' is-invalid' : '');
+   const bv = (k) => (grcValues[k] !== undefined ? grcValues[k] : b[k] ?? ''); const foreign = (grcValues.nationality || g.nationality || '') && (grcValues.nationality || g.nationality) !== 'IN'; -%>
+          <form class="card" id="grc" method="post" action="/reservations/<%= b.confirmation %>/grc" novalidate>
+            <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+            <div class="card__head"><div><h2 class="card__title">Registration card (GRC)</h2><p class="card__subtitle"><% if (reg.complete) { %>Complete<%= b.grc_at ? ' · ' + reg.when(b.grc_at) : '' %><% } else { %>Still needed: <%= reg.gaps.join(', ') %><%= reg.required ? '. Check-in waits for this.' : '' %><% } %></p></div><a class="arrow-link" href="/reservations/<%= b.confirmation %>/grc" target="_blank" rel="noopener">Print<%- icon('chevron-right') %></a></div>
+            <fieldset<%- canBook ? '' : ' disabled' %> style="border:0;margin:0;padding:0;min-width:0">
+            <div class="form-grid">
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-nat">Nationality</label>
+                <select class="select<%= gi('nationality') %>" id="g-nat" name="nationality"><option value="">Choose…</option><% for (const c of countries) { %><option value="<%= c.code %>"<%- gv('nationality') === c.code ? ' selected' : '' %>><%= c.name %></option><% } %></select><p class="field-error"><%= ge('nationality') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-dob">Date of birth <span class="field-label__hint">optional</span></label><input class="input<%= gi('date_of_birth') %>" id="g-dob" name="date_of_birth" type="date" value="<%= gv('date_of_birth') %>"><p class="field-error"><%= ge('date_of_birth') %></p></div>
+              <div class="form-grid__col"><label class="field-label" for="g-addr">Home address</label><textarea class="input<%= gi('address') %>" id="g-addr" name="address" rows="2"><%= gv('address') %></textarea><p class="field-error"><%= ge('address') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-idt">ID proof <span class="field-label__hint">Indian guests</span></label>
+                <select class="select<%= gi('id_type') %>" id="g-idt" name="id_type"><option value="">Choose…</option><% for (const t of idTypes) { %><option<%- gv('id_type') === t ? ' selected' : '' %>><%= t %></option><% } %></select><p class="field-error"><%= ge('id_type') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-idn">ID number</label><input class="input<%= gi('id_number') %>" id="g-idn" name="id_number" value="<%= gv('id_number') %>" autocomplete="off"><p class="field-error"><%= ge('id_number') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-pp">Passport number <span class="field-label__hint">foreign guests</span></label><input class="input<%= gi('passport_number') %>" id="g-pp" name="passport_number" value="<%= gv('passport_number') %>" autocomplete="off"><p class="field-error"><%= ge('passport_number') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-vt">Visa type</label>
+                <select class="select" id="g-vt" name="visa_type"><option value="">Choose…</option><% for (const t of visaTypes) { %><option<%- gv('visa_type') === t ? ' selected' : '' %>><%= t %></option><% } %></select></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-vn">Visa or OCI number</label><input class="input<%= gi('visa_number') %>" id="g-vn" name="visa_number" value="<%= gv('visa_number') %>" autocomplete="off"><p class="field-error"><%= ge('visa_number') %></p></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-vu">Visa valid until</label><input class="input" id="g-vu" name="visa_valid_until" type="date" value="<%= gv('visa_valid_until') %>"></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-ai">Arrived in India on</label><input class="input" id="g-ai" name="arrived_in_india" type="date" value="<%= gv('arrived_in_india') %>"></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-port">Port of arrival</label><input class="input" id="g-port" name="port_of_arrival" value="<%= gv('port_of_arrival') %>" placeholder="e.g. Kolkata airport"></div>
+              <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-pur">Purpose of visit</label>
+                <select class="select<%= gi('purpose') %>" id="g-pur" name="purpose"><option value="">Choose…</option><% for (const t of purposes) { %><option<%- bv('purpose') === t ? ' selected' : '' %>><%= t %></option><% } %></select><p class="field-error"><%= ge('purpose') %></p></div>
+              <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="g-from">Arriving from</label><input class="input" id="g-from" name="arriving_from" value="<%= bv('arriving_from') %>"></div>
+              <div class="form-grid__col form-grid__col--narrow"><label class="field-label" for="g-to">Going to</label><input class="input" id="g-to" name="going_to" value="<%= bv('going_to') %>"></div>
+            </div>
+            </fieldset>
+<% if (canBook) { -%>
+            <div class="form-actions"><button class="button button--primary" type="submit">Save registration</button><span class="form-hint"><%= foreign ? 'Foreign guest: passport and visa details are needed.' : 'Indian guest: one government ID is needed.' %></span></div>
+<% } -%>
+          </form>
+<% if (reg.form3) { -%>
+          <section class="card" id="form3" aria-labelledby="f3-title">
+            <div class="card__head"><div><h2 class="card__title" id="f3-title">Form III (foreign guest)</h2><p class="card__subtitle">Report <%= b.name %>’s stay to the FRRO within 24 hours of check-in and of check-out.</p></div><a class="arrow-link" href="https://indianfrro.gov.in/frro/FormC" target="_blank" rel="noopener noreferrer">Open the FRRO portal<%- icon('chevron-right') %></a></div>
+<% for (const [kind, label] of [['arrival', 'Arrival report'], ['departure', 'Departure report']]) { const item = reg.form3[kind]; -%>
+            <h3 class="form-section__title" style="margin-top:12px"><%= label %></h3>
+<% if (!item) { -%>
+            <p class="form-hint"><%= kind === 'arrival' ? 'Due once the guest checks in.' : 'Due once the guest checks out.' %></p>
+<% } else if (item.done) { -%>
+            <p class="notice notice--ok" style="margin:0"><%- icon('check') %><span>Filed · acknowledgement <strong><%= item.ref %></strong> · <%= reg.when(item.at) %></span></p>
+<% } else { -%>
+            <p class="notice<%= item.overdue ? ' notice--error' : '' %>" style="margin:0 0 10px"><%- icon('info') %><span><%= item.overdue ? 'Overdue' : 'Due' %> by <strong><%= reg.when(item.due) %></strong></span></p>
+<% if (canBook) { -%>
+            <form class="form-actions" method="post" action="/reservations/<%= b.confirmation %>/form3" novalidate style="margin-top:0">
+              <input type="hidden" name="_csrf" value="<%= shell.csrf %>"><input type="hidden" name="report" value="<%= kind %>">
+              <label class="sr-only" for="f3-<%= kind %>">Acknowledgement number</label><input class="input<%= f3Errors.reference ? ' is-invalid' : '' %>" id="f3-<%= kind %>" name="reference" placeholder="Acknowledgement number" style="max-width:240px">
+              <button class="button button--secondary" type="submit">Mark as filed</button>
+            </form>
+            <p class="field-error"><%= f3Errors.reference || '' %></p>
+<% } -%>
+<% } -%>
+<% } -%>
+          </section>
+<% } -%>
+          </div>
+          <div class="admin-stack">
+            <section class="card" aria-labelledby="act-title">
+              <div class="card__head"><div><h2 class="card__title" id="act-title">Status</h2><p class="card__subtitle"><%= b.statusLabel %><%= b.checked_in_at ? ' · in ' + b.checked_in_at.slice(5) : '' %><%= b.checked_out_at ? ' · out ' + b.checked_out_at.slice(5) : '' %></p></div></div>
+<% if (canBook && d.can.confirm) { -%>
+              <form method="post" action="/reservations/<%= b.confirmation %>/action" class="form-actions"><input type="hidden" name="_csrf" value="<%= shell.csrf %>"><input type="hidden" name="action" value="confirm"><button class="button button--secondary" type="submit">Confirm booking</button></form>
+<% } -%>
+<% if (canBook && d.can.checkIn) { -%>
+              <form method="post" action="/reservations/<%= b.confirmation %>/action" class="form-actions"><input type="hidden" name="_csrf" value="<%= shell.csrf %>"><input type="hidden" name="action" value="check-in"><button class="button button--primary" type="submit"<%- d.can.checkInBlocked ? ' disabled' : '' %>><%- icon('key') %>Check in</button><% if (d.can.checkInBlocked) { %><span class="form-hint"><%= d.can.checkInBlocked %></span><% } %></form>
+<% } -%>
+<% if (canBook && d.can.checkOut) { -%>
+              <form method="post" action="/reservations/<%= b.confirmation %>/action"><input type="hidden" name="_csrf" value="<%= shell.csrf %>"><input type="hidden" name="action" value="check-out">
+<% if (d.owing > 0) { -%>
+                <div class="check-row"><label><input type="checkbox" name="settle"> <%= fmt.money(d.owing) %> received in full by</label><select class="select select--sm" name="method" aria-label="Payment method"><% for (const m of methods) { %><option><%= m %></option><% } %></select></div>
+<% } -%>
+                <div class="form-actions"><button class="button button--primary" type="submit"><%- icon('sign-out') %>Check out</button></div></form>
+<% } -%>
+<% if (canBook && d.can.cancel) { -%>
+              <form method="post" action="/reservations/<%= b.confirmation %>/action" style="margin-top:14px"><input type="hidden" name="_csrf" value="<%= shell.csrf %>"><input type="hidden" name="action" value="cancel">
+                <div class="check-row"><label><input type="checkbox" name="sure"> Yes, cancel this booking</label></div>
+                <div class="form-actions"><button class="button button--secondary" type="submit">Cancel booking</button></div></form>
+<% } -%>
+<% if (!d.open) { -%>
+              <p class="form-hint">This booking is <%= b.statusLabel.toLowerCase() %>.</p>
+<% } -%>
+            </section>
+            <section class="card" aria-labelledby="money-title">
+              <div class="card__head"><div><h2 class="card__title" id="money-title">Money</h2></div></div>
+              <dl class="money-lines">
+<% for (const g of d.nightGroups) { -%>
+                <div><dt><%= fmt.plural(g.nights, 'night', 'nights') %> × <%= fmt.money(g.rate) %></dt><dd><%= fmt.money(g.amount) %></dd></div>
+<% } -%>
+                <div><dt>Tax</dt><dd><%= fmt.money(b.tax_cents) %></dd></div>
+<% for (const x of d.extras) { -%>
+                <div><dt><%= x.name %><% if (x.tax_bp > 0) { %> <small class="cell-note">+ GST <%= Number((x.tax_bp / 100).toFixed(2)) %>%</small><% } %></dt><dd><%= fmt.money(x.amount_cents) %></dd></div>
+<% } -%>
+<% if (b.charges_cents) { -%>
+                <div><dt>Charges during the stay</dt><dd><%= fmt.money(b.charges_cents) %></dd></div>
+<% } -%>
+                <div class="is-total"><dt><strong>Total</strong></dt><dd><%= fmt.money(b.total_cents) %></dd></div>
+                <div><dt>Paid</dt><dd><%= fmt.money(b.paid_cents) %></dd></div>
+                <div><dt>Still open</dt><dd><%= fmt.money(Math.max(0, d.owing)) %></dd></div>
+<% if (d.owing < 0) { -%>
+                <div><dt>Overpaid, to refund</dt><dd><%= fmt.money(-d.owing) %></dd></div>
+<% } -%>
+              </dl>
+<% if (charges.length || (canBook && b.status === 'checked_in')) { -%>
+              <h3 class="form-section__title" id="charges" style="margin-top:18px">Charges during the stay</h3>
+<%   if (charges.length) { -%>
+              <ul class="note-list charge-list">
+<%     for (const c of charges) { -%>
+                <li<%- c.voided_at ? ' class="is-voided"' : '' %>><div><p><strong><%= fmt.money(c.total_cents) %></strong> · <%= c.description %><%= c.voided_at ? ' · taken off the bill' : '' %></p><p class="cell-note"><%= c.kindLabel %> · <%= fmt.money(c.amount_cents) %> + <%= gst ? 'GST' : 'tax' %> <%= c.rateText %> · <%= c.when %> · <%= c.posted_by_name %><%= c.voided_at ? ' · removed by ' + c.voided_by_name : '' %></p></div>
+<%       if (canRefund && !c.voided_at && b.status === 'checked_in') { -%>
+                  <form method="post" action="/reservations/<%= b.confirmation %>/charges/<%= c.id %>/void"><input type="hidden" name="_csrf" value="<%= shell.csrf %>"><button class="button button--secondary button--sm" type="submit">Take off the bill</button></form>
+<%       } -%>
+                </li>
+<%     } -%>
+              </ul>
+<%   } -%>
+<%   if (canBook && b.status === 'checked_in') { const ce = chargeErrors; const cv = chargeValues; -%>
+              <details class="charge-add"<%- Object.keys(ce).length ? ' open' : '' %>>
+                <summary class="text-button">Add a charge to the bill</summary>
+                <form method="post" action="/reservations/<%= b.confirmation %>/charges" novalidate style="margin-top:12px">
+                  <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+                  <div class="form-grid">
+                    <div class="form-grid__col form-grid__col--half"><label class="field-label" for="ch-kind">Kind</label><select class="select<%= ce.charge_kind ? ' is-invalid' : '' %>" id="ch-kind" name="charge_kind"><% for (const k of chargeKinds) { %><option value="<%= k.value %>"<%- cv.charge_kind === k.value ? ' selected' : '' %>><%= k.label %> · <%= k.rate %>%</option><% } %></select><p class="field-error"><%= ce.charge_kind || '' %></p></div>
+                    <div class="form-grid__col form-grid__col--half"><label class="field-label" for="ch-amount">Amount (<%= fmt.symbol() %>) <span class="field-label__hint">before tax</span></label><input class="input<%= ce.charge_amount ? ' is-invalid' : '' %>" id="ch-amount" name="charge_amount" inputmode="decimal" value="<%= cv.charge_amount || '' %>"><p class="field-error"><%= ce.charge_amount || '' %></p></div>
+                    <div class="form-grid__col form-grid__col--half"><label class="field-label" for="ch-text">Description</label><input class="input<%= ce.charge_text ? ' is-invalid' : '' %>" id="ch-text" name="charge_text" maxlength="80" placeholder="e.g. Dinner from room service" value="<%= cv.charge_text || '' %>"><p class="field-error"><%= ce.charge_text || '' %></p></div>
+                    <div class="form-grid__col form-grid__col--half"><label class="field-label" for="ch-rate"><%= gst ? 'GST' : 'Tax' %> rate</label><select class="select<%= ce.charge_rate ? ' is-invalid' : '' %>" id="ch-rate" name="charge_rate"><option value="">Usual for the kind</option><% for (const rate of chargeRates) { %><option value="<%= rate %>"><%= rate %>%</option><% } %></select><p class="field-error"><%= ce.charge_rate || '' %></p></div>
+                  </div>
+                  <div class="form-actions"><button class="button button--secondary" type="submit">Add to the bill</button></div>
+                </form>
+              </details>
+<%   } -%>
+<% } -%>
+<% if (payments.length) { -%>
+              <h3 class="form-section__title" style="margin-top:18px">Payments</h3>
+              <ul class="note-list"><% for (const p of payments) { %><li><span class="avatar avatar--sm" aria-hidden="true"><%= p.amount_cents < 0 ? '↩' : fmt.initials(p.taken_by_name || 'System') %></span><div><p><strong><%= p.amountText %></strong> · <%= p.method %><%= p.reference ? ' · ' + p.reference : '' %></p><small><%= p.when %> · <%= p.taken_by_name || 'System' %><%= p.shift === 'Online' ? ' · Online' : p.shift ? ' · ' + p.shift + ' shift' : ' · Shift unassigned' %></small></div></li><% } %></ul>
+<% } -%>
+<% if (canBook && d.owing > 0 && d.open) { -%>
+              <form method="post" action="/reservations/<%= b.confirmation %>/payment" novalidate style="margin-top:16px">
+                <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+                <div class="form-grid">
+                  <div class="form-grid__col form-grid__col--half"><label class="field-label" for="pay-amount">Payment (<%= fmt.symbol() %>)</label><input class="input<%= payErrors.amount ? ' is-invalid' : '' %>" id="pay-amount" name="amount" inputmode="decimal" value="<%= payValues.amount !== undefined ? payValues.amount : (d.owing / 100).toFixed(2) %>"><p class="field-error"><%= payErrors.amount || '' %></p></div>
+                  <div class="form-grid__col form-grid__col--half"><label class="field-label" for="pay-method">Method</label><select class="select<%= payErrors.method ? ' is-invalid' : '' %>" id="pay-method" name="method"><% for (const m of methods) { %><option<%- payValues.method === m ? ' selected' : '' %>><%= m %></option><% } %></select><p class="field-error"><%= payErrors.method || '' %></p></div>
+                  <div class="form-grid__col"><label class="field-label" for="pay-ref">Reference <span class="field-label__hint">card slip, UPI ref…</span></label><input class="input" id="pay-ref" name="reference" value="<%= payValues.reference || '' %>"></div>
+                </div>
+                <div class="form-actions"><button class="button button--secondary" type="submit">Record payment</button></div>
+              </form>
+<% } -%>
+<% if (canRefund && b.paid_cents > 0) { -%>
+              <details style="margin-top:14px"<%- payErrors.refund_amount || payErrors.refund_reason ? ' open' : '' %>>
+                <summary class="text-button">Refund a payment</summary>
+                <form method="post" action="/reservations/<%= b.confirmation %>/refund" novalidate style="margin-top:12px">
+                  <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+                  <div class="form-grid">
+                    <div class="form-grid__col form-grid__col--half"><label class="field-label" for="ref-amount">Refund (<%= fmt.symbol() %>)</label><input class="input<%= payErrors.refund_amount ? ' is-invalid' : '' %>" id="ref-amount" name="refund_amount" inputmode="decimal" value="<%= payValues.refund_amount || '' %>"><p class="field-error"><%= payErrors.refund_amount || '' %></p></div>
+                    <div class="form-grid__col form-grid__col--half"><label class="field-label" for="ref-method">Method</label><select class="select" id="ref-method" name="refund_method"><% for (const m of methods) { %><option><%= m %></option><% } %></select></div>
+                    <div class="form-grid__col"><label class="field-label" for="ref-reason">Reason</label><input class="input<%= payErrors.refund_reason ? ' is-invalid' : '' %>" id="ref-reason" name="refund_reason" value="<%= payValues.refund_reason || '' %>"><p class="field-error"><%= payErrors.refund_reason || '' %></p></div>
+                  </div>
+                  <div class="form-actions"><button class="button button--secondary" type="submit">Record refund</button></div>
+                </form>
+              </details>
+<% } -%>
+            </section>
+<% if (['checked_in', 'checked_out'].includes(b.status)) { -%>
+            <section class="card" aria-labelledby="inv-title">
+              <div class="card__head"><div><h2 class="card__title" id="inv-title">Invoice</h2><p class="card__subtitle"><%= gst ? 'GST tax invoice with CGST and SGST (or IGST).' : 'Printable invoice for the stay.' %></p></div></div>
+<% if (invoices.length) { -%>
+              <ul class="note-list"><% for (const i of invoices) { %><li><span class="status-icon tone-<%= i.status === 'issued' ? 'clean' : 'ooo' %>" aria-hidden="true"><%- icon(i.status === 'issued' ? 'check' : 'close') %></span><div><p><a href="/invoices/<%= i.id %>" target="_blank" rel="noopener"><strong><%= i.number %></strong></a> · <%= fmt.money(i.total_cents) %></p><small><%= i.status === 'issued' ? 'Issued' : 'Cancelled' %> · <%= i.issued_at %></small></div></li><% } %></ul>
+<% } -%>
+<% if (group) { -%>
+              <p class="form-hint">This room is billed on the group’s invoice: <a href="/groups/<%= group.id %>#ginv-title">make it on the page of <%= group.name %></a>.</p>
+<% } else if (canBook) { -%>
+              <form method="post" action="/reservations/<%= b.confirmation %>/invoice" novalidate style="margin-top:14px">
+                <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+                <div class="form-grid">
+                  <div class="form-grid__col"><label class="field-label" for="inv-to">Bill to <span class="field-label__hint">guest or company name</span></label><input class="input<%= invErrors.bill_to ? ' is-invalid' : '' %>" id="inv-to" name="bill_to" value="<%= invValues.bill_to !== undefined ? invValues.bill_to : (reg.guest.company || b.name) %>"></div>
+<% if (gst) { -%>
+                  <div class="form-grid__col form-grid__col--half"><label class="field-label" for="inv-gstin">Company GSTIN <span class="field-label__hint">optional</span></label><input class="input<%= invErrors.gstin ? ' is-invalid' : '' %>" id="inv-gstin" name="gstin" value="<%= invValues.gstin !== undefined ? invValues.gstin : (reg.guest.gstin || '') %>" maxlength="15"><p class="field-error"><%= invErrors.gstin || '' %></p></div>
+                  <div class="form-grid__col form-grid__col--half" style="align-self:end"><label class="check-row" style="margin-bottom:10px"><input type="checkbox" name="interstate"<%- invValues.interstate ? ' checked' : '' %>> Company is in another state (IGST)</label></div>
+<% } -%>
+                </div>
+                <div class="form-actions"><button class="button button--secondary" type="submit"><%- icon('printer') %><%= invoices.some((i) => i.status === 'issued') ? 'Issue a new invoice' : 'Create invoice' %></button><% if (invoices.some((i) => i.status === 'issued')) { %><span class="form-hint">The old invoice will be marked cancelled.</span><% } %></div>
+              </form>
+<% } -%>
+            </section>
+<% } -%>
+<% if (guestFeedback) { -%>
+            <section class="card" aria-labelledby="fb-title">
+              <div class="card__head"><div><h2 class="card__title" id="fb-title">Guest feedback</h2><p class="card__subtitle"><%= fmt.formatDay(guestFeedback.created_at) %></p></div></div>
+              <p class="feedback-stars" aria-label="<%= guestFeedback.rating %> out of 5 stars"><%= stars(guestFeedback.rating) %></p>
+              <% if (guestFeedback.comment) { %><p>“<%= guestFeedback.comment %>”</p><% } %>
+            </section>
+<% } -%>
+            <section class="card" aria-labelledby="log-title">
+              <div class="card__head"><div><h2 class="card__title" id="log-title">History</h2><p class="card__subtitle">Created <%= b.created_at %></p></div></div>
+<% if (d.log.length) { -%>
+              <ul class="note-list"><% for (const l of d.log) { %><li><span class="avatar avatar--sm" aria-hidden="true"><%= fmt.initials(l.user_name) %></span><div><p><%= l.summary %></p><small><%= l.user_name %> · <%= l.created_at %></small></div></li><% } %></ul>
+<% } else { -%>
+              <p class="empty-state empty-state--inline">No changes since the booking was made.</p>
+<% } -%>
+            </section>
+          </div>
+        </div>
+<%- include('../partials/shell-bottom') %>

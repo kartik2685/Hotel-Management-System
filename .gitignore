@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Merchant-provided payment QR images are runtime data, not source assets
+assets/img/payments/
+
+# Database (contains guest data — never commit it)
+data/
+*.db
+*.db-wal
+*.db-shm
+backups/
+
+# Local settings
+.env
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/

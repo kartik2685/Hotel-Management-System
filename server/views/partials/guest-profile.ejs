@@ -1,0 +1,72 @@
+            <article class="profile" id="guest-<%= p.slug %>" aria-labelledby="gp-<%= p.slug %>" tabindex="-1" data-guest-id="<%= p.id %>">
+              <div class="profile__head">
+                <span class="avatar avatar--xl<%= p.vip ? ' avatar--gold' : '' %>" aria-hidden="true"><%= p.initials %></span>
+                <div class="profile__id">
+                  <h2 class="profile__name" id="gp-<%= p.slug %>"><%= p.name %></h2>
+                  <p class="profile__tags"><% for (const t of p.tags) { %><span class="<%= t.cls %>"><%= t.text %></span><% } %></p>
+<% if (p.contact.length) { -%>
+                  <ul class="profile__contact">
+<% for (const c of p.contact) { -%>
+                    <li><%- icon(c.icon) %><% if (c.email) { %><a href="mailto:<%= c.email %>"><%= c.email %></a><% } else { %><span><%= c.text %></span><% } %></li>
+<% } -%>
+                  </ul>
+<% } -%>
+                </div>
+                <div class="profile__now">
+                  <p class="profile__now-label"><%= p.now.label %></p>
+                  <p class="profile__now-detail"><%= p.now.detail %></p>
+                </div>
+              </div>
+              <dl class="profile__stats">
+                <div><dt>Stays</dt><dd><%= p.stats.stays %></dd></div>
+                <div><dt>Nights</dt><dd><%= p.stats.nights %></dd></div>
+                <div><dt>Lifetime spend</dt><dd><%= p.stats.spend %></dd></div>
+                <div><dt>Average rate</dt><dd><%= p.stats.average %></dd></div>
+              </dl>
+              <div class="profile__cols">
+                <section class="profile__block" aria-labelledby="gp-<%= p.slug %>-prefs">
+                  <h3 class="profile__heading" id="gp-<%= p.slug %>-prefs">Preferences</h3>
+<% if (p.prefs.length) { -%>
+                  <dl class="prefs">
+<% for (const group of p.prefs) { -%>
+                    <div><dt><%= group.label %></dt><dd><% for (const item of group.items) { %><span class="pref"><%= item %></span><% } %></dd></div>
+<% } -%>
+                  </dl>
+<% } else { -%>
+                  <p class="empty-state empty-state--inline">No preferences recorded yet.</p>
+<% } -%>
+                </section>
+                <section class="profile__block" aria-labelledby="gp-<%= p.slug %>-notes">
+                  <h3 class="profile__heading" id="gp-<%= p.slug %>-notes">Front desk notes</h3>
+<% if (p.notes.length) { -%>
+                  <ul class="desk-notes">
+<% for (const n of p.notes) { -%>
+                    <li><p><%= n.body %></p><small><%= n.by %></small></li>
+<% } -%>
+                  </ul>
+<% } else { -%>
+                  <p class="empty-state empty-state--inline">No notes yet.</p>
+<% } -%>
+                </section>
+              </div>
+              <section class="profile__block" aria-labelledby="gp-<%= p.slug %>-hist">
+                <h3 class="profile__heading" id="gp-<%= p.slug %>-hist">Stay history</h3>
+<% if (p.history.length) { -%>
+<% if (p.historyNote) { -%>
+                <p class="profile__hist-note"><%= p.historyNote %></p>
+<% } -%>
+                <div class="table-scroll">
+                  <table class="table history-table">
+                    <thead><tr><th scope="col">Dates</th><th scope="col">Room</th><th scope="col" class="numeric">Nights</th><th scope="col">Rate plan</th><th scope="col" class="numeric">Spend</th></tr></thead>
+                    <tbody>
+<% for (const h of p.history) { -%>
+                      <tr><td><%= h.dates %></td><td><strong><%= h.room %></strong> <small><%= h.type %></small></td><td class="numeric"><%= h.nights %></td><td><%= h.plan %></td><td class="numeric"><% if (h.inHouse) { %><span class="status-pill status-pill--checked-in">In house</span><% } else { %><%= h.spend %><% } %></td></tr>
+<% } -%>
+                    </tbody>
+                  </table>
+                </div>
+<% } else { -%>
+                <p class="empty-state empty-state--inline">No previous stays.<%= p.newToday ? ' This profile was created from today’s booking.' : '' %></p>
+<% } -%>
+              </section>
+            </article>

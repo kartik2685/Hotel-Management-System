@@ -1,0 +1,31 @@
+<%- include('../partials/shell-top') %>
+        <div class="page-header">
+          <div>
+            <p class="kicker">Reservations</p>
+            <h1 class="page-header__title">Groups</h1>
+            <p class="page-header__lead">Weddings, conferences, tour parties: several rooms booked together, checked in together and billed on one invoice.</p>
+          </div>
+          <div class="page-header__actions">
+            <a class="button button--secondary" href="/reservations">Back to reservations</a>
+<% if (canBook) { -%>
+            <a class="button button--primary" href="/groups/new"><%- icon('plus') %>New group booking</a>
+<% } -%>
+          </div>
+        </div>
+        <section class="card card--flush" aria-labelledby="groups-title">
+          <h2 class="sr-only" id="groups-title">Group bookings</h2>
+          <div class="table-scroll">
+            <table class="table admin-table">
+              <thead><tr><th scope="col">Group</th><th scope="col">Stay</th><th scope="col" class="numeric">Rooms</th><th scope="col">In house</th><th scope="col" class="numeric">Total</th><th scope="col" class="numeric">Still open</th></tr></thead>
+              <tbody>
+<% for (const g of rows) { -%>
+                <tr><td><a href="/groups/<%= g.id %>"><strong><%= g.name %></strong></a><br><small class="cell-note"><%= g.code %> · <%= g.contact_name %><%= g.company ? ' · ' + g.company : '' %></small></td><td><%= g.s.arrival ? fmt.formatDay(g.s.arrival) + ' → ' + fmt.formatDay(g.s.departure) : '—' %></td><td class="numeric"><%= g.s.rooms %></td><td><%= g.s.inHouse ? g.s.inHouse + ' in' : g.s.out ? g.s.out + ' left' : 'Not yet' %></td><td class="numeric"><%= fmt.money(g.s.total) %></td><td class="numeric"><%= fmt.money(g.s.owing) %></td></tr>
+<% } -%>
+<% if (!rows.length) { -%>
+                <tr><td colspan="6" class="cell-note">No groups yet.<%= canBook ? ' Book several rooms together with “New group booking”.' : '' %></td></tr>
+<% } -%>
+              </tbody>
+            </table>
+          </div>
+        </section>
+<%- include('../partials/shell-bottom') %>

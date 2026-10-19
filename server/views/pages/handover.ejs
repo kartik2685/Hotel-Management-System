@@ -1,0 +1,37 @@
+<%- include('../partials/shell-top') %>
+        <div class="page-header">
+          <div>
+            <p class="kicker">Front office</p>
+            <h1 class="page-header__title">Shift handover</h1>
+            <p class="page-header__lead">Leave a note for the next shift. The latest four notes show on the dashboard.</p>
+          </div>
+        </div>
+<% if (flash) { -%>
+        <div class="notice notice--ok" role="status"><%- icon('check') %><p><%= flash %></p></div>
+<% } -%>
+        <div class="admin-grid">
+          <section class="card" aria-labelledby="hn-title">
+            <div class="card__head"><div><h2 class="card__title" id="hn-title">Recent notes</h2></div></div>
+            <ol class="handover-list">
+<% for (const n of notes) { -%>
+              <li>
+                <span class="avatar avatar--sm<%= n.avatar_tone ? ' avatar--' + n.avatar_tone : '' %>" aria-hidden="true"><%= n.initials %></span>
+                <div>
+                  <p><strong><%= n.lead %></strong> <%= n.body %></p>
+                  <p class="handover-list__by"><%= n.author_name %> · <%= n.department %> · <%= n.when %></p>
+                </div>
+              </li>
+<% } -%>
+            </ol>
+          </section>
+          <form class="card" method="post" action="/handover" novalidate>
+            <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+            <div class="card__head"><div><h2 class="card__title">Add a note</h2></div></div>
+            <div class="form-grid">
+              <div class="form-grid__col"><label class="field-label" for="h-lead">Headline <span class="field-label__hint">shown in bold</span></label><input class="input<%= errors.lead ? ' is-invalid' : '' %>" id="h-lead" name="lead" value="<%= values.lead || '' %>" placeholder="e.g. Room 407 back tomorrow"><p class="field-error"><%= errors.lead || '' %></p></div>
+              <div class="form-grid__col"><label class="field-label" for="h-body">Details <span class="field-label__hint">optional</span></label><textarea class="input<%= errors.body ? ' is-invalid' : '' %>" id="h-body" name="body"><%= values.body || '' %></textarea><p class="field-error"><%= errors.body || '' %></p></div>
+            </div>
+            <div class="form-actions"><button class="button button--primary" type="submit">Add note</button></div>
+          </form>
+        </div>
+<%- include('../partials/shell-bottom') %>

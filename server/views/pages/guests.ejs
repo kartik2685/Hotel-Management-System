@@ -1,0 +1,44 @@
+<%- include('../partials/shell-top') %>
+        <div class="page-header">
+          <div>
+            <p class="kicker">Front office</p>
+            <h1 class="page-header__title">Guest profiles</h1>
+            <p class="page-header__lead"><%= g.query ? 'Guests matching “' + g.query + '”.' : 'Preferences and history for guests in house, arriving today and coming back soon.' %></p>
+          </div>
+        </div>
+        <div class="guests-layout">
+          <section class="card guest-list-card" aria-labelledby="gl-title">
+            <h2 class="sr-only" id="gl-title">Guest list</h2>
+            <div class="guest-list-card__tools">
+              <label class="sr-only" for="guest-q">Search guests</label>
+              <div class="icon-input"><%- icon('search') %><input class="input" id="guest-q" type="search" placeholder="Search by name" data-guest-search value="<%= g.query %>"></div>
+              <div class="segmented segmented--full" role="group" aria-label="Filter guests">
+                <button type="button" aria-pressed="true" data-guest-filter="">All</button>
+                <button type="button" aria-pressed="false" data-guest-filter="vip">VIP</button>
+                <button type="button" aria-pressed="false" data-guest-filter="inhouse">In house</button>
+                <button type="button" aria-pressed="false" data-guest-filter="arriving">Arriving</button>
+              </div>
+            </div>
+            <ul class="guest-list" data-guest-list>
+<% for (const p of g.people) { const active = g.active && p.id === g.active.id; -%>
+              <li>
+                <a class="guest-link<%= active ? ' is-active' : '' %>" href="/guests?guest=<%= p.id %>#guest-<%= p.slug %>" data-guest="<%= p.slug %>" data-guest-id="<%= p.id %>" data-tags="<%= [p.vip ? 'vip' : '', p.state === 'arriving' || p.state === 'inhouse' ? p.state : ''].filter(Boolean).join(' ') %>" data-name="<%= p.name.toLowerCase() %>"<%- active ? ' aria-current="true"' : '' %>>
+                  <span class="avatar<%= p.vip ? ' avatar--gold' : '' %>" aria-hidden="true"><%= p.initials %></span>
+                  <span class="guest-link__text"><strong><%= p.name %></strong><small><%= p.sub %></small></span>
+<% if (p.vip) { -%>
+                  <span class="chip chip--gold">VIP</span>
+<% } -%>
+                </a>
+              </li>
+<% } -%>
+            </ul>
+            <p class="empty-state" data-guest-empty<%- g.people.length ? ' hidden' : '' %>>No guests match.</p>
+          </section>
+
+          <div class="guest-detail" data-guest-detail>
+<% if (g.active) { -%>
+<%- include('../partials/guest-profile', { p: g.active }) %>
+<% } -%>
+          </div>
+        </div>
+<%- include('../partials/shell-bottom') %>

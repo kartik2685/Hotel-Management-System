@@ -1,0 +1,25 @@
+<%- include('_top') %>
+<section class="card manual-intro">
+  <div class="card__head"><div><h2 class="card__title">Using your hotel admin panel</h2><p class="card__subtitle">This manual is assembled from the current admin tabs and live hotel data. The preview below loads the real guest website, so changed text and images appear here without rebuilding a static manual.</p></div><button class="button button--primary" type="button" onclick="window.print()">Print / Save as PDF</button></div>
+  <p><strong>Website workflow:</strong> edit hotel details in <a href="/admin/settings">Hotel settings</a>; edit room descriptions, prices and photos in <a href="/admin/room-types">Room types</a> and <a href="/admin/rates">Rates &amp; extras</a>; then switch on the guest website and change its copy, policies, amenities, review link and homepage photos in <a href="/admin/website">Website</a>. Open the website to verify changes.</p>
+  <div class="manual-actions"><a class="button button--secondary" href="/hotel" target="_blank" rel="noopener">Open live guest website</a><a class="button button--secondary" href="/admin/website">Edit website content &amp; upload photos</a></div>
+</section>
+<section class="manual-preview card" aria-labelledby="manual-preview-heading">
+  <div class="card__head"><div><h2 class="card__title" id="manual-preview-heading">Live website preview</h2><p class="card__subtitle"><%= s.site_enabled ? 'Website is on' : 'Website is currently off for visitors; this preview is available to signed-in staff.' %> · Changes saved in Website and Room types will show in this live view.</p></div></div>
+  <iframe src="/hotel" title="Live guest website preview" loading="lazy" class="manual-site-frame"></iframe>
+</section>
+<section class="card" aria-labelledby="manual-content-heading">
+  <div class="card__head"><div><h2 class="card__title" id="manual-content-heading">Your current website content</h2><p class="card__subtitle">Read live values from the hotel settings and room catalogue.</p></div></div>
+  <div class="manual-content-grid">
+    <article><h3>Hotel / tagline</h3><p><strong><%= s.hotel_name %></strong></p><p><%= s.site_tagline || 'No tagline is set yet.' %></p><h3>Introduction</h3><p><%= s.site_intro || 'No introduction is set yet.' %></p></article>
+    <article><h3>Amenities</h3><% if (s.site_amenities && s.site_amenities.length) { %><ul><% for (const a of s.site_amenities) { %><li><%= a %></li><% } %></ul><% } else { %><p>No amenities are currently set.</p><% } %><h3>Policies</h3><p><%= s.site_policies || 'No extra policies are set.' %></p></article>
+  </div>
+  <h3>Room cards configured for the website</h3>
+  <div class="table-scroll"><table class="table admin-table"><thead><tr><th>Room type</th><th>Website status</th><th>Description</th><th>Image</th></tr></thead><tbody>
+  <% for (const t of types) { %><tr><td><strong><%= t.name %></strong></td><td><%= t.online && t.active ? 'Visible' : 'Hidden' %></td><td><%= t.description || 'No description yet' %></td><td><%= t.photo || 'Default hotel photo' %></td></tr><% } %>
+  </tbody></table></div>
+</section>
+<section class="card" aria-labelledby="manual-tabs-heading"><div class="card__head"><div><h2 class="card__title" id="manual-tabs-heading">Admin tabs and what they do</h2><p class="card__subtitle">Only sections your role can access are listed.</p></div></div><div class="manual-tab-grid">
+  <% for (const t of guideTabs) { %><article class="manual-tab"><h3><a href="<%= t.href %>"><%= t.label %></a></h3><p><%= t.help %></p></article><% } %>
+</div></section>
+<%- include('_bottom') %>

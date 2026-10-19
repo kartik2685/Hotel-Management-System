@@ -1,0 +1,7 @@
+<form class="search-card<%= typeof inline !== 'undefined' && inline ? ' search-card--inline' : '' %>" method="get" action="/hotel/book" data-stay-form>
+  <div><label class="field-label" for="q-arrival">Arrival</label><input class="input" id="q-arrival" name="arrival" type="date" value="<%= stay.arrival %>" min="<%= minDate %>" required></div>
+  <div><label class="field-label" for="q-departure">Departure</label><input class="input" id="q-departure" name="departure" type="date" value="<%= stay.departure %>" min="<%= fmt.addDays(stay.arrival, 1) %>" required></div>
+  <div><label class="field-label" for="q-adults">Adults</label><select class="select" id="q-adults" name="adults"><% for (let n = 1; n <= 6; n++) { %><option<%- n === stay.adults ? ' selected' : '' %>><%= n %></option><% } %></select></div>
+  <div><label class="field-label" for="q-children">Children</label><select class="select" id="q-children" name="children"><% for (let n = 0; n <= 4; n++) { %><option<%- n === stay.children ? ' selected' : '' %>><%= n %></option><% } %></select></div>
+  <button class="button button--primary button--lg search-card__button" type="submit"><%- icon('search') %>Check availability</button>
+</form>

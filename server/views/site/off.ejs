@@ -1,0 +1,8 @@
+<%- include('_top', { title: 'Closed for online booking', preview: false }) %>
+    <section class="section">
+      <div class="site-wrap narrow">
+        <h1 class="page-title">Online booking is closed</h1>
+        <p class="page-lead">Please contact <%= s.hotel_name %><%= s.hotel_phone ? ' on ' + s.hotel_phone : '' %><%= s.hotel_email ? ' or at ' + s.hotel_email : '' %> to book.</p>
+      </div>
+    </section>
+<%- include('_bottom') %>

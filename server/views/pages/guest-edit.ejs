@@ -1,0 +1,51 @@
+<%- include('../partials/shell-top') %>
+<% const rec = { first: g.first_name, last: g.last_name, email: g.email || '', phone: g.phone || '', city: g.city || '', company: g.company || '', gstin: g.gstin || '' };
+   const v = (k) => (values[k] !== undefined ? values[k] : rec[k] ?? ''); const err = (k) => errors[k] || ''; const inv = (k) => (errors[k] ? ' is-invalid' : ''); -%>
+        <div class="page-header">
+          <div>
+            <p class="kicker">Guest profile</p>
+            <h1 class="page-header__title">Edit <%= g.first_name %> <%= g.last_name %></h1>
+            <p class="page-header__lead">Contact details, VIP status, preferences and front desk notes.</p>
+          </div>
+          <div class="page-header__actions"><a class="button button--secondary" href="/guests?guest=<%= g.id %>">Back to profile</a></div>
+        </div>
+        <div class="admin-grid">
+          <form class="card" method="post" action="/guests/<%= g.id %>/edit" novalidate>
+            <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+            <div class="form-section">
+              <h2 class="form-section__title">Contact</h2>
+              <div class="form-grid">
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-first">First name</label><input class="input<%= inv('first') %>" id="g-first" name="first" value="<%= v('first') %>"><p class="field-error"><%= err('first') %></p></div>
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-last">Last name</label><input class="input<%= inv('last') %>" id="g-last" name="last" value="<%= v('last') %>"><p class="field-error"><%= err('last') %></p></div>
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-email">Email</label><input class="input<%= inv('email') %>" id="g-email" name="email" type="email" value="<%= v('email') %>"><p class="field-error"><%= err('email') %></p></div>
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-phone">Phone</label><input class="input" id="g-phone" name="phone" value="<%= v('phone') %>"></div>
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-city">City</label><input class="input" id="g-city" name="city" value="<%= v('city') %>"></div>
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-company">Company</label><input class="input" id="g-company" name="company" value="<%= v('company') %>"></div>
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-gstin">Company GSTIN <span class="field-label__hint">filled in on invoices</span></label><input class="input<%= inv('gstin') %>" id="g-gstin" name="gstin" value="<%= v('gstin') %>" maxlength="15" autocapitalize="characters"><p class="field-error"><%= err('gstin') %></p></div>
+              </div>
+              <div class="check-row"><label><input type="checkbox" name="vip"<%- (values.vip !== undefined ? values.vip : g.vip) ? ' checked' : '' %>> VIP</label><label><input type="checkbox" name="corporate"<%- (values.corporate !== undefined ? values.corporate : g.corporate) ? ' checked' : '' %>> Books on a company account</label></div>
+            </div>
+            <div class="form-section">
+              <h2 class="form-section__title">Preferences <span class="field-label__hint">one per line</span></h2>
+              <div class="form-grid">
+<% for (const [key, label] of PREFS) { -%>
+                <div class="form-grid__col form-grid__col--half"><label class="field-label" for="g-pref-<%= key %>"><%= label %></label><textarea class="input<%= inv('pref_' + key) %>" id="g-pref-<%= key %>" name="pref_<%= key %>"><%= values['pref_' + key] !== undefined ? values['pref_' + key] : (prefs[key] || []).join('\n') %></textarea><p class="field-error"><%= err('pref_' + key) %></p></div>
+<% } -%>
+              </div>
+            </div>
+            <div class="form-section">
+              <h2 class="form-section__title">Add a front desk note</h2>
+              <textarea class="input<%= inv('note') %>" id="g-note" name="note" aria-label="New note"><%= values.note || '' %></textarea><p class="field-error"><%= err('note') %></p>
+            </div>
+            <div class="form-actions"><button class="button button--primary" type="submit">Save profile</button><a class="button button--secondary" href="/guests?guest=<%= g.id %>">Cancel</a></div>
+          </form>
+          <section class="card" aria-labelledby="gn-title">
+            <div class="card__head"><div><h2 class="card__title" id="gn-title">Front desk notes</h2></div></div>
+<% if (notes.length) { -%>
+            <ul class="desk-notes"><% for (const n of notes) { %><li><p><%= n.body %></p><small><%= n.author_name %> · <%= n.when %></small></li><% } %></ul>
+<% } else { -%>
+            <p class="empty-state empty-state--inline">No notes yet.</p>
+<% } -%>
+          </section>
+        </div>
+<%- include('../partials/shell-bottom') %>

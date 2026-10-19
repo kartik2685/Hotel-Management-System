@@ -1,0 +1,249 @@
+/* =====================================================================
+   Frontdesk HMS · pages/tape-chart.css
+   Rooms × nights grid with stay bars, plus the booking details dialog.
+   The grid itself is drawn by tape-chart.js.
+   ===================================================================== */
+
+.card--tape { padding-bottom: 18px; }
+
+/* ---------------------------------------------------------------------
+   Toolbar and legend
+   --------------------------------------------------------------------- */
+.tape-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin-bottom: 14px;
+}
+.tape-toolbar__nav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tape-toolbar__range { margin: 0 0 0 4px; font-size: 1.45rem; line-height: 1.1; }
+.tape-toolbar__filters { display: flex; flex-wrap: wrap; gap: 10px 16px; }
+
+.chart-legend--tape { margin-bottom: 14px; }
+.tape-key { width: 22px; height: 10px; border-radius: 3px; }
+.tape-key--in { background: var(--bar-in-bg); }
+.tape-key--arr { background: var(--bar-arr-bg); }
+.tape-key--conf { background: var(--bar-conf-bg); box-shadow: inset 3px 0 0 var(--bar-conf-edge), inset 0 0 0 1px var(--brass-line); }
+.tape-key--tent { background: repeating-linear-gradient(135deg, var(--brass-soft) 0 3px, transparent 3px 6px); box-shadow: inset 0 0 0 1px var(--brass-line); }
+.tape-key--out { background: var(--bar-out-bg); }
+.tape-key--ooo {
+  background: repeating-linear-gradient(45deg, var(--ooo-soft) 0 3px, transparent 3px 6px);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ooo) 45%, transparent);
+}
+
+.tape-hint { margin: -4px 0 10px; font-size: .76rem; color: var(--muted); }
+@media (min-width: 768px) { .tape-hint { display: none; } }
+
+/* ---------------------------------------------------------------------
+   Grid
+   --------------------------------------------------------------------- */
+.tape-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.tape-scroll:focus-visible { outline-offset: 3px; }
+.tape {
+  --room-col: 108px;
+  --day-w: 52px;
+  --days: 14;
+  position: relative;
+  min-width: calc(var(--room-col) + var(--days) * var(--day-w));
+}
+@media (min-width: 768px) { .tape { --room-col: 124px; --day-w: 54px; } }
+.tape__fallback { margin: 0; padding: 40px 20px; text-align: center; color: var(--muted); font-size: .875rem; }
+
+.tape__row, .tape__head, .tape__occupancy, .tape__floor {
+  display: grid;
+  grid-template-columns: var(--room-col) minmax(0, 1fr);
+  position: relative;
+}
+.tape__cells { display: grid; grid-template-columns: repeat(var(--days), minmax(0, 1fr)); }
+
+/* Day columns behind everything: weekend and today shading */
+.tape__grid {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--room-col);
+  right: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--days), minmax(0, 1fr));
+  pointer-events: none;
+}
+.tape__grid span { border-left: 1px solid var(--line); }
+.tape__grid .is-weekend { background: color-mix(in srgb, var(--surface-3) 45%, transparent); }
+.tape__grid .is-today { background: color-mix(in srgb, var(--brass) 9%, transparent); border-left-color: var(--brass-line); }
+
+/* Left column stays put while the nights scroll sideways */
+.tape__stub { position: sticky; left: 0; z-index: 3; background: var(--surface); border-right: 1px solid var(--line); }
+
+.tape__head { border-bottom: 1px solid var(--line); }
+.tape__head .tape__stub {
+  display: flex;
+  align-items: flex-end;
+  padding: 0 12px 10px;
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tape__day { position: relative; padding: 10px 4px 8px; text-align: center; line-height: 1.15; }
+.tape__day small {
+  display: block;
+  font-size: .66rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tape__day strong { display: block; font-size: 1rem; font-weight: 800; }
+.tape__day.is-today strong {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  margin-top: 2px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--on-ink);
+  font-size: .85rem;
+}
+.tape__day .tape__month { position: absolute; left: 6px; top: -1px; font-size: .6rem; color: var(--brass-strong); }
+
+/* "Sold" row: occupancy per night */
+.tape__occupancy { border-bottom: 1px solid var(--line); background: var(--surface-2); }
+.tape__occupancy .tape__stub {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--text-2);
+  background: var(--surface-2);
+}
+.tape__occ-cell { padding: 7px 5px 6px; text-align: center; font-size: .72rem; font-weight: 800; color: var(--text-2); }
+.tape__occ-cell .progress { height: 3px; margin: 4px 4px 0; }
+
+.tape__floor { background: var(--surface-2); border-bottom: 1px solid var(--line); }
+.tape__floor .tape__stub {
+  background: var(--surface-2);
+  border-right: 0;
+  padding: 6px 12px;
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--brass-strong);
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.tape__row { height: 44px; border-bottom: 1px solid var(--line); }
+.tape__row:last-child { border-bottom: 0; }
+.tape__row:hover .tape__stub { background: var(--surface-2); }
+.tape__row .tape__stub { display: flex; flex-direction: column; justify-content: center; padding: 0 12px; line-height: 1.2; }
+.tape__row .tape__stub strong { font-size: .88rem; font-weight: 800; }
+.tape__row .tape__stub small { font-size: .66rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tape__track { position: relative; }
+.tape__empty { padding: 28px; text-align: center; color: var(--muted); font-size: .875rem; }
+
+/* ---------------------------------------------------------------------
+   Stay bars
+   --------------------------------------------------------------------- */
+.stay-bar {
+  position: absolute;
+  top: 7px;
+  bottom: 7px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+  min-width: 0;
+  border: 0;
+  border-radius: 8px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  font-size: .74rem;
+  font-weight: 700;
+  line-height: 1;
+  transition: filter .15s var(--ease), box-shadow .15s var(--ease), transform .15s var(--ease);
+}
+.stay-bar span { overflow: hidden; text-overflow: ellipsis; }
+.stay-bar:hover { filter: brightness(1.06); z-index: 2; }
+/* Solid bars lift on hover; outlined bars keep their outline. */
+.stay-bar--in:hover, .stay-bar--arr:hover, .stay-bar--out:hover { box-shadow: 0 4px 12px -4px rgba(0, 0, 0, .35); }
+.stay-bar:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; z-index: 2; }
+/* A stay that continues past the visible range gets a square end. */
+.stay-bar--cut-start { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.stay-bar--cut-end { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.stay-bar--in { background: var(--bar-in-bg); color: var(--bar-in-text); }
+.stay-bar--arr { background: var(--bar-arr-bg); color: var(--bar-arr-text); }
+.stay-bar--conf {
+  background: var(--bar-conf-bg);
+  color: var(--bar-conf-text);
+  box-shadow: inset 3px 0 0 var(--bar-conf-edge), inset 0 0 0 1px var(--brass-line);
+}
+.stay-bar--tent {
+  background: repeating-linear-gradient(135deg, var(--brass-soft) 0 4px, var(--surface) 4px 8px);
+  color: var(--text-2);
+  box-shadow: inset 0 0 0 1px var(--brass-line);
+}
+.stay-bar--out { background: var(--bar-out-bg); color: var(--bar-out-text); }
+.stay-bar--ooo {
+  background: repeating-linear-gradient(45deg, var(--ooo-soft) 0 5px, var(--surface) 5px 10px);
+  color: var(--ooo-text);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ooo) 45%, transparent);
+  cursor: default;
+}
+.stay-bar .icon { width: 13px; height: 13px; }
+.stay-bar--tiny { padding: 0; }
+.stay-bar--ooo span + span { min-width: 0; }
+
+/* ---------------------------------------------------------------------
+   Booking details dialog (native <dialog>)
+   --------------------------------------------------------------------- */
+.booking-dialog {
+  width: min(540px, calc(100vw - 24px));
+  max-height: calc(100vh - 32px);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+}
+.booking-dialog::backdrop { background: rgba(14, 13, 11, .55); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+.booking-dialog[open] { animation: dialog-in .2s var(--ease); }
+@keyframes dialog-in {
+  from { opacity: 0; transform: translateY(8px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+.booking-dialog__head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+  padding: 22px 20px 16px 22px;
+  border-bottom: 1px solid var(--line);
+}
+.booking-dialog__conf { margin: 0; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .74rem; color: var(--muted); }
+.booking-dialog__title { margin: 2px 0 6px; font-size: 1.75rem; line-height: 1.05; }
+.booking-dialog__head p:last-child { margin: 0; }
+.booking-dialog__facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; margin: 0; padding: 18px 22px; }
+.booking-dialog__facts dt { font-size: .68rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.booking-dialog__facts dd { margin: 2px 0 0; font-weight: 700; font-size: .9rem; }
+.booking-dialog__notes {
+  margin: 0 22px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border-left: 3px solid var(--brass);
+  font-size: .85rem;
+  color: var(--text-2);
+}
+.booking-dialog__notes:empty { display: none; }
+.booking-dialog__actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; padding: 18px 22px 22px; }
+.booking-dialog__done { margin: 0 auto 0 0; font-size: .82rem; font-weight: 700; color: var(--clean-text); }
+.booking-dialog__done:empty { display: none; }
