@@ -130,6 +130,9 @@
       </main>
 
       <footer class="site-footer site-footer--centered">
+<% if (site && site.enabled) { -%>
+        <p><a href="/hotel">Looking for the hotel website? Open the guest site →</a></p>
+<% } -%>
         <p>© <%= hotel.name %> · Frontdesk property management</p>
         <p>Hotel management, made simple with Frontdesk.</p>
       </footer>

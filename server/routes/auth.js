@@ -83,6 +83,8 @@ function renderLogin(req, res, { status = 200, email = '', errors = {}, shift = 
     shift,
     shifts: SHIFTS.map((s) => ({ ...s, label: `${s.label} · ${(hours[s.value] || []).join('–')}` })),
     demoHint: demoUser ? `Demo: sign in as ${demoUser.email} with the password ${config.demoPassword}.` : '',
+    // The guest website lives at /hotel; the sign-in page offers it whenever the hotel has it switched on.
+    site: { enabled: Boolean(settings.site_enabled), tagline: settings.site_tagline || '' },
     resetSent, mailReady: mail.configured(), notice: NOTICES[req.query.reset] || null,
     // When this browser blocks our cookies: inside a frame (preview panel) or in a normal tab.
     cookieBlocked: cookieBlocked && (req.get('sec-fetch-dest') === 'iframe' ? 'frame' : 'page'),

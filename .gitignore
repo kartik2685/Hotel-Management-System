@@ -4,6 +4,9 @@ node_modules/
 # Merchant-provided payment QR images are runtime data, not source assets
 assets/img/payments/
 
+# Photos uploaded from the admin panel are runtime data, not source assets
+assets/img/rooms/uploads/
+
 # Database (contains guest data — never commit it)
 data/
 *.db

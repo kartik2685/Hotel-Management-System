@@ -4,17 +4,17 @@
  * Built from the same tokens and components as the rest of the app.
  * ===================================================================== */
 
-/* Admin section tabs */
+/* Admin section tabs: they wrap onto as many rows as they need, so every section stays
+   visible without a sideways scrollbar (there are around twenty of them). */
 .admin-tabs {
   display: flex;
-  gap: 2px;
+  flex-wrap: wrap;
+  gap: 3px;
   padding: 3px;
   margin: 0 0 22px;
   border-radius: 11px;
   background: var(--surface-2);
   border: 1px solid var(--line);
-  overflow-x: auto;
-  scrollbar-width: none;
 }
 .admin-tabs a {
   padding: 7px 12px;
@@ -208,6 +208,37 @@ textarea.input { min-height: 84px; resize: vertical; }
 }
 .admin-photo-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; font-size: .8rem; }
 .admin-photo-list span { padding: 3px 8px; border: 1px solid var(--line, #e5e7eb); border-radius: 999px; }
+
+/* Website page: what the site shows, the photos on it, and where each piece comes from */
+.site-covers { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.site-covers li { display: flex; gap: 10px; align-items: baseline; font-size: .9rem; }
+.site-covers li > span:first-child { flex: none; color: var(--brass, #9a7b3f); }
+.site-photo-cols { display: grid; gap: 22px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.site-photo-col h3 { margin: 0 0 4px; font-size: .95rem; }
+.site-photo-col > p { margin: 0 0 10px; color: var(--muted, #686868); font-size: .82rem; }
+.site-photo-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); margin-bottom: 12px; }
+.site-photo-tile { position: relative; display: grid; gap: 5px; }
+.site-photo-tile img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; border: 1px solid var(--line, #e5e7eb); background: var(--surface-2, #f4f2ee); }
+.site-photo-tile__tags { position: absolute; top: 6px; left: 6px; display: flex; gap: 4px; }
+.site-photo-tile__tags .chip { font-size: .68rem; padding: 1px 7px; background: rgba(255, 255, 255, .92); }
+.site-photo-tile__actions { display: flex; flex-wrap: wrap; gap: 8px; font-size: .76rem; }
+.site-photo-tile__actions .text-button { padding: 0; font-size: inherit; }
+.site-photo-empty { padding: 18px; border: 1px dashed var(--line, #e5e7eb); border-radius: 8px; color: var(--muted, #686868); font-size: .85rem; text-align: center; }
+.site-upload { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.site-upload .input { flex: 1 1 180px; }
+.site-map td { vertical-align: top; }
+.site-map .mono { white-space: nowrap; }
+.site-map tr.is-missing td:first-child { border-left: 3px solid #c8892c; }
+.site-preview { margin-top: 18px; }
+.site-preview summary { cursor: pointer; font-weight: 700; }
+.site-preview .manual-site-frame { margin-top: 12px; }
+@media (max-width: 900px) { .site-photo-cols { grid-template-columns: 1fr; } }
+.site-room { padding: 16px 0; border-top: 1px solid var(--line, #e5e7eb); }
+.site-room:first-of-type { border-top: 0; padding-top: 4px; }
+.site-room__head { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+.site-room__head h3 { margin: 0 0 3px; font-size: .98rem; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.site-room__head p { margin: 0; }
+.site-room__head .text-button { white-space: nowrap; }
 .integration-list { display: grid; }
 .integration-row { display: flex; justify-content: space-between; gap: 20px; padding: 16px 0; border-top: 1px solid var(--line, #e5e7eb); }
 .integration-row h3 { margin: 0 0 5px; font-size: 1rem; }

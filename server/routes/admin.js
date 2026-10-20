@@ -50,6 +50,8 @@ const PHOTOS = () => {
 const router = express.Router();
 const imageUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 11 } }).fields([{ name: 'photo_upload', maxCount: 1 }, { name: 'gallery_upload', maxCount: 10 }]);
 const websiteImages = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 10 } }).fields([{ name: 'hero_upload', maxCount: 5 }, { name: 'about_upload', maxCount: 5 }]);
+const websiteRoomImages = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 11 } }).fields([{ name: 'photo_upload', maxCount: 1 }, { name: 'gallery_upload', maxCount: 10 }]);
+const websitePhotoUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 5 } }).fields([{ name: 'photo_upload', maxCount: 5 }]);
 const paymentQrUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1 } }).single('upi_qr_upload');
 function imageExtension(file) {
   const b = file.buffer;
@@ -105,6 +107,9 @@ const FLASH = {
   password: 'Password set. The person must choose a new one when they next sign in.', 'back-in-service': 'The room is back in service.', revenue: 'Outlet revenue saved.',
   'sample-removed': 'The sample data has been removed.', 'payments-saved': 'Online payment setting saved.',
   'closed-auto': 'The day is closed: its figures are saved and tomorrow’s housekeeping tasks are ready. The business date moves on by itself at midnight.',
+  'photo-added': 'Photo uploaded. It is on the live website now.', 'photo-removed': 'Photo removed from the website.',
+  'photo-first': 'That photo now opens the gallery.', 'photo-none': 'Choose a JPG, PNG or WebP photo to upload first.',
+  'photo-cleared': 'Photo cleared.',
 };
 
 function render(req, res, view, tab, data, status = 200) {
@@ -811,10 +816,68 @@ router.get('/guide', (req, res) => {
 });
 
 /* ------------------------------------------------------------------ guest website */
+/* Every photo on the guest site, in one place: the homepage hero, the About section and each room
+   type's cover and gallery. The photos shipped with the app live in assets/img/rooms; uploads go to
+   assets/img/rooms/uploads and are the only files a removal ever deletes. */
+const SITE_PHOTO = /^(?:[a-z0-9][\w-]*\/)*[\w.-]+\.(?:jpe?g|png|webp)$/i;
+const photoUploadDir = () => path.join(config.root, 'assets', 'img', 'rooms', 'uploads');
+
+function siteGallery(settings, kind) {
+  const list = kind === 'hero'
+    ? (settings.site_hero_images || (settings.site_hero_image ? [settings.site_hero_image] : []))
+    : (settings.site_about_images || (settings.site_about_image ? [settings.site_about_image] : []));
+  return Array.isArray(list) ? list.filter((name) => typeof name === 'string' && SITE_PHOTO.test(name)) : [];
+}
+function roomGallery(settings, type) {
+  const galleries = settings.room_type_galleries || {};
+  const list = galleries[type.id] || galleries[type.code] || [];
+  return Array.isArray(list) ? list.filter((name) => typeof name === 'string' && SITE_PHOTO.test(name)) : [];
+}
+/* Only uploaded files are deleted; the photos that come with the app are never touched. */
+function removeUploadedPhoto(name) {
+  if (typeof name !== 'string' || !name.startsWith('uploads/') || !SITE_PHOTO.test(name)) return;
+  fs.rmSync(path.join(photoUploadDir(), path.basename(name)), { force: true });
+}
+const photosOf = (names) => names.map((name) => ({ name, url: website.imageUrl(name) }));
+
+/* "Everything the website shows" and where it is edited. */
+function siteChecklist(req) {
+  const s = req.settings;
+  const db = req.db;
+  const types = db.all('SELECT * FROM room_types WHERE active = 1 ORDER BY sort, name');
+  const online = types.filter((t) => t.online).length;
+  const withPhoto = types.filter((t) => t.online && t.photo).length;
+  const row = (label, where, href, value, ok) => ({ label, where, href, value, ok });
+  return [
+    row('Hotel name', 'Hotel settings', '/admin/settings', s.hotel_name || 'Not set', Boolean(s.hotel_name)),
+    row('City and address', 'Hotel settings', '/admin/settings', [s.hotel_city, s.hotel_address].filter(Boolean).join(', ') || 'Not set', Boolean(s.hotel_city || s.hotel_address)),
+    row('Phone and email', 'Hotel settings', '/admin/settings', [s.hotel_phone, s.hotel_email].filter(Boolean).join(' · ') || 'Not set', Boolean(s.hotel_phone || s.hotel_email)),
+    row('Check-in / check-out times', 'Hotel settings', '/admin/settings', `${s.check_in_time} / ${s.check_out_time}`, Boolean(s.check_in_time && s.check_out_time)),
+    row('Rooms on the website', 'Room types', '/admin/room-types', `${online} of ${types.length} room type(s) bookable online`, online > 0),
+    row('Room photos', 'Room types and this page', '#rooms', `${withPhoto} of ${online} online room type(s) have a photo`, online > 0 && withPhoto === online),
+    row('Prices and rate plans', 'Rates & extras', '/admin/rates', `${db.get('SELECT COUNT(*) AS n FROM rate_plans WHERE active = 1').n} active plan(s)`, db.get('SELECT COUNT(*) AS n FROM rate_plans WHERE active = 1 AND bookable = 1').n > 0),
+    row('Tagline', 'This page', '#site-text', s.site_tagline || 'Not set', Boolean(s.site_tagline)),
+    row('Introduction (About)', 'This page', '#site-text', s.site_intro ? `${s.site_intro.slice(0, 70)}${s.site_intro.length > 70 ? '…' : ''}` : 'Not set', Boolean(s.site_intro)),
+    row('Amenities', 'This page', '#site-text', s.site_amenities && s.site_amenities.length ? `${s.site_amenities.length} item(s)` : 'Not set', Boolean(s.site_amenities && s.site_amenities.length)),
+    row('Policies', 'This page', '#site-text', s.site_policies ? 'Added' : 'Not set', Boolean(s.site_policies)),
+    row('Hero photos', 'This page', '#photos', `${siteGallery(s, 'hero').length} photo(s)`, siteGallery(s, 'hero').length > 0),
+    row('About photos', 'This page', '#photos', `${siteGallery(s, 'about').length} photo(s)`, siteGallery(s, 'about').length > 0),
+    row('Payment on the booking page', 'Payments', '/admin/payments',
+      s.online_payments_enabled ? 'Online payment on' : (s.manual_upi_enabled && s.manual_upi_id ? 'UPI QR added' : 'Pay at the hotel'), true),
+  ];
+}
+
 function websitePage(req, res, extra = {}, status = 200) {
+  const s = req.settings;
+  const galleries = s.room_type_galleries || {};
+  const types = req.db.all('SELECT * FROM room_types ORDER BY sort, name').map((t) => ({
+    ...t, cover: t.photo ? website.imageUrl(t.photo) : '',
+    gallery: photosOf(roomGallery(s, t)), shown: Boolean(t.active && t.online),
+  }));
   render(req, res, 'website', 'website', {
-    heading: 'Website', lead: 'The public site where guests see your rooms and book (pay at the hotel).',
-    s: req.settings, types: req.db.all('SELECT name, online, active, photo, description FROM room_types ORDER BY sort, name'), ...extra,
+    heading: 'Website', lead: 'The guest website at /hotel: what guests see, what they can book, and every photo and text on it.',
+    s, types, heroPhotos: photosOf(siteGallery(s, 'hero')), aboutPhotos: photosOf(siteGallery(s, 'about')), checklist: siteChecklist(req),
+    defaultHero: website.imageUrl('lobby.jpg'), photoError: '', ...extra,
   }, status);
 }
 router.get('/website', (req, res) => websitePage(req, res));
@@ -834,12 +897,95 @@ router.post('/website', websiteImages, (req, res) => {
     const images = req.files || {};
     const addedHero = saveSiteImages(images.hero_upload);
     const addedAbout = saveSiteImages(images.about_upload);
-    if (addedHero.length) v.site_hero_images = [...(req.settings.site_hero_images || (req.settings.site_hero_image ? [req.settings.site_hero_image] : [])), ...addedHero];
-    if (addedAbout.length) v.site_about_images = [...(req.settings.site_about_images || (req.settings.site_about_image ? [req.settings.site_about_image] : [])), ...addedAbout];
+    if (addedHero.length) v.site_hero_images = [...siteGallery(req.settings, 'hero'), ...addedHero];
+    if (addedAbout.length) v.site_about_images = [...siteGallery(req.settings, 'about'), ...addedAbout];
   } catch (error) { return websitePage(req, res, { errors: { site_tagline: error.message }, values: form.values }, 422); }
   settingsService.save(req.db, v);
   activity.log(req.db, req, 'website.update', `Website ${v.site_enabled ? 'on' : 'off'}; texts updated`);
   back(res, '/admin/website', 'saved');
+});
+
+/* Upload photos into the homepage hero or the About section without re-saving the texts. */
+router.post('/website/photos/:kind', websitePhotoUpload, (req, res, next) => {
+  const kind = req.params.kind;
+  if (!['hero', 'about'].includes(kind)) return next();
+  const files = (req.files && (req.files.photo_upload || [])) || [];
+  let added = [];
+  try {
+    added = saveSiteImages(files);
+  } catch (error) {
+    return websitePage(req, res, { photoError: error.message }, 422);
+  }
+  if (!added.length) return res.redirect(303, '/admin/website?ok=photo-none#photos');
+  const key = kind === 'hero' ? 'site_hero_images' : 'site_about_images';
+  const legacy = kind === 'hero' ? 'site_hero_image' : 'site_about_image';
+  settingsService.save(req.db, { [key]: [...siteGallery(req.settings, kind), ...added], [legacy]: null });
+  activity.log(req.db, req, 'website.photos', `${added.length} ${kind} photo(s) uploaded to the website`);
+  res.redirect(303, '/admin/website?ok=photo-added#photos');
+});
+/* Remove one photo, or move it to the front (the first hero photo is the big one on the homepage). */
+router.post(['/website/photos/:kind/remove', '/website/photos/:kind/first'], (req, res, next) => {
+  const kind = req.params.kind;
+  const action = req.path.endsWith('/remove') ? 'remove' : 'first';
+  if (!['hero', 'about'].includes(kind)) return next();
+  const name = String(req.body.name || '');
+  const list = siteGallery(req.settings, kind);
+  const at = list.indexOf(name);
+  if (at < 0) return res.redirect(303, '/admin/website#photos');
+  const ordered = list.slice();
+  ordered.splice(at, 1);
+  if (action === 'first') ordered.unshift(name);
+  const key = kind === 'hero' ? 'site_hero_images' : 'site_about_images';
+  const legacy = kind === 'hero' ? 'site_hero_image' : 'site_about_image';
+  settingsService.save(req.db, { [key]: ordered.length ? ordered : null, [legacy]: null });
+  if (action === 'remove') removeUploadedPhoto(name);
+  activity.log(req.db, req, 'website.photos', `${action === 'remove' ? 'Removed' : 'Moved to the front'} ${kind} photo ${name.split('/').pop()}`);
+  res.redirect(303, `/admin/website?ok=${action === 'remove' ? 'photo-removed' : 'photo-first'}#photos`);
+});
+/* A room type's cover photo and gallery, uploaded from the website page. */
+router.post('/website/room/:id/photo', websiteRoomImages, (req, res, next) => {
+  const type = req.db.get('SELECT * FROM room_types WHERE id = ?', toInt(req.params.id));
+  if (!type) return next();
+  const files = req.files || {};
+  let cover;
+  let added = [];
+  try {
+    cover = saveSiteImages(files.photo_upload)[0];
+    added = saveSiteImages(files.gallery_upload);
+  } catch (error) {
+    return websitePage(req, res, { photoError: error.message }, 422);
+  }
+  if (!cover && !added.length) return res.redirect(303, '/admin/website?ok=photo-none#rooms');
+  if (cover) req.db.run('UPDATE room_types SET photo = ? WHERE id = ?', cover, type.id);
+  if (added.length) {
+    const galleries = { ...(req.settings.room_type_galleries || {}) };
+    galleries[type.id] = [...roomGallery(req.settings, type), ...added];
+    delete galleries[type.code];
+    settingsService.save(req.db, { room_type_galleries: galleries });
+  }
+  activity.log(req.db, req, 'website.photos', `${type.name}: ${cover ? 'new cover photo, ' : ''}${added.length} gallery photo(s) added on the website page`);
+  res.redirect(303, '/admin/website?ok=photo-added#rooms');
+});
+router.post('/website/room/:id/photo/remove', (req, res, next) => {
+  const type = req.db.get('SELECT * FROM room_types WHERE id = ?', toInt(req.params.id));
+  if (!type) return next();
+  const name = String(req.body.name || '');
+  if (req.body.where === 'cover') {
+    if (type.photo !== name) return res.redirect(303, '/admin/website#rooms');
+    req.db.run("UPDATE room_types SET photo = '' WHERE id = ?", type.id);
+    removeUploadedPhoto(name);
+    activity.log(req.db, req, 'website.photos', `${type.name}: cover photo cleared`);
+    return res.redirect(303, '/admin/website?ok=photo-cleared#rooms');
+  }
+  const list = roomGallery(req.settings, type);
+  if (!list.includes(name)) return res.redirect(303, '/admin/website#rooms');
+  const galleries = { ...(req.settings.room_type_galleries || {}) };
+  galleries[type.id] = list.filter((x) => x !== name);
+  delete galleries[type.code];
+  settingsService.save(req.db, { room_type_galleries: galleries });
+  removeUploadedPhoto(name);
+  activity.log(req.db, req, 'website.photos', `${type.name}: photo removed from the website gallery`);
+  res.redirect(303, '/admin/website?ok=photo-removed#rooms');
 });
 
 /* ------------------------------------------------------------------ invoices */
