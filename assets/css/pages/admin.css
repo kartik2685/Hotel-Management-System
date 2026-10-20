@@ -4,17 +4,17 @@
  * Built from the same tokens and components as the rest of the app.
  * ===================================================================== */
 
-/* Admin section tabs */
+/* Admin section tabs: they wrap onto as many rows as they need, so every section stays
+   visible without a sideways scrollbar (there are around twenty of them). */
 .admin-tabs {
   display: flex;
-  gap: 2px;
+  flex-wrap: wrap;
+  gap: 3px;
   padding: 3px;
   margin: 0 0 22px;
   border-radius: 11px;
   background: var(--surface-2);
   border: 1px solid var(--line);
-  overflow-x: auto;
-  scrollbar-width: none;
 }
 .admin-tabs a {
   padding: 7px 12px;
@@ -208,6 +208,37 @@ textarea.input { min-height: 84px; resize: vertical; }
 }
 .admin-photo-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; font-size: .8rem; }
 .admin-photo-list span { padding: 3px 8px; border: 1px solid var(--line, #e5e7eb); border-radius: 999px; }
+
+/* Website page: what the site shows, the photos on it, and where each piece comes from */
+.site-covers { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.site-covers li { display: flex; gap: 10px; align-items: baseline; font-size: .9rem; }
+.site-covers li > span:first-child { flex: none; color: var(--brass, #9a7b3f); }
+.site-photo-cols { display: grid; gap: 22px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.site-photo-col h3 { margin: 0 0 4px; font-size: .95rem; }
+.site-photo-col > p { margin: 0 0 10px; color: var(--muted, #686868); font-size: .82rem; }
+.site-photo-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); margin-bottom: 12px; }
+.site-photo-tile { position: relative; display: grid; gap: 5px; }
+.site-photo-tile img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; border: 1px solid var(--line, #e5e7eb); background: var(--surface-2, #f4f2ee); }
+.site-photo-tile__tags { position: absolute; top: 6px; left: 6px; display: flex; gap: 4px; }
+.site-photo-tile__tags .chip { font-size: .68rem; padding: 1px 7px; background: rgba(255, 255, 255, .92); }
+.site-photo-tile__actions { display: flex; flex-wrap: wrap; gap: 8px; font-size: .76rem; }
+.site-photo-tile__actions .text-button { padding: 0; font-size: inherit; }
+.site-photo-empty { padding: 18px; border: 1px dashed var(--line, #e5e7eb); border-radius: 8px; color: var(--muted, #686868); font-size: .85rem; text-align: center; }
+.site-upload { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.site-upload .input { flex: 1 1 180px; }
+.site-map td { vertical-align: top; }
+.site-map .mono { white-space: nowrap; }
+.site-map tr.is-missing td:first-child { border-left: 3px solid #c8892c; }
+.site-preview { margin-top: 18px; }
+.site-preview summary { cursor: pointer; font-weight: 700; }
+.site-preview .manual-site-frame { margin-top: 12px; }
+@media (max-width: 900px) { .site-photo-cols { grid-template-columns: 1fr; } }
+.site-room { padding: 16px 0; border-top: 1px solid var(--line, #e5e7eb); }
+.site-room:first-of-type { border-top: 0; padding-top: 4px; }
+.site-room__head { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+.site-room__head h3 { margin: 0 0 3px; font-size: .98rem; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.site-room__head p { margin: 0; }
+.site-room__head .text-button { white-space: nowrap; }
 .integration-list { display: grid; }
 .integration-row { display: flex; justify-content: space-between; gap: 20px; padding: 16px 0; border-top: 1px solid var(--line, #e5e7eb); }
 .integration-row h3 { margin: 0 0 5px; font-size: 1rem; }
@@ -215,3 +246,56 @@ textarea.input { min-height: 84px; resize: vertical; }
 .integration-meta { display: grid; gap: 6px; justify-items: end; align-content: start; white-space: nowrap; }
 .integration-meta small { color: var(--muted, #686868); }
 @media (max-width: 600px) { .integration-row { flex-direction: column; gap: 10px; } .integration-meta { justify-items: start; } }
+
+/* Payments: one compact filter row, four totals, then report cards paired in columns */
+.pay-filters { display: grid; gap: 12px 14px; align-items: end; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pay-filters__field { display: grid; gap: 6px; min-width: 0; }
+.pay-filters__field .field-label { margin: 0; }
+.pay-filters__actions { display: flex; align-items: center; gap: 12px; }
+@media (min-width: 640px) { .pay-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1400px) {
+  .pay-filters { grid-template-columns: repeat(5, minmax(0, 1fr)) auto; }
+  .pay-filters__actions { padding-bottom: 1px; }
+}
+.pay-stats { margin-top: 18px; }
+.pay-group { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; margin: 28px 0 12px; }
+.pay-group__title { margin: 0; font-size: 1.05rem; }
+.pay-group__hint { margin: 0; font-size: .82rem; color: var(--muted); }
+.pay-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.pay-list li { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding: 10px 0; border-top: 1px solid var(--line); }
+.pay-list li:first-child { border-top: 0; padding-top: 0; }
+.pay-list li:last-child { padding-bottom: 0; }
+.pay-list__who { display: grid; gap: 2px; min-width: 0; }
+.pay-list__who strong { font-size: .9rem; }
+.pay-list__num { display: grid; gap: 2px; text-align: right; white-space: nowrap; }
+.pay-list__num strong { font-variant-numeric: tabular-nums; }
+.pay-list .cell-note { font-size: .74rem; }
+.pay-split { display: grid; gap: 20px; align-items: start; }
+@media (min-width: 980px) { .pay-split { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.pay-split .table th { white-space: normal; }
+.pay-split .table th, .pay-split .table td { padding: 9px 10px; }
+.pay-status { display: flex; flex-wrap: wrap; gap: 6px; }
+.pay-upi { display: grid; gap: 16px; align-items: start; }
+@media (min-width: 560px) { .pay-upi--qr { grid-template-columns: minmax(0, 1fr) 128px; } }
+.pay-upi__fields { display: grid; }
+.pay-upi__fields small { color: var(--muted); font-size: .76rem; margin-top: 5px; }
+.pay-upi__qr { margin: 0; display: grid; gap: 6px; justify-items: center; }
+.pay-upi__qr img { width: 100%; max-width: 128px; height: auto; border: 1px solid var(--line); border-radius: 10px; padding: 6px; background: #fff; }
+.pay-upi__qr figcaption { font-size: .74rem; color: var(--muted); }
+.pay-details { margin-top: 18px; }
+.pay-details > summary { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; cursor: pointer; list-style: none; }
+.pay-details > summary::-webkit-details-marker { display: none; }
+.pay-details > summary > span:first-child { display: grid; gap: 3px; }
+.pay-details > summary strong { font-size: 1rem; }
+.pay-details > summary::after { content: "Show steps"; font-size: .8rem; font-weight: 700; color: var(--brass-strong); white-space: nowrap; }
+.pay-details[open] > summary::after { content: "Hide steps"; }
+.pay-details__body { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+.pay-steps { margin: 0 0 18px; padding: 0; list-style: none; display: grid; gap: 14px; counter-reset: pay-step; }
+.pay-steps li { position: relative; padding-left: 34px; color: var(--text-2); font-size: .86rem; }
+.pay-steps li strong { color: var(--text); }
+.pay-steps li::before { counter-increment: pay-step; content: counter(pay-step); position: absolute; left: 0; top: 0; width: 22px; height: 22px; border-radius: 50%; background: var(--brass-soft); color: var(--brass-strong); display: grid; place-items: center; font-size: .72rem; font-weight: 800; }
+.site-stats { margin-bottom: 20px; }
+.site-stats .admin-card__label { font-size: .8rem; }
+#site-text, #photos, #rooms, #preview { scroll-margin-top: 88px; }
+.pay-tx .table th, .pay-tx .table td { padding: 9px 10px; }
+.pay-tx .table { font-size: .82rem; }

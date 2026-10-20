@@ -213,4 +213,4 @@ function cancel(db, req, b) {
   mail.send(db, settings, emails.bookingCancelled(settings, b));
 }
 
-module.exports = { home, search, offer, create, lookup, bookingView, cancel, token, tokenOk, photoUrl, roomsLeft, policyText, readStay, siteUrl };
+module.exports = { home, search, offer, create, lookup, bookingView, cancel, token, tokenOk, imageUrl, photoUrl, roomsLeft, policyText, readStay, siteUrl };

@@ -17,15 +17,20 @@ describe('admin manual and live website controls', () => {
       assert.match(guide.text, /Night audit/);
       assert.match(guide.text, /How it works · Manual/);
       const page = await owner.get('/admin/website');
-      assert.match(page.text, /name="hero_upload"/);
-      assert.match(page.text, /name="about_upload"/);
-      assert.match(page.text, /multiple/);
-      const upload = new FormData();
-      for (const [key, value] of Object.entries({ _csrf: owner.csrf, site_enabled: 'on', site_tagline: 'A live test tagline', site_intro: '', site_amenities: 'Wi-Fi\\nBreakfast', site_policies: '', review_url: '' })) upload.set(key, value);
-      upload.append('hero_upload', new Blob([require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'assets/img/app-icon-192.png'))], { type: 'image/png' }), 'hotel.png');
-      upload.append('hero_upload', new Blob([require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'assets/img/app-icon-192.png'))], { type: 'image/png' }), 'hotel-second.png');
-      const response = await fetch(`${hotel.base}/admin/website`, { method: 'POST', headers: { cookie: owner.cookieHeader(), 'x-csrf-token': owner.csrf }, body: upload, redirect: 'manual' });
+      assert.match(page.text, /action="\/admin\/website\/photos\/hero"/);
+      assert.match(page.text, /action="\/admin\/website\/photos\/about"/);
+      assert.match(page.text, /name="photo_upload"[^>]*multiple/);
+      const text = new FormData();
+      for (const [key, value] of Object.entries({ _csrf: owner.csrf, site_enabled: 'on', site_tagline: 'A live test tagline', site_intro: '', site_amenities: 'Wi-Fi\\nBreakfast', site_policies: '', review_url: '' })) text.set(key, value);
+      const response = await fetch(`${hotel.base}/admin/website`, { method: 'POST', headers: { cookie: owner.cookieHeader(), 'x-csrf-token': owner.csrf }, body: text, redirect: 'manual' });
       assert.equal(response.status, 303);
+      const upload = new FormData();
+      upload.set('_csrf', owner.csrf);
+      upload.append('photo_upload', new Blob([require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'assets/img/app-icon-192.png'))], { type: 'image/png' }), 'hotel.png');
+      upload.append('photo_upload', new Blob([require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'assets/img/app-icon-192.png'))], { type: 'image/png' }), 'hotel-second.png');
+      const photoResponse = await fetch(`${hotel.base}/admin/website/photos/hero`, { method: 'POST', headers: { cookie: owner.cookieHeader(), 'x-csrf-token': owner.csrf }, body: upload, redirect: 'manual' });
+      assert.equal(photoResponse.status, 303);
+      assert.equal(JSON.parse(hotel.db.get("SELECT value FROM settings WHERE key = 'site_tagline'").value), 'A live test tagline');
       const stored = hotel.db.get("SELECT value FROM settings WHERE key = 'site_hero_images'");
       const uploaded = JSON.parse(stored.value);
       assert.equal(uploaded.length, 5); // three seeded demo photos plus two new uploads
