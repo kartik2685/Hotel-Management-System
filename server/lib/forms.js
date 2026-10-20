@@ -1,5 +1,6 @@
 'use strict';
 /* Reads and validates submitted form fields; collects one friendly message per field. */
+const f = require('./format');
 
 class Form {
   constructor(body) {
@@ -55,14 +56,14 @@ class Form {
     return value;
   }
 
-  /* "1,234.50" -> 123450 (cents) */
+  /* "1,234.50" or "1.234,50" -> 123450 (cents): the locale's decimal mark is read as one */
   money(name, { label = 'The amount', min = 0, max = 1e8, required = true } = {}) {
-    const text = String(this.raw(name) ?? '').replace(/[,\s]/g, '').replace(/^[^\d.-]+/, '');
-    this.keep(name, String(this.raw(name) ?? '').trim());
-    if (!text) return required ? this.fail(name, `${label} is required.`) : null;
-    if (!/^-?\d+(\.\d{1,2})?$/.test(text)) return this.fail(name, `${label} must be a number like 120 or 120.50.`);
-    const cents = Math.round(Number(text) * 100);
-    if (cents < min * 100 || cents > max * 100) return this.fail(name, `${label} must be between ${min} and ${max}.`);
+    const raw = String(this.raw(name) ?? '').trim();
+    this.keep(name, raw);
+    if (!raw) return required ? this.fail(name, `${label} is required.`) : null;
+    const cents = f.parseMoney(raw);
+    if (cents === null) return this.fail(name, `${label} must be a number like 120 or 120.50.`);
+    if (cents < Math.round(min * 100) || cents > Math.round(max * 100)) return this.fail(name, `${label} must be between ${min} and ${max}.`);
     return cents;
   }
 
@@ -81,7 +82,7 @@ class Form {
     const value = String(this.raw(name) ?? '').trim();
     this.keep(name, value);
     if (!value) return required ? this.fail(name, `${label} is required.`) : null;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(Date.parse(value + 'T00:00:00Z'))) return this.fail(name, `${label} must be a date.`);
+    if (!f.isDate(value)) return this.fail(name, `${label} must be a date.`);
     return value;
   }
 

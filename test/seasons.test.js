@@ -9,6 +9,8 @@ const { startHotel } = require('./helpers');
 const seed = require('../server/db/seed');
 const sample = require('../server/db/sample');
 const seasons = require('../server/services/seasons');
+const stats = require('../server/services/stats');
+const website = require('../server/services/website');
 
 const OWNER = ['owner@hotel.example.in', 'Owner-pass-2026'];
 const STAFF = 'Staff-Test-2026';
@@ -64,6 +66,18 @@ describe('seasons and weekends', () => {
     assert.match(page, /<dt>1 night × ₹4,800\.00<\/dt><dd>₹4,800\.00<\/dd>/);
     assert.match(page, /<dt>2 nights × ₹5,280\.00<\/dt><dd>₹10,560\.00<\/dd>/);
     assert.match(page, /Nightly rate \(₹\) <span class="field-label__hint">average<\/span>/);
+    // the guest's own booking page splits the room by rate too, so the lines add up to the total (not a rounded average)
+    const token = website.token(hotel.db, weekend.confirmation, 'weekend.guest@example.com');
+    const guestPage = await owner.get(`/hotel/booking/${weekend.confirmation}?t=${token}`);
+    assert.equal(guestPage.status, 200);
+    assert.match(guestPage.text, /<dt>1 night × ₹4,800\.00<\/dt><dd>₹4,800\.00<\/dd>/);
+    assert.match(guestPage.text, /<dt>2 nights × ₹5,280\.00<\/dt><dd>₹10,560\.00<\/dd>/);
+    assert.equal((guestPage.text.match(/night[s]? ×/g) || []).length, 2);
+    // occupancy, ADR and RevPAR book each night at its own rate: nightly_rate_cents is only the stay's average
+    const revenue = ['2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07', '2026-11-08'].map((d) => stats.night(hotel.db, d).revenue);
+    assert.deepEqual(revenue, [0, 480000, 528000, 528000, 0]);
+    assert.equal(stats.night(hotel.db, '2026-11-06').adr, 528000);
+    assert.equal(stats.night(hotel.db, '2026-11-05').adr, 480000);
   });
 
   test('a festival night above ₹7,500 takes 18% GST, the weekend night next to it 5%', async () => {

@@ -7,7 +7,7 @@ const reservations = require('./reservations');
 const seasons = require('./seasons');
 
 const DAYS = 30;
-const isDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
+const isDate = (value) => f.isDate(value);
 
 function build(db, from) {
   const to = f.addDays(from, DAYS); // exclusive

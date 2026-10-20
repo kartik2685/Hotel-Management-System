@@ -2,6 +2,17 @@
 /* Occupancy, ADR and RevPAR: live for open dates, from the night-audit history for closed ones. */
 const f = require('../lib/format');
 
+/* Each night's rate for a stay, or null when every night costs the same (night_rates is only stored then). */
+function perNight(raw) {
+  if (!raw) return null;
+  try {
+    const rates = JSON.parse(raw);
+    return Array.isArray(rates) ? rates : null;
+  } catch {
+    return null;
+  }
+}
+
 function totalRooms(db) {
   return db.get('SELECT COUNT(*) AS n FROM rooms WHERE active = 1').n;
 }
@@ -11,9 +22,12 @@ function totalRooms(db) {
 function nights(db, from, to) {
   const rooms = totalRooms(db);
   const stays = db.all(
-    "SELECT arrival, departure, nightly_rate_cents FROM reservations WHERE status IN ('confirmed', 'checked_in', 'checked_out') AND arrival <= ? AND departure > ?",
+    "SELECT arrival, departure, nightly_rate_cents, night_rates FROM reservations WHERE status IN ('confirmed', 'checked_in', 'checked_out') AND arrival <= ? AND departure > ?",
     to, from,
   );
+  // A stay with a rate for each night (seasons, weekends) earns that night's rate; nightly_rate_cents is only the
+  // average of them, so it must not be booked every night. A stay with one rate has night_rates NULL.
+  for (const r of stays) r.rates = perNight(r.night_rates);
   const out = new Map();
   for (let date = from; date <= to; date = f.addDays(date, 1)) {
     let sold = 0;
@@ -21,7 +35,8 @@ function nights(db, from, to) {
     for (const r of stays) {
       if (r.arrival <= date && r.departure > date) {
         sold += 1;
-        revenue += r.nightly_rate_cents;
+        const night = r.rates && r.rates[f.daysBetween(r.arrival, date)];
+        revenue += Number.isInteger(night) ? night : r.nightly_rate_cents;
       }
     }
     out.set(date, {

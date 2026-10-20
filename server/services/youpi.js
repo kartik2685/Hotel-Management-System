@@ -59,7 +59,12 @@ async function createCheckout(details, env = process.env) {
   }
   let result;
   try { result = await response.json(); } catch { throw Object.assign(new Error('YOUPI returned an unreadable checkout response.'), { status: 502 }); }
-  const checkoutUrl = new URL(String(result.checkoutUrl || ''));
+  let checkoutUrl;
+  try {
+    checkoutUrl = new URL(String(result.checkoutUrl || ''));
+  } catch {
+    throw Object.assign(new Error('YOUPI returned an unreadable checkout URL.'), { status: 502, code: 'YOUPI_BAD_CHECKOUT_URL' });
+  }
   const allowedOrigin = checkoutOrigin(env, api);
   if (checkoutUrl.origin !== allowedOrigin || !['https:', 'http:'].includes(checkoutUrl.protocol)) {
     throw Object.assign(new Error('YOUPI returned a checkout URL outside the configured checkout origin.'), { status: 502, code: 'YOUPI_UNTRUSTED_CHECKOUT_URL' });

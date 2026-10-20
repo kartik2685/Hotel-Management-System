@@ -7,7 +7,7 @@ const settingsService = require('./settings');
 const stats = require('./stats');
 const feedback = require('./feedback');
 
-const isDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
+const isDate = (value) => f.isDate(value);
 const METHODS = ['Cash', 'Card', 'UPI', 'Bank transfer'];
 
 function build(db, day) {

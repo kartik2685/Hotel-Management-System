@@ -9,6 +9,8 @@
   const { $, $$, api, toast } = HMS.util;
 
   function initHousekeeping() {
+    const print = $('[data-print]');
+    if (print) print.addEventListener('click', () => window.print());
     const tasks = $$('.task');
     if (!tasks.length) return;
     const attendantFilter = $('[data-task-attendant]');
@@ -93,8 +95,6 @@
     });
     if (attendantFilter) attendantFilter.addEventListener('change', applyFilters);
     if (hideDone) hideDone.addEventListener('change', applyFilters);
-    const print = $('[data-print]');
-    if (print) print.addEventListener('click', () => window.print());
     update();
   }
 

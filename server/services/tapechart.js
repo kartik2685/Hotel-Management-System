@@ -9,10 +9,11 @@ function data(db, settings, bd) {
   const to = f.addDays(bd, 45);
   const types = {};
   for (const t of db.all('SELECT code, name FROM room_types ORDER BY sort, name')) types[t.code] = t.name;
+  // The third value is the room's own floor: a number like "A1" cannot be read as one (floor = number / 100).
   const rooms = db.all(
-    `SELECT rm.number, rt.code FROM rooms rm JOIN room_types rt ON rt.id = rm.room_type_id
+    `SELECT rm.number, rt.code, rm.floor FROM rooms rm JOIN room_types rt ON rt.id = rm.room_type_id
       WHERE rm.active = 1 ORDER BY rm.floor, leading_int(rm.number), rm.number`,
-  ).map((r) => [asNumber(r.number), r.code]);
+  ).map((r) => [asNumber(r.number), r.code, r.floor]);
   const bookings = db.all(
     `SELECT r.confirmation, rm.number, r.arrival, r.departure, g.first_name, g.last_name, r.status, r.adults, r.children,
             r.nightly_rate_cents, src.name AS source, r.notes

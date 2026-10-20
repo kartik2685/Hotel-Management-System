@@ -38,6 +38,7 @@ function build(db, shell, user) {
     if (inHouse) action = 'in';
     else if (!r.room_id) action = 'unassigned';
     else if (r.hk_status !== 'clean') action = 'cleaning';
+    else if (settings.require_grc && !r.grc_at) action = 'grc';
     const time = inHouse ? f.clock(r.checked_in_at) : r.eta || '';
     return {
       confirmation: r.confirmation, name, vip: Boolean(r.vip), initials: f.initials(name), chips, inHouse, action, time,
@@ -100,9 +101,9 @@ function build(db, shell, user) {
   const ooo = states.filter((r) => r.status === 'ooo').map((r) => `${r.number} until ${r.block.end_date === f.addDays(bd, 1) ? 'tomorrow' : f.dayMonth(r.block.end_date)}`);
   let dirtyNote;
   if (!roomCounts.dirty) dirtyNote = 'Nothing waiting for a clean';
-  else if (roomCounts.dirtyWithArrival === roomCounts.dirty) dirtyNote = roomCounts.dirty === 1 ? 'It has an arrival today' : `All ${f.numberWord(roomCounts.dirty).toLowerCase()} have arrivals today`;
-  else if (!roomCounts.dirtyWithArrival) dirtyNote = 'No arrivals waiting on them';
-  else dirtyNote = `${roomCounts.dirtyWithArrival} ${roomCounts.dirtyWithArrival === 1 ? 'has an arrival' : 'have arrivals'} today`;
+  else if (roomCounts.dirtyWithArrival === roomCounts.dirty) dirtyNote = roomCounts.dirty === 1 ? 'It has an arrival today' : `All ${f.numberWord(roomCounts.dirty).toLowerCase()} with arrivals today`;
+  else if (!roomCounts.dirtyWithArrival) dirtyNote = 'None with an arrival today';
+  else dirtyNote = `${roomCounts.dirtyWithArrival} with ${roomCounts.dirtyWithArrival === 1 ? 'an arrival' : 'arrivals'} today`;
 
   const attendantsOnShift = db.get('SELECT COUNT(DISTINCT attendant_id) AS n FROM housekeeping_tasks WHERE task_date = ? AND attendant_id IS NOT NULL', bd).n;
   const hkPercent = tasks.total ? Math.round((tasks.done / tasks.total) * 100) : 0;

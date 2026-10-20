@@ -229,13 +229,22 @@ describe('bookings', () => {
     await c.login();
     await c.get('/reservations');
     const r = await c.api('/reservations', {
-      arrival: '2026-09-24', departure: '2026-09-26', type: 'DK', adults: '2', children: '0', plan: 'BAR',
+      arrival: '2026-09-24', departure: '2026-09-26', type: 'CQ', adults: '2', children: '0', plan: 'BAR',
       first: 'Asha', last: 'Verma', email: 'asha.verma@example.com', phone: '+91 98300 00000', source: 'Phone', total: '1',
     });
     assert.equal(r.status, 201);
     const b = r.body.booking;
     assert.match(b.confirmation, /^HLW-\d+$/);
-    assert.equal(b.totalText, '$608.60'); // 2 × $259 + 17.49% room tax, whatever the browser sent
+    assert.equal(b.totalText, '$514.61'); // 2 × $219 + 17.49% room tax, whatever the browser sent
+    // The demo's Deluxe Kings are full for those nights (room 407 is out of order, 408 is held): every night has a
+    // room free by count, but no single room covers both, so the hotel must refuse rather than take a roomless booking.
+    const noRoom = await c.api('/reservations', {
+      arrival: '2026-09-24', departure: '2026-09-26', type: 'DK', adults: '2', children: '0', plan: 'BAR',
+      first: 'No', last: 'Room', email: 'no.room@example.com', phone: '', source: 'Phone',
+    });
+    assert.equal(noRoom.status, 422);
+    assert.match(noRoom.body.error, /No Deluxe King is free/);
+    assert.equal(hotel.db.get("SELECT COUNT(*) AS n FROM reservations r JOIN guests g ON g.id = r.guest_id WHERE g.email = 'no.room@example.com'").n, 0);
     assert.equal(b.status, 'confirmed');
     const tape = await c.get('/tape-chart');
     assert.ok(tape.text.includes(b.confirmation), 'booking is on the tape chart');
@@ -266,6 +275,23 @@ describe('bookings', () => {
     assert.match(r.body.error, /No Harlow Suite is free/);
   });
 
+  test('a date that is not on the calendar is refused, not rolled into the next month', async () => {
+    const c = hotel.client();
+    await c.login();
+    await c.get('/reservations');
+    const base = { type: 'CQ', adults: '1', children: '0', plan: 'BAR', first: 'Impossible', last: 'Date', email: 'impossible.date@example.com', source: 'Phone' };
+    let r = await c.api('/reservations', { ...base, arrival: '2026-11-31', departure: '2026-12-02' });
+    assert.equal(r.status, 422);
+    assert.equal(r.body.field, 'arrival');
+    r = await c.api('/reservations', { ...base, arrival: '2026-12-01', departure: '2026-12-32' });
+    assert.equal(r.status, 422);
+    assert.equal(r.body.field, 'departure');
+    assert.equal(hotel.db.get("SELECT COUNT(*) AS n FROM reservations WHERE arrival IN ('2026-11-31', '2026-12-32')").n, 0);
+    const reports = await c.get('/admin/reports?from=2026-02-31&to=2026-02-31');
+    assert.equal(reports.status, 200);
+    assert.doesNotMatch(reports.text, /2026-02-31/);
+  });
+
   test('check-in needs a clean room; check-out needs the folio settled', async () => {
     const c = hotel.client();
     await c.login();
@@ -286,6 +312,26 @@ describe('bookings', () => {
     r = await c.api(`/api/reservations/${vera}/check-out`, { settle: true });
     assert.equal(r.status, 200);
     assert.equal(hotel.db.get("SELECT hk_status FROM rooms WHERE number = '102'").hk_status, 'dirty');
+  });
+
+  test('the dashboard asks for the registration card when check-in needs one', async () => {
+    const c = hotel.client();
+    await c.login();
+    const setGrc = (value) => {
+      hotel.db.run("INSERT INTO settings (key, value) VALUES ('require_grc', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify(value));
+      require('../server/services/settings').reset();
+    };
+    setGrc(true);
+    try {
+      const row = hotel.db.get(`SELECT r.confirmation FROM reservations r LEFT JOIN rooms rm ON rm.id = r.room_id
+        WHERE r.arrival = '2026-09-24' AND r.status = 'confirmed' AND r.room_id IS NOT NULL AND rm.hk_status = 'clean' AND r.grc_at IS NULL ORDER BY r.id LIMIT 1`);
+      assert.ok(row, 'the demo hotel has an arrival whose registration card is not filled in');
+      const page = await c.get('/dashboard');
+      assert.match(page.text, new RegExp(`href="/reservations/${row.confirmation}#grc"`));
+      assert.match(page.text, /Registration card/);
+    } finally {
+      setGrc(false);
+    }
   });
 
   test('editing a booking re-prices it and checks the room', async () => {
@@ -352,6 +398,36 @@ describe('rooms and housekeeping', () => {
     assert.equal(r.status, 200);
     assert.ok(hotel.db.get('SELECT done_at FROM housekeeping_tasks WHERE id = ?', task.id).done_at);
     assert.equal(hotel.db.get("SELECT hk_status FROM rooms WHERE number = '109'").hk_status, 'clean');
+  });
+
+  test('the tape chart carries each room’s own floor, even when the number has a letter', async () => {
+    const c = hotel.client();
+    await c.login();
+    const type = hotel.db.get("SELECT id, code FROM room_types WHERE code = 'CQ'");
+    hotel.db.run("INSERT INTO rooms (number, floor, room_type_id, hk_status, active) VALUES ('A1', 1, ?, 'clean', 1)", type.id);
+    const page = (await c.get('/tape-chart')).text;
+    const data = JSON.parse(page.match(/<script type="application\/json" id="tape-chart-data">([\s\S]*?)<\/script>/)[1]);
+    assert.deepEqual(data.rooms.find((r) => r[0] === 'A1'), ['A1', type.code, 1]);
+  });
+
+  test('the dirty tile counts occupied rooms that need a clean', async () => {
+    const c = hotel.client();
+    await c.login('jonas.reyes@example.com');
+    await c.get('/rooms');
+    // 101 is occupied in the demo hotel. Start it clean so the change is always +1.
+    await c.api('/api/rooms/101/status', { status: 'clean' });
+    const before = await c.get('/rooms');
+    const beforeCount = Number(before.text.match(/data-status-count="dirty">(\d+)</)[1]);
+    await c.api('/api/rooms/101/status', { status: 'dirty' });
+    const after = await c.get('/rooms');
+    const afterCount = Number(after.text.match(/data-status-count="dirty">(\d+)</)[1]);
+    assert.equal(afterCount, beforeCount + 1, 'the dirty count follows the occupied room');
+    assert.match(after.text, /data-dirty-note>\d+ occupied · \d+ vacant/);
+    assert.match(after.text, /data-nav-badge="rooms">\d+ dirty</);
+    const dashboard = await c.get('/dashboard');
+    const dirtyRow = dashboard.text.match(/Dirty<\/strong><small>[^<]*<\/small><\/span><span class="status-list__num">(\d+)<\/span>/);
+    assert.ok(dirtyRow, 'the dashboard has a dirty row');
+    assert.equal(Number(dirtyRow[1]), afterCount);
   });
 
   test('notifications can be marked read for one person', async () => {
@@ -421,6 +497,16 @@ describe('admin panel', () => {
     assert.match(page.text, /Due by 11:00/);
   });
 
+  test('the admin manual print button uses the print script, not an inline handler', async () => {
+    const admin = hotel.client();
+    await admin.login();
+    const page = await admin.get('/admin/guide');
+    assert.equal(page.status, 200);
+    assert.match(page.text, /data-print/);
+    assert.match(page.text, /\/assets\/js\/pages\/print\.js/);
+    assert.doesNotMatch(page.text, /onclick="window\.print\(\)"/);
+  });
+
   test('night audit closes the day once nothing is left open', async () => {
     const admin = hotel.client();
     await admin.login();
@@ -433,14 +519,26 @@ describe('admin panel', () => {
       const out = await admin.api(`/api/reservations/${row.confirmation}/check-out`, { settle: true });
       assert.equal(out.status, 200);
     }
+    // A tentative hold is not a confirmed arrival, but it still holds a room for a night that has begun: the
+    // audit must not close the day behind it.
+    const gid = hotel.db.get("INSERT INTO guests (first_name, last_name, email, created_at) VALUES ('Tina', 'Tentative', 'tina.tentative@example.com', '2026-09-20 09:00') RETURNING id").id;
+    const src = hotel.db.get("SELECT * FROM reservations WHERE status = 'confirmed' AND arrival = '2026-09-24' LIMIT 1");
+    hotel.db.run(
+      `INSERT INTO reservations (confirmation, guest_id, room_type_id, room_id, arrival, departure, adults, children, rate_plan_id, nightly_rate_cents, status, tags, requests, room_total_cents, tax_cents, extras_cents, total_cents, created_by, created_at)
+       VALUES ('TENT-1', ?, ?, NULL, '2026-09-24', ?, 1, 0, ?, ?, 'tentative', '[]', '', ?, 0, 0, ?, 1, '2026-09-20 10:00')`,
+      gid, src.room_type_id, src.departure, src.rate_plan_id, src.nightly_rate_cents, src.room_total_cents, src.room_total_cents,
+    );
     await admin.get('/admin/night-audit');
     r = await admin.post('/admin/night-audit', {});
     assert.equal(r.status, 422);
     assert.match(r.text, /still expected/);
+    assert.match(r.text, /Tina Tentative/);
+    assert.match((await admin.get('/admin/night-audit')).text, /Tina Tentative/);
     r = await admin.post('/admin/night-audit', { no_shows: 'on' });
     assert.equal(r.status, 303);
     const stats = hotel.db.get("SELECT * FROM daily_stats WHERE date = '2026-09-24'");
     assert.ok(stats && stats.rooms_sold > 0);
+    assert.equal(hotel.db.get("SELECT status FROM reservations WHERE confirmation = 'TENT-1'").status, 'no_show');
     assert.equal(JSON.parse(hotel.db.get("SELECT value FROM settings WHERE key = 'business_date'").value), '2026-09-25');
     assert.ok(hotel.db.get("SELECT COUNT(*) AS n FROM housekeeping_tasks WHERE task_date = '2026-09-25'").n > 0);
     const page = await admin.get('/dashboard');

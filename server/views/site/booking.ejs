@@ -25,7 +25,10 @@
               <div><dt>Rate</dt><dd><%= v.plan ? v.plan.name : 'Room only' %></dd></div>
             </dl>
             <dl class="summary__lines" style="margin-top:20px">
-              <div><dt><%= fmt.plural(b.nights, 'night', 'nights') %> × <%= fmt.money(b.nightly_rate_cents) %></dt><dd><%= fmt.money(b.room_total_cents) %></dd></div>
+<% const roomLines = v.roomLines.reduce((n, g) => n + g.rate * g.nights, 0) === b.room_total_cents ? v.roomLines : [{ rate: b.nightly_rate_cents, nights: b.nights }]; -%>
+<% for (const g of roomLines) { -%>
+              <div><dt><%= fmt.plural(g.nights, 'night', 'nights') %> × <%= fmt.money(g.rate) %></dt><dd><%= fmt.money(g.rate * g.nights) %></dd></div>
+<% } -%>
               <div><dt>Tax</dt><dd><%= fmt.money(b.tax_cents) %></dd></div>
 <% for (const x of v.extras) { -%>
               <div><dt><%= x.name %></dt><dd><%= fmt.money(x.amount_cents) %></dd></div>

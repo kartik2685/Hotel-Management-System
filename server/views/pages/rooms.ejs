@@ -20,7 +20,7 @@
             <span class="status-tile__label"><span class="status-icon tone-clean" aria-hidden="true"><%- icon('check') %></span>Clean</span><strong class="status-tile__num" data-status-count="clean"><%= rm.counts.clean %></strong><small>Vacant, ready to sell</small>
           </button>
           <button class="status-tile status-tile--dirty" type="button" aria-pressed="false" data-room-filter="dirty">
-            <span class="status-tile__label"><span class="status-icon tone-dirty" aria-hidden="true"><%- icon('broom') %></span>Dirty</span><strong class="status-tile__num" data-status-count="dirty"><%= rm.counts.dirty %></strong><small>Vacant, needs a clean</small>
+            <span class="status-tile__label"><span class="status-icon tone-dirty" aria-hidden="true"><%- icon('broom') %></span>Dirty</span><strong class="status-tile__num" data-status-count="dirty"><%= rm.counts.dirty %></strong><small data-dirty-note><%= rm.dirtyNote %></small>
           </button>
           <button class="status-tile status-tile--ooo" type="button" aria-pressed="false" data-room-filter="ooo">
             <span class="status-tile__label"><span class="status-icon tone-ooo" aria-hidden="true"><%- icon('wrench') %></span>Out of order</span><strong class="status-tile__num" data-status-count="ooo"><%= rm.counts.ooo %></strong><small>Off sale</small>

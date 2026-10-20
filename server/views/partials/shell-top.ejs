@@ -38,7 +38,7 @@
         <p class="sidenav__label"><%= group.label %></p>
         <ul class="sidenav__list">
 <% for (const item of group.items) { -%>
-          <li><a class="sidenav__link" href="<%= item.href %>"<%- item.key === shell.active ? ' aria-current="page"' : '' %>><%- icon(item.icon) %><span><%= item.label %></span><% if (item.badge) { %><span class="sidenav__badge<%= item.warn ? ' sidenav__badge--warn' : '' %>"><%= item.badge %></span><% } %></a></li>
+          <li><a class="sidenav__link" href="<%= item.href %>"<%- item.key === shell.active ? ' aria-current="page"' : '' %>><%- icon(item.icon) %><span><%= item.label %></span><% if (item.badge || item.key === 'rooms') { %><span class="sidenav__badge<%= item.warn ? ' sidenav__badge--warn' : '' %>"<%- item.key === 'rooms' ? ' data-nav-badge="rooms"' : '' %><%- item.badge ? '' : ' hidden' %>><%= item.badge || '' %></span><% } %></a></li>
 <% } -%>
         </ul>
 <% } -%>

@@ -6,7 +6,7 @@
 (function () {
   'use strict';
 
-  const { $, $$, api, toast } = HMS.util;
+  const { $, $$, h, api, toast } = HMS.util;
 
   function initRoomBoard() {
     const cards = $$('.room-card');
@@ -20,21 +20,51 @@
 
     // The result line doubles as a live region for screen readers.
     const announce = (message) => { if (result) result.textContent = message; };
+    // Cards keep their occupancy status (occupied / vacant), so dirty is read from the
+    // housekeeping state: a guest's room can be waiting for a clean too.
     const tally = (list) => {
       const counts = { occupied: 0, clean: 0, dirty: 0, ooo: 0 };
-      list.forEach((card) => { counts[card.dataset.status] += 1; });
+      list.forEach((card) => {
+        const status = card.dataset.status;
+        if (status === 'ooo') { counts.ooo += 1; return; }
+        if (status === 'occupied') counts.occupied += 1;
+        if (status === 'clean') counts.clean += 1;
+        if (card.dataset.housekeeping === 'dirty') counts.dirty += 1;
+      });
       return counts;
     };
 
+    // The rooms badge in the sidebar follows the board as rooms are flipped.
+    function showSidebarDirty(count) {
+      const link = $('.sidenav__link[href="/rooms"]');
+      if (!link) return;
+      let badge = $('[data-nav-badge="rooms"]', link);
+      if (!badge) {
+        badge = h('span', { class: 'sidenav__badge sidenav__badge--warn', 'data-nav-badge': 'rooms' });
+        link.append(badge);
+      }
+      badge.textContent = count ? count + ' dirty' : '';
+      badge.hidden = !count;
+    }
+
     function updateCounts() {
       const counts = tally(cards);
-      const occupiedClean = cards.filter((c) => c.dataset.status === 'occupied' && c.dataset.housekeeping === 'clean').length;
+      const occupied = cards.filter((c) => c.dataset.status === 'occupied');
+      const occupiedClean = occupied.filter((c) => c.dataset.housekeeping === 'clean').length;
+      const occupiedDirty = occupied.length - occupiedClean;
       Object.keys(counts).forEach((status) => {
         const el = $('[data-status-count="' + status + '"]');
         if (el) el.textContent = counts[status];
       });
       const split = $('[data-occupied-split]');
-      if (split) split.textContent = occupiedClean + ' clean · ' + (counts.occupied - occupiedClean) + ' to service';
+      if (split) split.textContent = occupiedClean + ' clean · ' + occupiedDirty + ' to service';
+      const dirtyNote = $('[data-dirty-note]');
+      if (dirtyNote) {
+        dirtyNote.textContent = counts.dirty
+          ? occupiedDirty + ' occupied · ' + (counts.dirty - occupiedDirty) + ' vacant'
+          : 'Vacant, needs a clean';
+      }
+      showSidebarDirty(counts.dirty);
 
       $$('.floor').forEach((floor) => {
         const f = tally($$('.room-card', floor));
@@ -51,8 +81,11 @@
       const who = attendant ? attendant.value : '';
       let shown = 0;
       cards.forEach((card) => {
+        // Dirty shows every room waiting for a clean, including occupied ones.
+        const byStatus = filter === 'all'
+          || (filter === 'dirty' ? card.dataset.status !== 'ooo' && card.dataset.housekeeping === 'dirty' : card.dataset.status === filter);
         const match =
-          (filter === 'all' || card.dataset.status === filter) &&
+          byStatus &&
           (!number || card.dataset.room.startsWith(number)) &&
           (!who || $('[data-assign]', card).value === who);
         card.hidden = !match;

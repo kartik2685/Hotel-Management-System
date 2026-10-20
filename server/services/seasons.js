@@ -32,7 +32,10 @@ function nightRates(rules, type, plan, arrival, nights) {
 
 /* Nights grouped by rate, in stay order: [{ rate, nights }] (a booking's night_rates, or its one rate). */
 function groups(b) {
-  const rates = b.night_rates ? JSON.parse(b.night_rates) : Array.from({ length: b.nights ?? f.daysBetween(b.arrival, b.departure) }, () => b.nightly_rate_cents);
+  // Unreadable stored rates (a hand-edited database) fall back to the one average rate rather than break the bill.
+  let rates = null;
+  try { rates = b.night_rates ? JSON.parse(b.night_rates) : null; } catch { rates = null; }
+  if (!Array.isArray(rates)) rates = Array.from({ length: b.nights ?? f.daysBetween(b.arrival, b.departure) }, () => b.nightly_rate_cents);
   const out = [];
   for (const rate of rates) {
     const last = out.find((g) => g.rate === rate);

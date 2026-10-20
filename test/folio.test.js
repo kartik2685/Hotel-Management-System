@@ -136,4 +136,29 @@ describe('charges during the stay', () => {
       assert.match(out.body.error, /is still open on the folio/);
     }
   });
+
+  test('an amount typed in the hotel’s own number format is read at its real size', async () => {
+    // a hotel that writes €1.234,56 (de-DE) takes "1.234,56" at the desk, not €1,23 or €123.456
+    const save = (key, value) => {
+      hotel.db.run('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', key, JSON.stringify(value));
+      require('../server/services/settings').reset();
+    };
+    try {
+      save('currency_symbol', '€');
+      save('currency_locale', 'de-DE');
+      await desk.get(`/reservations/${stay}`);
+      const r = await desk.post(`/reservations/${stay}/charges`, { charge_kind: 'laundry', charge_amount: '1.234,56', charge_text: 'Locale charge' });
+      assert.equal(r.status, 303, r.text.match(/field-error">([^<]+)/)?.[1]);
+      const c = one("SELECT * FROM folio_charges WHERE description = 'Locale charge'");
+      assert.equal(c.amount_cents, 123456);
+      assert.match((await desk.get(`/reservations/${stay}`)).text, /€1\.234,56/);
+      // not a valid amount: three decimals after the decimal mark are refused, not silently guessed
+      const bad = await desk.post(`/reservations/${stay}/charges`, { charge_kind: 'laundry', charge_amount: '12,3456', charge_text: 'Bad locale charge' });
+      assert.equal(bad.status, 422);
+      assert.match(bad.text, /must be a number like/);
+    } finally {
+      save('currency_symbol', '₹');
+      save('currency_locale', 'en-IN');
+    }
+  });
 });
