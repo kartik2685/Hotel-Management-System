@@ -214,7 +214,7 @@ describe('payments and invoices', () => {
     await admin.login();
     const report = await admin.get('/admin/payments?from=2026-09-24&to=2026-09-24&shift=morning&staff=Rosa%20Soto&method=UPI');
     assert.equal(report.status, 200);
-    assert.match(report.text, /Payment totals & shift report/);
+    assert.match(report.text, /Payments &amp; shift report/);
     assert.match(report.text, /Rosa Soto/);
     assert.match(report.text, /UPI-1234/);
     assert.match(report.text, /500\.00/);

@@ -711,6 +711,11 @@ router.get('/payments', requireAbility('administer'), (req, res) => {
     r.confirmation, g.first_name || ' ' || g.last_name AS guest
     FROM payments p JOIN reservations r ON r.id = p.reservation_id JOIN guests g ON g.id = r.guest_id
     WHERE ${where} ORDER BY p.created_at DESC, p.id DESC LIMIT 500`, ...args);
+  const byMethod = db.all(`SELECT p.method, COUNT(*) AS count,
+    COALESCE(SUM(CASE WHEN p.amount_cents > 0 THEN p.amount_cents ELSE 0 END), 0) AS collected_cents,
+    COALESCE(SUM(CASE WHEN p.amount_cents < 0 THEN -p.amount_cents ELSE 0 END), 0) AS refunded_cents,
+    COALESCE(SUM(p.amount_cents), 0) AS net_cents
+    FROM payments p WHERE ${where} GROUP BY p.method ORDER BY net_cents DESC, p.method`, ...args);
   const integration = integrationsService.integrationStatus().find((item) => item.key === 'payments');
   render(req, res, 'payments', 'payments', {
     heading: 'Payments & shift report',
@@ -724,6 +729,7 @@ router.get('/payments', requireAbility('administer'), (req, res) => {
     totals: Object.fromEntries(Object.entries(totals).map(([key, value]) => [key, Number(value)])),
     byStaffShift: byStaffShift.map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, ['collected_cents', 'refunded_cents', 'net_cents', 'count'].includes(key) ? Number(value) : value]))),
     paymentRows: paymentRows.map((row) => ({ ...row, amount_cents: Number(row.amount_cents) })),
+    byMethod: byMethod.map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, ['collected_cents', 'refunded_cents', 'net_cents', 'count'].includes(key) ? Number(value) : value]))),
     paymentError: ({
       'configure-first': 'YOUPI checkout was not enabled: configure an authorized test endpoint, merchant ID, webhook secret, and PAYMENT_MODE=test first.',
       'upi-id': 'Enter a valid merchant UPI ID/VPA (for example, merchant@bank) before enabling guest UPI payments.',

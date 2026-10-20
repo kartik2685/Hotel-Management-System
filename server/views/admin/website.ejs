@@ -3,6 +3,12 @@
 <% if (photoError) { -%>
         <div class="notice notice--error" role="alert"><p><%= photoError %></p></div>
 <% } -%>
+        <div class="admin-cards site-stats">
+          <div class="card admin-card"><span class="admin-card__num"><%= s.site_enabled ? 'On' : 'Off' %></span><span class="admin-card__label">website is <%= s.site_enabled ? 'open to guests' : 'closed to guests' %> · <a href="#site-text">switch</a></span></div>
+          <div class="card admin-card"><span class="admin-card__num"><%= heroPhotos.length %></span><span class="admin-card__label">homepage hero photo(s) · <a href="#photos">manage</a></span></div>
+          <div class="card admin-card"><span class="admin-card__num"><%= aboutPhotos.length %></span><span class="admin-card__label">about photo(s) · <a href="#photos">manage</a></span></div>
+          <div class="card admin-card"><span class="admin-card__num"><%= types.filter((t) => t.shown).length %>/<%= types.length %></span><span class="admin-card__label">room type(s) on the site · <a href="#rooms">manage</a></span></div>
+        </div>
         <div class="admin-grid">
           <form class="card" id="site-text" method="post" action="/admin/website" novalidate>
             <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
@@ -152,7 +158,7 @@
 <% } -%>
         </section>
 
-        <details class="card site-preview">
+        <details class="card site-preview" id="preview">
           <summary>Live preview of the guest website</summary>
           <p class="form-hint">This is the real site, so anything you change above shows here when you reload it.</p>
           <iframe src="/hotel" title="Live guest website preview" loading="lazy" class="manual-site-frame"></iframe>

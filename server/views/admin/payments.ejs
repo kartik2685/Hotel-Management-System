@@ -2,111 +2,170 @@
 <% if (paymentError) { -%>
   <div class="notice notice--error" role="alert"><%- icon('info') %><p><%= paymentError %></p></div>
 <% } -%>
-<section class="card">
-  <div class="card__head"><div><h2 class="card__title">Payment totals & shift report</h2><p class="card__subtitle">Filter posted payments and refunds by date, method, staff member and the shift recorded when payment was taken.</p></div></div>
-  <form method="get" action="/admin/payments" class="form-grid">
-    <div class="form-grid__col"><label class="field-label" for="pay-from">From</label><input class="input" id="pay-from" type="date" name="from" value="<%= reportFilters.from %>" required></div>
-    <div class="form-grid__col"><label class="field-label" for="pay-to">To</label><input class="input" id="pay-to" type="date" name="to" value="<%= reportFilters.to %>" required></div>
-    <div class="form-grid__col"><label class="field-label" for="pay-shift">Shift</label><select class="select" id="pay-shift" name="shift"><option value="">All shifts</option><% for (const value of shifts) { %><option value="<%= value %>" <%= reportFilters.shift === value ? 'selected' : '' %>><%= value === 'Online' || value === 'Unassigned' ? value : value[0].toUpperCase() + value.slice(1) %></option><% } %></select></div>
-    <div class="form-grid__col"><label class="field-label" for="pay-staff">Staff member</label><select class="select" id="pay-staff" name="staff"><option value="">All staff</option><% for (const value of staffChoices) { %><option value="<%= value %>" <%= reportFilters.staff === value ? 'selected' : '' %>><%= value %></option><% } %></select></div>
-    <div class="form-grid__col"><label class="field-label" for="pay-method">Method</label><select class="select" id="pay-method" name="method"><option value="">All methods</option><% for (const value of methodChoices) { %><option value="<%= value %>" <%= reportFilters.method === value ? 'selected' : '' %>><%= value %></option><% } %></select></div>
-    <div class="form-actions form-grid__col"><button class="button" type="submit">Apply filters</button></div>
-  </form>
-  <dl class="summary__lines" style="margin-top:18px">
-    <div><dt>Transactions</dt><dd><%= totals.count %></dd></div>
-    <div><dt>Collected</dt><dd><%= fmt.money(totals.collected_cents) %></dd></div>
-    <div><dt>Refunded</dt><dd><%= fmt.money(-totals.refunded_cents) %></dd></div>
-    <div><dt>Net payments</dt><dd><%= fmt.money(totals.net_cents) %></dd></div>
-  </dl>
-  <h3 class="card__title" style="margin-top:22px">By staff member and shift</h3>
-<% if (!byStaffShift.length) { -%>
-  <p class="empty-state">No payments match these filters.</p>
-<% } else { -%>
-  <div class="table-wrap"><table class="data-table"><thead><tr><th>Staff</th><th>Shift</th><th>Transactions</th><th>Collected</th><th>Refunded</th><th>Net</th></tr></thead><tbody>
-<% for (const row of byStaffShift) { -%>
-    <tr><td><%= row.staff || 'System' %></td><td><%= row.shift === 'Unassigned' || row.shift === 'Online' ? row.shift : row.shift[0].toUpperCase() + row.shift.slice(1) %></td><td><%= row.count %></td><td><%= fmt.money(row.collected_cents) %></td><td><%= fmt.money(-row.refunded_cents) %></td><td><strong><%= fmt.money(row.net_cents) %></strong></td></tr>
-<% } -%>
-  </tbody></table></div>
-<% } -%>
-  <h3 class="card__title" style="margin-top:22px">Transactions</h3>
-  <p class="summary__note">Showing up to 500 matching rows. Totals above include every row matching the selected filters.</p>
+<% const shiftLabel = (value) => (value === 'Online' || value === 'Unassigned' ? value : value[0].toUpperCase() + value.slice(1)); -%>
+
+<form class="card pay-filters" method="get" action="/admin/payments" aria-label="Filter the payment report">
+  <div class="pay-filters__field"><label class="field-label" for="pay-from">From</label><input class="input" id="pay-from" type="date" name="from" value="<%= reportFilters.from %>" required></div>
+  <div class="pay-filters__field"><label class="field-label" for="pay-to">To</label><input class="input" id="pay-to" type="date" name="to" value="<%= reportFilters.to %>" required></div>
+  <div class="pay-filters__field"><label class="field-label" for="pay-shift">Shift</label><select class="select" id="pay-shift" name="shift"><option value="">All shifts</option><% for (const value of shifts) { %><option value="<%= value %>" <%= reportFilters.shift === value ? 'selected' : '' %>><%= shiftLabel(value) %></option><% } %></select></div>
+  <div class="pay-filters__field"><label class="field-label" for="pay-staff">Staff member</label><select class="select" id="pay-staff" name="staff"><option value="">All staff</option><% for (const value of staffChoices) { %><option value="<%= value %>" <%= reportFilters.staff === value ? 'selected' : '' %>><%= value %></option><% } %></select></div>
+  <div class="pay-filters__field"><label class="field-label" for="pay-method">Method</label><select class="select" id="pay-method" name="method"><option value="">All methods</option><% for (const value of methodChoices) { %><option value="<%= value %>" <%= reportFilters.method === value ? 'selected' : '' %>><%= value %></option><% } %></select></div>
+  <div class="pay-filters__actions"><button class="button button--primary" type="submit">Apply filters</button><a class="text-button" href="/admin/payments">Reset</a></div>
+</form>
+
+<div class="admin-cards pay-stats">
+  <div class="card admin-card"><span class="admin-card__num"><%= totals.count %></span><span class="admin-card__label">transactions in this period</span></div>
+  <div class="card admin-card"><span class="admin-card__num"><%= fmt.money(totals.collected_cents) %></span><span class="admin-card__label">collected from guests</span></div>
+  <div class="card admin-card"><span class="admin-card__num"><%= fmt.money(-totals.refunded_cents) %></span><span class="admin-card__label">refunded</span></div>
+  <div class="card admin-card"><span class="admin-card__num"><%= fmt.money(totals.net_cents) %></span><span class="admin-card__label">net payments</span></div>
+</div>
+
+<div class="pay-group">
+  <h2 class="pay-group__title">Shift report</h2>
+  <p class="pay-group__hint">Who took which payment, on which shift, and how it was paid.</p>
+</div>
+
+<div class="admin-grid">
+  <section class="card pay-tx" aria-labelledby="p-transactions">
+    <div class="card__head"><div><h2 class="card__title" id="p-transactions">Transactions</h2><p class="card__subtitle">Up to 500 matching rows, newest first. The totals above include every payment that matches the filters.</p></div></div>
 <% if (!paymentRows.length) { -%>
-  <p class="empty-state">No payment records for these dates and filters.</p>
+    <p class="empty-state">No payment records for these dates and filters.</p>
 <% } else { -%>
-  <div class="table-wrap"><table class="data-table"><thead><tr><th>Date and time</th><th>Booking / guest</th><th>Method / reference</th><th>Staff</th><th>Shift</th><th>Amount</th></tr></thead><tbody>
+    <div class="table-scroll"><table class="table admin-table"><thead><tr><th scope="col">Date and time</th><th scope="col">Booking / guest</th><th scope="col">Method / reference</th><th scope="col">Staff</th><th scope="col">Shift</th><th scope="col" class="numeric">Amount</th></tr></thead><tbody>
 <% for (const row of paymentRows) { -%>
-    <tr><td><%= row.created_at %></td><td><%= row.confirmation %><br><small><%= row.guest %></small></td><td><%= row.method %><% if (row.reference) { %><br><small><%= row.reference %></small><% } %></td><td><%= row.taken_by_name || 'System' %></td><td><%= row.shift || 'Unassigned' %></td><td><strong><%= fmt.money(row.amount_cents) %></strong></td></tr>
+      <tr><td><%= row.created_at %></td><td><%= row.confirmation %><br><small><%= row.guest %></small></td><td><%= row.method %><% if (row.reference) { %><br><small><%= row.reference %></small><% } %></td><td><%= row.taken_by_name || 'System' %></td><td><%= row.shift || 'Unassigned' %></td><td class="numeric"><strong><%= fmt.money(row.amount_cents) %></strong></td></tr>
 <% } -%>
-  </tbody></table></div>
+    </tbody></table></div>
 <% } -%>
-</section>
+  </section>
 
-<section class="card" style="margin-top:20px">
-  <div class="card__head"><div><h2 class="card__title">YOUPI test checkout switch</h2><p class="card__subtitle">This controls whether eligible guests see an online UPI checkout on their reservation page.</p></div></div>
-  <p><strong>Provider status:</strong> <span class="chip"><%= integration.status %></span> · <%= integration.detail %></p>
-  <p style="margin-top:10px"><strong>Admin switch:</strong> <%= onlinePaymentsEnabled ? 'On' : 'Off' %>. <strong>Test configuration:</strong> <%= providerConfigured ? 'Present' : 'Missing or not in test mode' %>.</p>
-  <form method="post" action="/admin/payments" style="margin-top:18px">
-    <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
-    <label class="checkbox"><input class="checkbox__input" type="checkbox" name="enabled" <%= onlinePaymentsEnabled ? 'checked' : '' %> <%= providerConfigured || onlinePaymentsEnabled ? '' : 'disabled' %>><span class="checkbox__label">Enable guest online UPI checkout (authorized test setup only)</span></label>
-    <p class="summary__note" style="margin-top:8px"><%= providerConfigured ? 'Turning this off hides new guest checkout links. Pending, signed webhooks can still be reconciled while the secret remains configured.' : 'Configure the required server environment variables first. Values and secrets are never entered or displayed in this page.' %></p>
-    <div class="form-actions"><button class="button" type="submit">Save payment setting</button></div>
-  </form>
-</section>
+  <div class="admin-stack">
+    <section class="card" aria-labelledby="p-by-staff">
+      <div class="card__head"><div><h2 class="card__title" id="p-by-staff">By staff member and shift</h2><p class="card__subtitle">Net amount each person handled.</p></div></div>
+<% if (!byStaffShift.length) { -%>
+      <p class="empty-state">No payments match these filters.</p>
+<% } else { -%>
+      <ul class="pay-list">
+<% for (const row of byStaffShift) { -%>
+        <li>
+          <span class="pay-list__who"><strong><%= row.staff || 'System' %></strong><span class="cell-note"><%= shiftLabel(row.shift) %> shift · <%= row.count %> payment<%= row.count === 1 ? '' : 's' %></span></span>
+          <span class="pay-list__num"><strong><%= fmt.money(row.net_cents) %></strong><span class="cell-note"><%= fmt.money(row.collected_cents) %> collected<%= row.refunded_cents ? ' · ' + fmt.money(-row.refunded_cents) + ' refunded' : '' %></span></span>
+        </li>
+<% } -%>
+      </ul>
+<% } -%>
+    </section>
 
-<section class="card" style="margin-top:20px">
-  <div class="card__head"><div><h2 class="card__title">Paytm merchant UPI ID and QR</h2><p class="card__subtitle">For a merchant QR/UPI ID you already have. This is a manual transfer option, separate from YOUPI hosted checkout.</p></div></div>
-  <form method="post" action="/admin/payments/upi" enctype="multipart/form-data">
-    <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
-    <label class="field-label" for="merchant-upi-id">Merchant UPI ID / VPA</label>
-    <input class="input" id="merchant-upi-id" name="upi_id" type="text" maxlength="155" autocomplete="off" placeholder="merchant@paytm" value="<%= manualUpiId %>">
-    <small>Public payment address shown to guests; never enter your UPI PIN or bank password.</small>
-    <label class="field-label" for="merchant-upi-qr" style="margin-top:14px">Upload Paytm merchant QR</label>
-    <input class="input" id="merchant-upi-qr" name="upi_qr_upload" type="file" accept="image/jpeg,image/png,image/webp">
-    <small>PNG, JPG or WebP, up to 5 MB. Upload the merchant QR image from Paytm; the existing QR remains if you do not choose a new file.</small>
+    <section class="card" aria-labelledby="p-by-method">
+      <div class="card__head"><div><h2 class="card__title" id="p-by-method">By payment method</h2><p class="card__subtitle">Cash, card and UPI, with refunds taken off.</p></div></div>
+<% if (!byMethod.length) { -%>
+      <p class="empty-state">No payments match these filters.</p>
+<% } else { -%>
+      <ul class="pay-list">
+<% for (const row of byMethod) { -%>
+        <li>
+          <span class="pay-list__who"><strong><%= row.method %></strong><span class="cell-note"><%= row.count %> payment<%= row.count === 1 ? '' : 's' %></span></span>
+          <span class="pay-list__num"><strong><%= fmt.money(row.net_cents) %></strong><span class="cell-note"><%= fmt.money(row.collected_cents) %> collected<%= row.refunded_cents ? ' · ' + fmt.money(-row.refunded_cents) + ' refunded' : '' %></span></span>
+        </li>
+<% } -%>
+      </ul>
+<% } -%>
+    </section>
+  </div>
+</div>
+
+<div class="pay-group">
+  <h2 class="pay-group__title">How guests pay</h2>
+  <p class="pay-group__hint">Online checkout through YOUPI, or your own UPI ID and QR shown on the booking page.</p>
+</div>
+
+<div class="pay-split">
+  <section class="card" aria-labelledby="p-youpi">
+    <div class="card__head"><div><h2 class="card__title" id="p-youpi">Online checkout</h2><p class="card__subtitle">Guests with a balance can pay from their reservation page through YOUPI.</p></div></div>
+    <div class="pay-status">
+      <span class="chip<%= providerConfigured ? ' chip--gold' : '' %>"><%= providerConfigured ? 'Configuration ready' : 'Configuration missing' %></span>
+      <span class="chip"><%= onlinePaymentsEnabled ? 'Admin switch on' : 'Admin switch off' %></span>
+      <span class="chip">Provider: <%= integration.status %></span>
+    </div>
+    <p class="cell-note" style="margin-top:10px"><%= integration.detail %></p>
+    <form method="post" action="/admin/payments" style="margin-top:14px">
+      <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+      <label class="checkbox"><input class="checkbox__input" type="checkbox" name="enabled" <%= onlinePaymentsEnabled ? 'checked' : '' %> <%= providerConfigured || onlinePaymentsEnabled ? '' : 'disabled' %>><span class="checkbox__label">Enable guest online UPI checkout (authorized test setup only)</span></label>
+      <p class="form-hint" style="margin-top:8px"><%= providerConfigured ? 'Turning this off hides new guest checkout links. Pending, signed webhooks can still be reconciled while the secret remains configured.' : 'Configure the required server environment variables first. Values and secrets are never entered or displayed in this page.' %></p>
+      <div class="form-actions"><button class="button" type="submit">Save payment setting</button></div>
+    </form>
+  </section>
+
+  <section class="card" aria-labelledby="p-upi">
+    <div class="card__head"><div><h2 class="card__title" id="p-upi">Your own UPI ID and QR</h2><p class="card__subtitle">A manual transfer option on the booking page, separate from YOUPI checkout.</p></div></div>
+    <form method="post" action="/admin/payments/upi" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf" value="<%= shell.csrf %>">
+      <div class="pay-upi<%= manualUpiQr ? ' pay-upi--qr' : '' %>">
+        <div class="pay-upi__fields">
+          <label class="field-label" for="merchant-upi-id">Merchant UPI ID / VPA</label>
+          <input class="input" id="merchant-upi-id" name="upi_id" type="text" maxlength="155" autocomplete="off" placeholder="merchant@paytm" value="<%= manualUpiId %>">
+          <small>Public payment address shown to guests; never enter your UPI PIN or bank password.</small>
+          <label class="field-label" for="merchant-upi-qr" style="margin-top:14px">Upload merchant QR</label>
+          <input class="input" id="merchant-upi-qr" name="upi_qr_upload" type="file" accept="image/jpeg,image/png,image/webp">
+          <small>PNG, JPG or WebP, up to 5 MB. The existing QR stays if you do not choose a new file.</small>
+        </div>
 <% if (manualUpiQr) { -%>
-    <p style="margin-top:12px"><strong>Current QR:</strong><br><img src="<%= manualUpiQr %>" alt="Current hotel merchant UPI QR" loading="lazy" style="width:min(100%,200px);height:auto;margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:6px;background:#fff"></p>
+        <figure class="pay-upi__qr"><img src="<%= manualUpiQr %>" alt="Current hotel merchant UPI QR" loading="lazy"><figcaption>Current QR</figcaption></figure>
 <% } -%>
-    <label class="checkbox" style="margin-top:16px"><input class="checkbox__input" type="checkbox" name="upi_enabled" <%= manualUpiEnabled ? 'checked' : '' %>><span class="checkbox__label">Show Paytm UPI ID/QR on eligible guest booking pages</span></label>
-    <p class="summary__note" style="margin-top:8px">Guest page will show the current INR balance and an amount-prefilled UPI-app link. Uploaded static QR may ask the guest to enter the amount. Payment is not automatically verified; staff must confirm it in Paytm and record it in the hotel ledger.</p>
-    <div class="form-actions"><button class="button" type="submit">Save Paytm UPI details</button></div>
-  </form>
-</section>
+      </div>
+      <label class="checkbox" style="margin-top:16px"><input class="checkbox__input" type="checkbox" name="upi_enabled" <%= manualUpiEnabled ? 'checked' : '' %>><span class="checkbox__label">Show this UPI ID/QR on eligible guest booking pages</span></label>
+      <p class="form-hint" style="margin-top:8px">The guest page shows the current balance and an amount-prefilled UPI-app link. Payment is not verified automatically: confirm it in your UPI app and record it in the hotel ledger.</p>
+      <div class="form-actions"><button class="button" type="submit">Save UPI details</button></div>
+    </form>
+  </section>
+</div>
 
-<section class="card" style="margin-top:20px">
-  <div class="card__head"><div><h2 class="card__title">Bank settlement, UPI and QR</h2><p class="card__subtitle">The hotel app does not hold bank credentials or route money directly.</p></div></div>
-  <ol class="steps-list">
-    <li><strong>Open an authorized merchant account.</strong> Onboard the hotel with an approved payment provider/UPI acquirer and complete its KYC and settlement checks. Add the hotel’s bank account in that provider’s secure merchant dashboard. The provider—not this app—sets up settlement to that account.</li>
-    <li><strong>Configure the provider on the server.</strong> In your hosting environment set <code>PAYMENT_PROVIDER=youpi</code>, <code>PAYMENT_MODE=test</code>, <code>YOUPI_API_URL</code>, <code>YOUPI_MERCHANT_ID</code> and <code>YOUPI_WEBHOOK_SECRET</code>. Never put secret keys, bank details or a personal UPI PIN in the browser or README.</li>
-    <li><strong>Set the webhook in the provider dashboard:</strong> <code>https://your-hotel-domain/integrations/youpi/webhook</code>. Keep the webhook secret set while pending payments are being reconciled.</li>
-    <li><strong>Test first.</strong> Enable this switch only with an authorized test account, verify success/failure/duplicate webhook cases, and reconcile the provider’s test settlement report. This adapter is test-only; it deliberately does not provide a production/live mode.</li>
-  </ol>
-  <div class="notice" role="note" style="margin-top:18px"><%- icon('info') %><p><strong>What guests see today:</strong> UPI checkout only. The app sends them to the provider’s hosted checkout; any UPI QR/intent is displayed and controlled there. This app does not generate a QR or collect a UPI ID. Cards, net banking, wallets and cash are not offered as online checkout methods by this adapter; hotel staff can continue recording offline payments in the existing ledger.</p></div>
-  <p class="summary__note" style="margin-top:14px">YOUPI is experimental and its licensing/authorization remains unresolved. Do not connect a real settlement account or accept live customer money through this adapter. For production, choose a licensed, approved payment gateway and implement/review its adapter separately.</p>
-</section>
+<details class="card pay-details">
+  <summary>
+    <span><strong>Bank settlement, UPI and QR</strong><small class="cell-note">How money reaches the hotel’s bank account — 4 steps</small></span>
+  </summary>
+  <div class="pay-details__body">
+    <ol class="pay-steps">
+      <li><strong>Open an authorized merchant account.</strong> Onboard the hotel with an approved payment provider/UPI acquirer and complete its KYC and settlement checks. Add the hotel’s bank account in that provider’s secure merchant dashboard. The provider—not this app—sets up settlement to that account.</li>
+      <li><strong>Configure the provider on the server.</strong> In your hosting environment set <code>PAYMENT_PROVIDER=youpi</code>, <code>PAYMENT_MODE=test</code>, <code>YOUPI_API_URL</code>, <code>YOUPI_MERCHANT_ID</code> and <code>YOUPI_WEBHOOK_SECRET</code>. Never put secret keys, bank details or a personal UPI PIN in the browser or README.</li>
+      <li><strong>Set the webhook in the provider dashboard:</strong> <code>https://your-hotel-domain/integrations/youpi/webhook</code>. Keep the webhook secret set while pending payments are being reconciled.</li>
+      <li><strong>Test first.</strong> Enable this switch only with an authorized test account, verify success/failure/duplicate webhook cases, and reconcile the provider’s test settlement report. This adapter is test-only; it deliberately does not provide a production/live mode.</li>
+    </ol>
+    <div class="notice" role="note"><%- icon('info') %><p><strong>What guests see today:</strong> UPI checkout only. The app sends them to the provider’s hosted checkout; any UPI QR/intent is displayed and controlled there. This app does not generate a QR or collect a UPI ID. Cards, net banking, wallets and cash are not offered as online checkout methods by this adapter; hotel staff can continue recording offline payments in the existing ledger.</p></div>
+    <p class="form-hint" style="margin-top:14px">YOUPI is experimental and its licensing/authorization remains unresolved. Do not connect a real settlement account or accept live customer money through this adapter. For production, choose a licensed, approved payment gateway and implement/review its adapter separately.</p>
+  </div>
+</details>
 
-<section class="card" style="margin-top:20px">
-  <div class="card__head"><div><h2 class="card__title">Recent checkout attempts</h2><p class="card__subtitle">Attempt history is separate from the payment ledger and is retained for reconciliation.</p></div></div>
+<div class="pay-group">
+  <h2 class="pay-group__title">Reconciliation history</h2>
+  <p class="pay-group__hint">Attempts and provider callbacks kept for matching against the hotel ledger.</p>
+</div>
+
+<div class="pay-split">
+  <section class="card" aria-labelledby="p-attempts">
+    <div class="card__head"><div><h2 class="card__title" id="p-attempts">Recent checkout attempts</h2><p class="card__subtitle">Separate from the ledger and kept for reconciliation.</p></div></div>
 <% if (!attempts.length) { -%>
-  <p class="empty-state">No online checkout attempts yet.</p>
+    <p class="empty-state">No online checkout attempts yet.</p>
 <% } else { -%>
-  <div class="table-wrap"><table class="data-table"><thead><tr><th>Booking</th><th>Order</th><th>Amount</th><th>Status</th><th>Created</th></tr></thead><tbody>
+    <div class="table-scroll"><table class="table admin-table"><thead><tr><th scope="col">Booking</th><th scope="col">Order</th><th scope="col" class="numeric">Amount</th><th scope="col">Status</th><th scope="col">Created</th></tr></thead><tbody>
 <% for (const row of attempts) { -%>
-    <tr><td><%= row.confirmation %></td><td><code><%= row.order_id %></code></td><td><%= fmt.money(row.amount_cents) %> <%= row.currency %></td><td><span class="chip"><%= row.status %></span></td><td><%= row.created_at %></td></tr>
+      <tr><td><%= row.confirmation %></td><td><code><%= row.order_id %></code></td><td class="numeric"><%= fmt.money(row.amount_cents) %> <%= row.currency %></td><td><span class="chip"><%= row.status %></span></td><td><%= row.created_at %></td></tr>
 <% } -%>
-  </tbody></table></div>
+    </tbody></table></div>
 <% } -%>
-</section>
+  </section>
 
-<section class="card" style="margin-top:20px">
-  <div class="card__head"><div><h2 class="card__title">Recent verified webhook events</h2><p class="card__subtitle">Only event metadata is shown here; raw webhook bodies and credentials are not stored.</p></div></div>
+  <section class="card" aria-labelledby="p-webhooks">
+    <div class="card__head"><div><h2 class="card__title" id="p-webhooks">Verified webhook events</h2><p class="card__subtitle">Event metadata only; raw bodies and credentials are not stored.</p></div></div>
 <% if (!events.length) { -%>
-  <p class="empty-state">No YOUPI webhook events received.</p>
+    <p class="empty-state">No YOUPI webhook events received.</p>
 <% } else { -%>
-  <div class="table-wrap"><table class="data-table"><thead><tr><th>Event ID</th><th>Event</th><th>Processing status</th><th>Received</th></tr></thead><tbody>
+    <div class="table-scroll"><table class="table admin-table"><thead><tr><th scope="col">Event ID</th><th scope="col">Event</th><th scope="col">Processing status</th><th scope="col">Received</th></tr></thead><tbody>
 <% for (const event of events) { -%>
-    <tr><td><code><%= event.external_event_id %></code></td><td><%= event.event_type %></td><td><span class="chip"><%= event.status %></span></td><td><%= event.received_at %></td></tr>
+      <tr><td><code><%= event.external_event_id %></code></td><td><%= event.event_type %></td><td><span class="chip"><%= event.status %></span></td><td><%= event.received_at %></td></tr>
 <% } -%>
-  </tbody></table></div>
+    </tbody></table></div>
 <% } -%>
-</section>
+  </section>
+</div>
 <%- include('_bottom') %>
