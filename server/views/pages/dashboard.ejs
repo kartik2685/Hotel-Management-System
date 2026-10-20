@@ -112,6 +112,8 @@
                   <div class="arrival__action" data-arrival-action><span class="room-state room-state--dirty"><%- icon('broom') %>Being cleaned</span></div>
 <% } else if (a.action === 'unassigned') { -%>
                   <div class="arrival__action" data-arrival-action><span class="room-state room-state--dirty"><%- icon('key') %>No room yet</span></div>
+<% } else if (a.action === 'grc') { -%>
+                  <div class="arrival__action" data-arrival-action><a class="button button--secondary button--sm" href="/reservations/<%= a.confirmation %>#grc"><%- icon('user') %>Registration card</a></div>
 <% } else { -%>
                   <div class="arrival__action" data-arrival-action><button class="button button--primary button--sm" type="button" data-check-in aria-label="Check in <%= a.name %>, room <%= a.room %>"><%- icon('key') %>Check in</button></div>
 <% } -%>

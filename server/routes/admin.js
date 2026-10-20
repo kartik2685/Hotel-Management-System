@@ -806,7 +806,7 @@ router.get('/guide', (req, res) => {
   render(req, res, 'guide', 'guide', {
     heading: 'Admin manual', lead: 'A live, automatically updated guide to every admin section and the guest website.',
     guideTabs: tabs.map((t) => ({ ...t, help: TAB_GUIDE[t.key] || 'Open this section to review and manage its hotel records.' })),
-    s: req.settings, types,
+    s: req.settings, types, scripts: ['pages/print'],
   });
 });
 
@@ -874,8 +874,8 @@ router.get('/invoices.csv', (req, res) => {
 /* ------------------------------------------------------------------ reports */
 function reportData(db, query) {
   const bd = settingsService.businessDate(db);
-  const to = /^\d{4}-\d{2}-\d{2}$/.test(query.to || '') ? query.to : bd;
-  let from = /^\d{4}-\d{2}-\d{2}$/.test(query.from || '') ? query.from : f.addDays(to, -29);
+  const to = f.isDate(query.to) ? query.to : bd;
+  let from = f.isDate(query.from) ? query.from : f.addDays(to, -29);
   if (from > to) from = to;
   if (f.daysBetween(from, to) > 366) from = f.addDays(to, -366);
   const days = [];

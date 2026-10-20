@@ -17,7 +17,7 @@ function summary(db) {
   return {
     bd, day: f.formatDay(bd), next: f.formatDay(f.addDays(bd, 1)), mode: settings.business_date_mode,
     closed: Boolean(db.get('SELECT 1 FROM daily_stats WHERE date = ?', bd)),
-    expected: db.all(`${STAY} WHERE r.status = 'confirmed' AND r.arrival <= ? ORDER BY r.eta NULLS FIRST, r.id`, bd),
+    expected: db.all(`${STAY} WHERE r.status IN ('confirmed', 'tentative') AND r.arrival <= ? ORDER BY r.eta NULLS FIRST, r.id`, bd),
     dueOut: db.all(`${STAY} WHERE r.status = 'checked_in' AND r.departure <= ? ORDER BY rm.number NULLS FIRST, r.id`, bd),
     night: { ...night, occupancyText: f.pct1(night.sold, night.rooms), adrText: f.money(Math.round(night.adr)), revparText: f.money(Math.round(night.revpar)), revenueText: f.money(night.revenue) },
     fnb: outlet('fnb'), spa: outlet('spa'),
@@ -49,7 +49,7 @@ function close(db, req, { noShows = false } = {}) {
   if (s.expected.length && !noShows) throw error(`${f.plural(s.expected.length, 'arrival is', 'arrivals are')} still expected. Check them in, cancel them, or tick “Mark the rest as no-shows”.`);
   const now = clock.stamp(settings.timezone);
   db.tx(() => {
-    if (noShows) db.run("UPDATE reservations SET status = 'no_show', updated_at = ? WHERE status = 'confirmed' AND arrival <= ?", now, s.bd);
+    if (noShows) db.run("UPDATE reservations SET status = 'no_show', updated_at = ? WHERE status IN ('confirmed', 'tentative') AND arrival <= ?", now, s.bd);
     const n = stats.night(db, s.bd);
     db.run(
       `INSERT INTO daily_stats (date, rooms_available, rooms_sold, room_revenue_cents, adr_cents, revpar_cents, closed_by, closed_at)

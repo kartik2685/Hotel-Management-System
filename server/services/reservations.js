@@ -7,6 +7,7 @@ const activity = require('../lib/activity');
 const settingsService = require('./settings');
 const taxKinds = require('./tax-kinds');
 const seasons = require('./seasons');
+const housekeeping = require('./housekeeping');
 
 const STATUS = {
   tentative: { css: 'tentative', label: 'Tentative' },
@@ -91,7 +92,10 @@ function freeRooms(db, typeId, arrival, departure, ignoreReservationId = 0) {
   );
 }
 
-/* True when every night has at least one room of the type left (unassigned bookings count too). */
+/* True when a stay of those dates can actually be placed: every night has a room of the type left (unassigned
+   bookings count too), and one room is free for the whole stay. A night-by-night count alone is not enough: with
+   room 101 blocked on the first night and room 102 booked for the second, each night has a room free but no single
+   room covers both, and the booking would be taken with no room to check the guest into. */
 function typeAvailable(db, typeId, arrival, departure, ignoreReservationId = 0) {
   for (let d = arrival; d < departure; d = f.addDays(d, 1)) {
     const rooms = db.get(
@@ -104,7 +108,7 @@ function typeAvailable(db, typeId, arrival, departure, ignoreReservationId = 0) 
     ).n;
     if (taken >= rooms) return false;
   }
-  return true;
+  return freeRooms(db, typeId, arrival, departure, ignoreReservationId).length > 0;
 }
 
 function nextConfirmation(db, settings) {
@@ -117,7 +121,7 @@ function nextConfirmation(db, settings) {
 
 const clean = (value, max) => String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
 const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-const isDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value + 'T00:00:00Z'));
+const isDate = (value) => f.isDate(value);
 
 /* Validates the new-booking form and returns the normalised values. */
 function readBooking(db, input, bd) {
@@ -170,6 +174,9 @@ function insertBooking(db, req, v, { createdBy = null, actor, online = false, gr
       throw new BookingError(`No ${v.type.name} is free for those dates. Try other dates or another room type.`, 'type');
     }
     const room = freeRooms(db, v.type.id, v.arrival, v.departure)[0] || null;
+    // Every new booking gets a room: one without a room could never be checked in. (Old data may hold such a
+    // booking; the booking page can still assign a room once one frees up.)
+    if (!room) throw new BookingError(`No ${v.type.name} is free for every night of those dates. Try other dates or another room type.`, 'type');
     let guest = db.get('SELECT * FROM guests WHERE lower(email) = lower(?) ORDER BY id LIMIT 1', v.email);
     const stamp = clock.stamp(settings.timezone);
     if (!guest) {
@@ -320,7 +327,11 @@ function checkOut(db, req, confirmation, { settle = false, method = 'Card' } = {
       "UPDATE reservations SET status = 'checked_out', checked_out_at = ?, departure = ?, paid_cents = paid_cents + ?, updated_at = ? WHERE id = ?",
       stamp, departure, settled, stamp, r.id,
     );
-    if (r.room_id) db.run("UPDATE rooms SET hk_status = 'dirty', hk_updated_at = ? WHERE id = ?", stamp, r.room_id);
+    if (r.room_id) {
+      db.run("UPDATE rooms SET hk_status = 'dirty', hk_updated_at = ? WHERE id = ?", stamp, r.room_id);
+      // Leaving early (before the night audit booked a departure clean) still needs one today.
+      housekeeping.ensureDepartureClean(db, r.room_id, bd);
+    }
     activity.log(db, req, 'reservation.check-out', `Checked out ${r.name} (${r.confirmation}) from room ${r.room_number || '—'}${departure !== r.departure ? `, leaving early (${f.plural(f.daysBetween(r.arrival, departure), 'night', 'nights')} billed)` : ''}`);
     return { ...byConfirmation(db, confirmation), early: departure !== r.departure };
   });
@@ -434,7 +445,10 @@ function detail(db, confirmation, bd) {
   const b = byConfirmation(db, confirmation);
   if (!b) return null;
   const extras = db.all('SELECT x.name, x.per, re.amount_cents, re.tax_bp FROM reservation_extras re JOIN extras x ON x.id = re.extra_id WHERE re.reservation_id = ?', b.id);
-  const rooms = freeRooms(db, b.room_type_id, b.arrival, b.departure, b.id);
+  // An in-house guest can only move into a room nobody is still checked into; a guest leaving today frees the
+  // room on paper, but not until they have actually checked out.
+  const stillIn = new Set(db.all("SELECT room_id FROM reservations WHERE status = 'checked_in' AND room_id IS NOT NULL AND id <> ?", b.id).map((r) => r.room_id));
+  const rooms = freeRooms(db, b.room_type_id, b.arrival, b.departure, b.id).filter((r) => b.status !== 'checked_in' || !stillIn.has(r.id));
   if (b.room_id && !rooms.some((r) => r.id === b.room_id)) rooms.unshift({ id: b.room_id, number: b.room_number });
   const owing = b.total_cents - b.paid_cents;
   const room = b.room_id ? db.get('SELECT hk_status FROM rooms WHERE id = ?', b.room_id) : null;
@@ -515,6 +529,12 @@ function update(db, req, confirmation, body) {
     if (room && (changed || room.id !== r.room_id) && !freeRooms(db, type.id, v.arrival, v.departure, r.id).some((x) => x.id === room.id)) {
       form.fail('room', `Room ${room.number} is taken or out of order on some of those nights.`);
     }
+    // An in-house guest moves today, so the room must be empty now: a stay that ends today is still in it until
+    // its guest checks out (same-day turnovers are fine for a new arrival, not for someone already in house).
+    if (room && r.status === 'checked_in' && room.id !== r.room_id
+      && db.get("SELECT 1 FROM reservations WHERE room_id = ? AND status = 'checked_in' AND id <> ?", room.id, r.id)) {
+      form.fail('room', `Room ${room.number} is still occupied. Check that guest out before moving an in-house guest in.`);
+    }
     if (room && r.status === 'checked_in' && room.id !== r.room_id && room.hk_status !== 'clean') form.fail('room', `Room ${room.number} is not clean yet.`);
   }
   if (!form.ok) throw new FormError(form.errors, form.values);
@@ -532,26 +552,17 @@ function update(db, req, confirmation, body) {
       JSON.stringify([...keep, ...tags]), v.notes, v.requests, roomTotal, tax, extras, total, stamp, r.id,
     );
     db.run('UPDATE guests SET first_name = ?, last_name = ?, email = ?, phone = ?, updated_at = ? WHERE id = ?', v.first, v.last, v.email || null, v.phone || null, stamp, r.guest_id);
-    if (r.status === 'checked_in' && room && room.id !== r.room_id && r.room_id) db.run("UPDATE rooms SET hk_status = 'dirty', hk_updated_at = ? WHERE id = ?", stamp, r.room_id);
+    if (r.status === 'checked_in' && room && room.id !== r.room_id && r.room_id) {
+      db.run("UPDATE rooms SET hk_status = 'dirty', hk_updated_at = ? WHERE id = ?", stamp, r.room_id);
+      // The room the guest left now needs a full clean, even if it was only a stayover service before.
+      housekeeping.ensureDepartureClean(db, r.room_id, bd);
+    }
     activity.log(db, req, 'reservation.update', `Updated ${r.confirmation} for ${v.first} ${v.last}: ${f.formatDay(v.arrival)} → ${f.formatDay(v.departure)}, room ${room ? room.number : 'unassigned'}`);
     return byConfirmation(db, confirmation);
   });
 }
 
-function addPayment(db, req, confirmation, body) {
-  const settings = settingsService.all(db);
-  const r = requireBooking(db, confirmation);
-  const form = new Form(body);
-  const amount = form.money('amount', { label: 'Amount', min: 0.01, max: 10000000 });
-  const method = form.oneOf('method', ['Cash', 'Card', 'UPI', 'Bank transfer'], { label: 'Payment method' });
-  if (amount && amount > r.total_cents - r.paid_cents) form.fail('amount', `That is more than the ${f.money(r.total_cents - r.paid_cents)} still open.`);
-  if (!form.ok) throw new FormError(form.errors, form.values);
-  db.run('UPDATE reservations SET paid_cents = paid_cents + ?, updated_at = ? WHERE id = ?', amount, clock.stamp(settings.timezone), r.id);
-  activity.log(db, req, 'reservation.payment', `Payment of ${f.money(amount)} (${method}) on ${r.confirmation} for ${r.name}`);
-  return byConfirmation(db, confirmation);
-}
-
+/* Payments are recorded by services/billing.js (addPayment), which also writes the payments table. */
 module.exports.detail = detail;
 module.exports.update = update;
-module.exports.addPayment = addPayment;
 module.exports.FormError = FormError;

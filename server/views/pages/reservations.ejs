@@ -99,6 +99,9 @@
               <p class="card__subtitle"><%= r.taxNote %></p>
             </div>
           </div>
+<% if (!r.form.types.length) { -%>
+          <p class="empty-state">Add a room type first: every booking needs one. <a class="text-button" href="/admin/room-types">Set up room types</a></p>
+<% } else { -%>
           <form class="booking-form" method="post" action="/reservations" data-booking-form novalidate>
 <% if (r.form.seasons && r.form.seasons.length) { -%>
                 <script type="application/json" id="rate-seasons"><%- JSON.stringify(r.form.seasons).replace(/</g, '\\u003c') %></script>
@@ -205,6 +208,7 @@
               </aside>
             </div>
           </form>
+<% } -%>
           <div class="success-box" data-booking-success hidden tabindex="-1">
             <span class="success-box__icon"><%- icon('check') %></span>
             <div>

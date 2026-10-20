@@ -20,7 +20,7 @@
 
     const today = Date.parse(data.businessDate + 'T00:00:00Z');
     const dayDate = (offset) => new Date(today + offset * DAY_MS);
-    const rooms = data.rooms.map(([no, type]) => ({ no, type, floor: Math.floor(no / 100) }));
+    const rooms = data.rooms.map(([no, type, floor]) => ({ no, type, floor: Number.isFinite(Number(floor)) ? Number(floor) : Math.floor(no / 100) }));
     const bookings = data.bookings.map(([id, room, start, end, first, last, status, adults, children, rate, source, notes]) =>
       ({ id, room, start, end, first, last, status, adults, children, rate, source, notes }));
     const blocks = data.blocks.map(([room, start, end, reason]) => ({ room, start, end, reason }));
@@ -133,7 +133,7 @@
           currentFloor = room.floor;
           const count = visible.filter((r) => r.floor === room.floor).length;
           parts.append(h('div', { class: 'tape__floor' }, [
-            h('div', { class: 'tape__stub', text: 'Floor ' + room.floor + ' · ' + count + ' rooms' }),
+            h('div', { class: 'tape__stub', text: 'Floor ' + room.floor + ' · ' + plural(count, 'room', 'rooms') }),
             h('div'),
           ]));
         }

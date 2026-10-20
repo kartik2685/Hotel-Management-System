@@ -48,7 +48,9 @@ function home(db) {
   return { types, plans, extras, heroImages: heroPhotos.map((x) => imageUrl(x)), aboutImages: aboutPhotos.map((x) => imageUrl(x)) };
 }
 
-/* Fewest rooms of a type still free on any night of the stay. */
+/* Rooms of a type that can take this whole stay: the fewest free on any night (unassigned bookings count too),
+   and no more than the rooms actually free every night of it. The second number matters when the free rooms differ
+   from night to night (one blocked tonight, another booked tomorrow): no single room covers the stay. */
 function roomsLeft(db, typeId, arrival, departure) {
   let least = Infinity;
   for (let d = arrival; d < departure; d = f.addDays(d, 1)) {
@@ -61,7 +63,8 @@ function roomsLeft(db, typeId, arrival, departure) {
     ).n;
     least = Math.min(least, rooms - taken);
   }
-  return Math.max(0, least === Infinity ? 0 : least);
+  const wholeStay = reservations.freeRooms(db, typeId, arrival, departure).length;
+  return Math.max(0, Math.min(least === Infinity ? 0 : least, wholeStay));
 }
 
 /* Reads and checks the dates and party size from a query string. */
@@ -189,6 +192,8 @@ function bookingView(db, b) {
   const type = db.get('SELECT * FROM room_types WHERE id = ?', b.room_type_id);
   return {
     b, plan, type: typeGallery(db, type), policy: policyText(plan, b.arrival),
+    // The room split by nightly rate (weekends, seasons), as the guest saw it before booking.
+    roomLines: seasons.groups(b),
     canCancel: ['confirmed', 'tentative'].includes(b.status) && cancellable(plan, b.arrival, bd),
     extras: db.all('SELECT x.name, re.amount_cents FROM reservation_extras re JOIN extras x ON x.id = re.extra_id WHERE re.reservation_id = ?', b.id),
   };

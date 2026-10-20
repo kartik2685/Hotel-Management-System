@@ -246,8 +246,8 @@
       $$('[data-arrivals-in], [data-metric-checked-in]').forEach((el) => { el.textContent = checkedIn; });
       const meter = $('[data-metric-checked-in-meter]');
       if (meter) {
-        meter.firstElementChild.style.width = ((checkedIn / total) * 100).toFixed(1) + '%';
-        meter.setAttribute('aria-label', checkedIn + ' of ' + total + ' arrivals checked in');
+        meter.firstElementChild.style.width = (total ? (checkedIn / total) * 100 : 0).toFixed(1) + '%';
+        meter.setAttribute('aria-label', total ? checkedIn + ' of ' + total + ' arrivals checked in' : 'No arrivals today');
       }
     }
 
@@ -289,6 +289,7 @@
     });
 
     updateCounts();
+    applyFilter();
   }
 
   HMS.ready(() => {

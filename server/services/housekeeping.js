@@ -41,6 +41,31 @@ function tasksFor(db, bd) {
   });
 }
 
+/* A room that has just been vacated (check-out, or a move to another room) needs a departure clean today. The
+   night audit already books one for guests due out, so add it only when the board has none: a stayover service
+   still open becomes that clean, and a stayover that was already done is followed by a fresh departure clean. */
+function ensureDepartureClean(db, roomId, taskDate) {
+  if (!roomId) return 0;
+  const room = db.get('SELECT rm.attendant_id, rt.clean_minutes FROM rooms rm JOIN room_types rt ON rt.id = rm.room_type_id WHERE rm.id = ?', roomId);
+  if (!room) return 0;
+  const task = db.get("SELECT id, kind, done_at FROM housekeeping_tasks WHERE task_date = ? AND room_id = ? AND kind IN ('departure', 'stayover') ORDER BY id LIMIT 1", taskDate, roomId);
+  if (!task) {
+    db.run("INSERT INTO housekeeping_tasks (task_date, room_id, kind, title, minutes, attendant_id) VALUES (?, ?, 'departure', 'Departure clean', ?, ?)",
+      taskDate, roomId, room.clean_minutes, room.attendant_id);
+    return 1;
+  }
+  if (task.kind === 'stayover' && !task.done_at) {
+    db.run("UPDATE housekeeping_tasks SET kind = 'departure', title = 'Departure clean', minutes = ? WHERE id = ?", room.clean_minutes, task.id);
+    return 1;
+  }
+  if (task.kind === 'stayover') {
+    db.run("INSERT INTO housekeeping_tasks (task_date, room_id, kind, title, minutes, attendant_id) VALUES (?, ?, 'departure', 'Departure clean', ?, ?)",
+      taskDate, roomId, room.clean_minutes, room.attendant_id);
+    return 1;
+  }
+  return 0;
+}
+
 const order = (a, b) => (a.done !== b.done ? (a.done ? 1 : -1)
   : (a.done ? 0 : a.priority - b.priority) || (Number(a.room_number) || 0) - (Number(b.room_number) || 0) || a.id - b.id);
 
@@ -79,4 +104,4 @@ function page(db, shell) {
   };
 }
 
-module.exports = { page, tasksFor };
+module.exports = { page, tasksFor, ensureDepartureClean };

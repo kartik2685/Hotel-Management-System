@@ -140,6 +140,7 @@
       return TAX_PERCENT;
     };
     const f = form.elements;
+    if (!f.type || !f.type.options.length) return; // no room types yet: the page explains how to add one
     const success = $('[data-booking-success]');
     const output = (name) => $('[data-quote="' + name + '"]', form);
     let addedRow = null;

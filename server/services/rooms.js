@@ -54,14 +54,20 @@ function roomStates(db, bd) {
 /* Counts used by the sidebar, dashboard and room board. */
 function summarize(states) {
   const count = (fn) => states.filter(fn).length;
+  // Dirty is every room that needs a clean, whether a guest is in it or not. A room that is out of
+  // order is off sale, so its housekeeping state is not counted here. Clean is still the vacant rooms
+  // ready to sell; the occupied tile shows its own clean / to-service split.
+  const occupiedDirty = count((r) => r.status === 'occupied' && r.hk_status === 'dirty');
+  const vacantDirty = count((r) => r.status === 'dirty');
   return {
     total: states.length,
     occupied: count((r) => r.status === 'occupied'),
     occupiedClean: count((r) => r.status === 'occupied' && r.hk_status === 'clean'),
-    occupiedDirty: count((r) => r.status === 'occupied' && r.hk_status === 'dirty'),
+    occupiedDirty,
     clean: count((r) => r.status === 'clean'),
-    dirty: count((r) => r.status === 'dirty'),
-    dirtyWithArrival: count((r) => r.status === 'dirty' && r.arrival),
+    dirty: occupiedDirty + vacantDirty,
+    vacantDirty,
+    dirtyWithArrival: count((r) => r.status !== 'ooo' && r.hk_status === 'dirty' && r.arrival),
     ooo: count((r) => r.status === 'ooo'),
     floors: new Set(states.map((r) => r.floor)).size,
   };
@@ -111,7 +117,7 @@ function page(db, shell, { canEdit, canAssign }) {
     const vip = (r.occupant && r.occupant.vip) || (!r.occupant && r.arrival && r.arrival.vip);
     if (vip) flags.push({ cls: 'chip chip--gold', text: 'VIP' });
     if (r.occupant && r.occupant.departure <= bd) flags.push({ cls: 'chip chip--blue', text: 'Due out' });
-    if (r.status === 'dirty' && r.arrival) flags.push({ cls: 'chip chip--amber', text: 'Rush' });
+    if (r.status !== 'ooo' && r.hk_status === 'dirty' && r.arrival) flags.push({ cls: 'chip chip--amber', text: 'Rush' });
     const cleaned = tasks.find((t) => t.room_id === r.id && t.kind === 'departure' && t.done_at);
     if (r.status === 'clean' && cleaned) flags.push({ cls: 'chip', text: `Cleaned ${f.clock(cleaned.done_at)}` });
     const stayover = r.occupant && r.occupant.departure > bd && !(r.occupant.arrival === bd);
@@ -121,7 +127,9 @@ function page(db, shell, { canEdit, canAssign }) {
   const floors = [...new Set(states.map((r) => r.floor))].sort((a, b) => a - b).map((number) => {
     const list = states.filter((r) => r.floor === number);
     const count = (s) => list.filter((r) => r.status === s).length;
-    const parts = [`${count('occupied')} occupied`, `${count('clean')} clean`, `${count('dirty')} dirty`];
+    // Dirty crosses the occupied / vacant line: a guest's room can be waiting for a clean too.
+    const dirty = list.filter((r) => r.status !== 'ooo' && r.hk_status === 'dirty').length;
+    const parts = [`${count('occupied')} occupied`, `${count('clean')} clean`, `${dirty} dirty`];
     if (count('ooo')) parts.push(`${count('ooo')} out of order`);
     return {
       number, stats: parts.join(' · '), lead: people.find((a) => a.floor === number) || null,
@@ -130,7 +138,10 @@ function page(db, shell, { canEdit, canAssign }) {
   });
   const latest = states.reduce((max, r) => (r.hk_updated_at && r.hk_updated_at > max ? r.hk_updated_at : max), '');
   const updated = !latest ? 'today' : latest.slice(0, 10) === now.date ? f.clock(latest) : f.formatDay(latest);
-  return { counts: roomCounts, floors, attendants: people, updated, canEdit, canAssign };
+  const dirtyNote = roomCounts.dirty
+    ? `${roomCounts.occupiedDirty} occupied · ${roomCounts.vacantDirty} vacant`
+    : 'Vacant, needs a clean';
+  return { counts: roomCounts, dirtyNote, floors, attendants: people, updated, canEdit, canAssign };
 }
 
 module.exports.page = page;
